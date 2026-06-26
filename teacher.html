@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EstruturaPRO — Painel do Professor</title>
+  <meta name="description" content="Painel do professor na plataforma EstruturaPRO para acompanhamento e gerenciamento de alunos." />
+  <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="css/teacher.css" />
+  <!-- CodeMirror for JS code editor -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" />
+</head>
+<body>
+
+<div class="bg-mesh"></div>
+<div class="bg-grid"></div>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<div class="app-layout">
+
+  <!-- ─── SIDEBAR ─── -->
+  <aside class="sidebar" id="sidebar">
+
+    <div class="sidebar-logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">
+        <div class="logo-name">EstruturaPRO</div>
+        <div class="logo-sub">Painel do Professor</div>
+      </div>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sidebar-avatar" style="background:#6366f1;">CS</div>
+      <div>
+        <div class="user-name" id="sidebar-name">Carregando...</div>
+        <div class="user-role">👨‍🏫 Professor</div>
+      </div>
+    </div>
+
+    <nav class="teacher-nav">
+      <div class="t-nav-item active" data-view="overview" id="nav-overview">
+        <span class="t-nav-icon">📊</span> Visão Geral
+      </div>
+      <div class="t-nav-item" data-view="modules" id="nav-modules">
+        <span class="t-nav-icon">🔓</span> Gerenciar Módulos
+      </div>
+      <div class="t-nav-item" data-view="create-activity" id="nav-create-activity">
+        <span class="t-nav-icon">✏️</span> Criar Atividade
+      </div>
+      <div class="t-nav-item" data-view="students" id="nav-students">
+        <span class="t-nav-icon">👥</span> Gerenciar Alunos
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn-logout" id="btn-logout">
+        <span>🚪</span> Sair da Conta
+      </button>
+    </div>
+  </aside>
+
+  <!-- ─── MAIN ─── -->
+  <main class="main-content">
+
+    <header class="main-header">
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <button class="mobile-sidebar-toggle" id="sidebar-toggle">☰</button>
+        <div class="header-title">
+          <h2 id="header-title">Visão Geral da Turma</h2>
+          <p id="header-subtitle">Acompanhe o progresso dos seus alunos</p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <button class="btn btn-ghost btn-sm" id="btn-export">📥 Exportar Relatório</button>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <div class="user-avatar" id="header-avatar" style="width:32px;height:32px;font-size:0.7rem;background:#6366f1;">CS</div>
+          <span style="font-size:0.82rem;color:var(--text-secondary);" id="header-name"></span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ─── OVERVIEW VIEW ─── -->
+    <div id="view-overview">
+
+      <!-- Overall Stats -->
+      <div class="overview-stats">
+        <div class="overview-stat purple">
+          <div class="os-icon">👥</div>
+          <div class="os-value purple" id="stat-total-students">3</div>
+          <div class="os-label">Total de Alunos</div>
+        </div>
+        <div class="overview-stat green">
+          <div class="os-icon">✅</div>
+          <div class="os-value green" id="stat-total-completions">0</div>
+          <div class="os-label">Módulos Concluídos</div>
+        </div>
+        <div class="overview-stat yellow">
+          <div class="os-icon">📈</div>
+          <div class="os-value yellow" id="stat-avg-rate">0%</div>
+          <div class="os-label">Taxa Média de Conclusão</div>
+        </div>
+        <div class="overview-stat pink">
+          <div class="os-icon">📚</div>
+          <div class="os-value pink" id="stat-total-modules">6</div>
+          <div class="os-label">Módulos Disponíveis</div>
+        </div>
+      </div>
+
+      <!-- Students Table -->
+      <div class="table-section">
+        <div class="section-header">
+          <h3 class="section-title">👥 Alunos da Turma</h3>
+          <span class="badge badge-primary" id="students-count-badge">3 alunos</span>
+        </div>
+
+        <div class="students-table-wrap">
+          <table class="students-table">
+            <thead>
+              <tr>
+                <th>Aluno</th>
+                <th>Progresso</th>
+                <th>Módulos</th>
+                <th>Nota Média</th>
+                <th>Último Acesso</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="students-tbody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Module completion overview -->
+      <div>
+        <div class="section-header">
+          <h3 class="section-title">📊 Conclusão por Módulo</h3>
+        </div>
+        <div id="module-completion-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0.75rem;">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ─── MODULES MANAGEMENT VIEW ─── -->
+    <div id="view-modules">
+      <div class="module-mgmt-title">
+        <h2>🔓 Gerenciar Liberação de Módulos</h2>
+        <p class="module-mgmt-subtitle">
+          Ative ou desative o acesso de cada aluno a cada módulo individualmente.
+        </p>
+      </div>
+
+      <!-- Bulk Actions -->
+      <div class="bulk-actions">
+        <button class="btn btn-primary btn-sm" id="btn-unlock-all-all">🔓 Liberar TUDO para Todos</button>
+        <button class="btn btn-ghost btn-sm"   id="btn-lock-all-all">🔒 Bloquear TUDO</button>
+        <button class="btn btn-ghost btn-sm"   id="btn-unlock-first">📖 Liberar módulo 1 para todos</button>
+      </div>
+
+      <!-- Access Matrix -->
+      <div class="access-matrix">
+        <table class="access-table" id="access-table">
+          <!-- Populated by JS -->
+        </table>
+      </div>
+
+    </div>
+
+    <!-- ─── CREATE ACTIVITY VIEW ─── -->
+    <div id="view-create-activity">
+
+      <div class="ca-header">
+        <div class="ca-header-info">
+          <h2>✏️ Criar Nova Atividade</h2>
+          <p class="ca-header-sub">Monte um questionário com perguntas teóricas e práticas em JavaScript</p>
+        </div>
+      </div>
+
+      <form id="activity-form" autocomplete="off">
+
+        <!-- ── Dados Gerais ── -->
+        <div class="ca-section">
+          <div class="ca-section-title">📋 Informações Gerais</div>
+          <div class="ca-fields-grid">
+            <div class="ca-field ca-field-full">
+              <label class="ca-label" for="act-title">Título da Atividade <span class="ca-required">*</span></label>
+              <input type="text" id="act-title" class="ca-input" placeholder="Ex: Fundamentos de JavaScript — Módulo 1" required />
+            </div>
+            <div class="ca-field">
+              <label class="ca-label" for="act-module">Módulo Relacionado</label>
+              <select id="act-module" class="ca-input ca-select">
+                <option value="">— Nenhum —</option>
+              </select>
+            </div>
+            <div class="ca-field">
+              <label class="ca-label" for="act-deadline">Prazo de Entrega</label>
+              <input type="datetime-local" id="act-deadline" class="ca-input" />
+            </div>
+            <div class="ca-field ca-field-full">
+              <label class="ca-label" for="act-description">Descrição / Instruções</label>
+              <textarea id="act-description" class="ca-input ca-textarea" rows="3" placeholder="Descreva os objetivos e instruções para os alunos..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Perguntas ── -->
+        <div class="ca-section">
+          <div class="ca-section-header">
+            <div class="ca-section-title">❓ Perguntas</div>
+            <div class="ca-question-btns">
+              <button type="button" class="btn btn-sm ca-btn-add-q" data-type="theoretical" id="btn-add-theoretical">
+                📖 + Pergunta Teórica
+              </button>
+              <button type="button" class="btn btn-sm ca-btn-add-q ca-btn-practical" data-type="practical" id="btn-add-practical">
+                💻 + Pergunta Prática (JS)
+              </button>
+            </div>
+          </div>
+
+          <div id="questions-container" class="ca-questions-list">
+            <!-- questions injected here -->
+            <div class="ca-empty-questions" id="ca-empty-state">
+              <div class="ca-empty-icon">📝</div>
+              <p>Nenhuma pergunta adicionada ainda.</p>
+              <p class="ca-empty-hint">Use os botões acima para adicionar perguntas teóricas ou práticas.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Actions ── -->
+        <div class="ca-actions">
+          <button type="button" class="btn btn-ghost" id="btn-ca-reset">🗑️ Limpar Tudo</button>
+          <div style="display:flex;gap:0.75rem;">
+            <button type="button" class="btn btn-ghost" id="btn-ca-preview">👁️ Prévia</button>
+            <button type="submit" class="btn btn-primary" id="btn-ca-save">💾 Salvar Atividade</button>
+          </div>
+        </div>
+
+      </form>
+
+      <!-- ── Preview Modal ── -->
+      <div class="ca-modal-overlay" id="ca-preview-modal">
+        <div class="ca-modal">
+          <div class="ca-modal-header">
+            <h3 id="ca-preview-title">Prévia da Atividade</h3>
+            <button class="ca-modal-close" id="btn-close-preview">✕</button>
+          </div>
+          <div class="ca-modal-body" id="ca-preview-body"></div>
+          <div class="ca-modal-footer">
+            <button class="btn btn-ghost" id="btn-close-preview-2">Fechar</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ─── STUDENTS MANAGEMENT VIEW ─── -->
+    <div id="view-students">
+
+      <div class="ca-header">
+        <div class="ca-header-info">
+          <h2>👥 Gerenciar Alunos</h2>
+          <p class="ca-header-sub">Cadastre alunos manualmente ou importe via planilha (CSV)</p>
+        </div>
+      </div>
+
+      <!-- Two-column layout: form + table -->
+      <div class="students-mgmt-layout">
+
+        <!-- Left: Forms -->
+        <div class="students-mgmt-forms">
+
+          <!-- Manual Register -->
+          <div class="ca-section">
+            <div class="ca-section-title">✍️ Cadastro Manual</div>
+            <form id="student-register-form" autocomplete="off">
+              <div class="ca-fields-grid">
+                <div class="ca-field ca-field-full">
+                  <label class="ca-label" for="stud-name">Nome Completo <span class="ca-required">*</span></label>
+                  <input type="text" id="stud-name" class="ca-input" placeholder="Ex: João Pedro Souza" required />
+                </div>
+                <div class="ca-field ca-field-full">
+                  <label class="ca-label" for="stud-email">E-mail <span class="ca-required">*</span></label>
+                  <input type="email" id="stud-email" class="ca-input" placeholder="Ex: joao@aluno.edu" required />
+                </div>
+                <div class="ca-field">
+                  <label class="ca-label" for="stud-password">Senha Inicial</label>
+                  <input type="text" id="stud-password" class="ca-input" placeholder="Padrão: 1234" value="1234" />
+                </div>
+                <div class="ca-field">
+                  <label class="ca-label" for="stud-color">Cor do Avatar</label>
+                  <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <input type="color" id="stud-color" value="#6366f1" style="width:42px;height:38px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;padding:2px;" />
+                    <div id="stud-avatar-preview" style="width:38px;height:38px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:#fff;transition:background 0.2s;">AL</div>
+                  </div>
+                </div>
+              </div>
+              <div class="ca-actions" style="padding-top:0;margin-top:1rem;">
+                <div></div>
+                <button type="submit" class="btn btn-primary" id="btn-stud-save">➕ Cadastrar Aluno</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- CSV Import -->
+          <div class="ca-section" style="margin-top:1.5rem;">
+            <div class="ca-section-title">📊 Importar via Planilha (CSV)</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;">
+              Cole o conteúdo CSV abaixo ou faça upload de um arquivo <code>.csv</code>.<br/>
+              Formato esperado: <code>nome,email,senha</code> (uma linha por aluno, sem cabeçalho).
+            </p>
+            <div class="ca-field ca-field-full">
+              <label class="ca-label" for="stud-csv-text">Colar dados CSV</label>
+              <textarea id="stud-csv-text" class="ca-input ca-textarea" rows="5" placeholder="João Pedro,joao@aluno.edu,1234&#10;Maria Clara,maria@aluno.edu,abc123"></textarea>
+            </div>
+            <div style="display:flex;gap:0.75rem;align-items:center;margin-top:0.75rem;flex-wrap:wrap;">
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
+                📁 Carregar Arquivo CSV
+                <input type="file" id="stud-csv-file" accept=".csv,text/csv" style="display:none;" />
+              </label>
+              <button type="button" class="btn btn-primary btn-sm" id="btn-import-csv">📥 Importar CSV</button>
+            </div>
+            <div id="csv-import-result" style="margin-top:0.75rem;font-size:0.82rem;"></div>
+          </div>
+
+        </div>
+
+        <!-- Right: Students Table -->
+        <div class="students-mgmt-table">
+          <div class="section-header">
+            <h3 class="section-title">📋 Alunos Cadastrados</h3>
+            <span class="badge badge-primary" id="stud-count-badge">0 alunos</span>
+          </div>
+          <div class="students-table-wrap">
+            <table class="students-table" id="stud-mgmt-table">
+              <thead>
+                <tr>
+                  <th>Aluno</th>
+                  <th>E-mail</th>
+                  <th>Senha</th>
+                  <th>Cadastrado em</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="stud-mgmt-tbody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div id="stud-mgmt-empty" style="text-align:center;padding:2rem;color:var(--text-muted);font-size:0.85rem;display:none;">
+            <div style="font-size:2rem;margin-bottom:0.5rem;">👤</div>
+            Nenhum aluno cadastrado ainda.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Edit Modal -->
+      <div class="ca-modal-overlay" id="stud-edit-modal">
+        <div class="ca-modal" style="max-width:480px;">
+          <div class="ca-modal-header">
+            <h3>✏️ Editar Aluno</h3>
+            <button class="ca-modal-close" id="btn-stud-edit-close">✕</button>
+          </div>
+          <div class="ca-modal-body">
+            <input type="hidden" id="edit-stud-id" />
+            <div class="ca-fields-grid">
+              <div class="ca-field ca-field-full">
+                <label class="ca-label" for="edit-stud-name">Nome Completo</label>
+                <input type="text" id="edit-stud-name" class="ca-input" />
+              </div>
+              <div class="ca-field ca-field-full">
+                <label class="ca-label" for="edit-stud-email">E-mail</label>
+                <input type="email" id="edit-stud-email" class="ca-input" />
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" for="edit-stud-password">Nova Senha (deixe em branco para manter)</label>
+                <input type="text" id="edit-stud-password" class="ca-input" placeholder="Nova senha..." />
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" for="edit-stud-color">Cor do Avatar</label>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                  <input type="color" id="edit-stud-color" value="#6366f1" style="width:42px;height:38px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;padding:2px;" />
+                  <div id="edit-stud-avatar-preview" style="width:38px;height:38px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:#fff;">AL</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ca-modal-footer">
+            <button class="btn btn-ghost" id="btn-stud-edit-cancel">Cancelar</button>
+            <button class="btn btn-primary" id="btn-stud-edit-save">💾 Salvar Alterações</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ─── STUDENT DETAIL VIEW ─── -->
+    <div id="view-student-detail">
+
+      <div style="margin-bottom:1.5rem;">
+        <button class="btn btn-ghost btn-sm" id="btn-back-overview">← Voltar</button>
+      </div>
+
+      <!-- Detail Header -->
+      <div class="detail-header">
+        <div class="detail-avatar" id="detail-avatar">??</div>
+        <div>
+          <div class="detail-student-name" id="detail-name">—</div>
+          <div class="detail-student-email" id="detail-email">—</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:0.5rem;">
+          <button class="btn btn-primary btn-sm" id="detail-unlock-all">🔓 Liberar todos</button>
+        </div>
+      </div>
+
+      <!-- Detail Stats -->
+      <div class="detail-stats">
+        <div class="detail-stat">
+          <div class="ds-value" id="det-completed" style="color:var(--green);">0</div>
+          <div class="ds-label">Módulos Concluídos</div>
+        </div>
+        <div class="detail-stat">
+          <div class="ds-value" id="det-unlocked" style="color:var(--accent-light);">0</div>
+          <div class="ds-label">Módulos Liberados</div>
+        </div>
+        <div class="detail-stat">
+          <div class="ds-value" id="det-score" style="color:var(--yellow);">—</div>
+          <div class="ds-label">Média dos Quizzes</div>
+        </div>
+      </div>
+
+      <!-- Module Progress Cards -->
+      <h3 class="detail-modules-title">📚 Progresso por Módulo</h3>
+      <div class="detail-modules-grid" id="detail-modules-grid"></div>
+
+      <!-- Activity Grades -->
+      <h3 class="detail-modules-title" style="margin-top:2rem;">✏️ Atividades Resolvidas</h3>
+      <div class="detail-modules-grid" id="detail-activities-grid" style="margin-bottom:2rem;"></div>
+
+      <!-- Activity Log -->
+      <div class="activity-log">
+        <h3 class="activity-log-title">📝 Log de Atividades</h3>
+        <div class="activity-list" id="activity-list"></div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<script src="js/data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="js/teacher.js"></script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EstruturaPRO — Plataforma de Ensino de Estrutura de Dados</title>
+  <meta name="description" content="Plataforma interativa de ensino de Estrutura de Dados com visualizações animadas, exercícios e painel do professor." />
+  <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="css/login.css" />
+</head>
+<body class="login-page">
+
+  <!-- Background Elements -->
+  <div class="bg-mesh"></div>
+  <div class="bg-grid"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="particles" id="particles"></div>
+
+  <!-- Login Container -->
+  <div class="login-container">
+
+    <!-- Brand -->
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div class="brand-name">EstruturaPRO</div>
+      <div class="brand-tagline">Aprenda Estrutura de Dados de forma visual e interativa</div>
+    </div>
+
+    <!-- Card -->
+    <div id="login-card" class="card">
+
+      <!-- Role Selector Tabs -->
+      <div class="role-tabs" role="tablist" aria-label="Selecionar perfil">
+        <button class="role-tab active" data-role="student" id="tab-student" role="tab">
+          <span class="tab-icon">🎓</span> Sou Aluno
+        </button>
+        <button class="role-tab" data-role="teacher" id="tab-teacher" role="tab">
+          <span class="tab-icon">👨‍🏫</span> Sou Professor
+        </button>
+      </div>
+
+      <!-- Form Header -->
+      <h1 class="form-title">Bem-vindo de volta!</h1>
+      <p class="form-subtitle">Entre com suas credenciais para acessar a plataforma.</p>
+
+      <!-- Login Form -->
+      <form id="login-form" novalidate>
+        <div class="form-fields">
+
+          <div class="input-group">
+            <label for="email" class="input-label">E-mail</label>
+            <div class="input-icon-wrap">
+              <span class="icon">📧</span>
+              <input
+                type="email"
+                id="email"
+                class="input-field"
+                placeholder="seu@email.com"
+                value="ana@aluno.edu"
+                autocomplete="email"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="password" class="input-label">Senha</label>
+            <div class="input-icon-wrap">
+              <span class="icon">🔒</span>
+              <input
+                type="password"
+                id="password"
+                class="input-field"
+                placeholder="••••••••"
+                value="1234"
+                autocomplete="current-password"
+                required
+              />
+            </div>
+          </div>
+
+        </div>
+
+        <p class="error-msg" id="error-msg" role="alert"></p>
+
+        <button type="submit" id="btn-login" class="btn btn-primary btn-lg">
+          Entrar na Plataforma
+        </button>
+      </form>
+
+      <!-- Demo Credentials -->
+      <div class="demo-box">
+        <div class="demo-box-title">👆 Usuários de demonstração — clique para preencher</div>
+        <div class="demo-users" id="demo-users-list">
+
+          <a href="#" class="demo-user" data-email="professor@estrutura.edu" data-pass="1234">
+            <div class="demo-user-info">
+              <div class="demo-avatar" style="background: #6366f1;">CS</div>
+              <div>
+                <div class="demo-name">Prof. Carlos Silva</div>
+                <div class="demo-email">professor@estrutura.edu</div>
+              </div>
+            </div>
+            <span class="demo-role-badge role-teacher">Professor</span>
+          </a>
+
+          <a href="#" class="demo-user" data-email="ana@aluno.edu" data-pass="1234">
+            <div class="demo-user-info">
+              <div class="demo-avatar" style="background: #10b981;">AS</div>
+              <div>
+                <div class="demo-name">Ana Beatriz Souza</div>
+                <div class="demo-email">ana@aluno.edu</div>
+              </div>
+            </div>
+            <span class="demo-role-badge role-student">Aluno</span>
+          </a>
+
+          <a href="#" class="demo-user" data-email="bruno@aluno.edu" data-pass="1234">
+            <div class="demo-user-info">
+              <div class="demo-avatar" style="background: #f59e0b;">BL</div>
+              <div>
+                <div class="demo-name">Bruno Lima Costa</div>
+                <div class="demo-email">bruno@aluno.edu</div>
+              </div>
+            </div>
+            <span class="demo-role-badge role-student">Aluno</span>
+          </a>
+
+          <a href="#" class="demo-user" data-email="carlos@aluno.edu" data-pass="1234">
+            <div class="demo-user-info">
+              <div class="demo-avatar" style="background: #ec4899;">CM</div>
+              <div>
+                <div class="demo-name">Carlos Eduardo Melo</div>
+                <div class="demo-email">carlos@aluno.edu</div>
+              </div>
+            </div>
+            <span class="demo-role-badge role-student">Aluno</span>
+          </a>
+
+        </div>
+        <p id="demo-hint" class="demo-hint-text" style="margin-top:0.5rem;">
+          Aluno: ana@aluno.edu / 1234
+        </p>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <div class="features-hint">
+      <div class="feature-item">
+        <span class="feature-icon">🎯</span>
+        <span>6 módulos interativos</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">🎞️</span>
+        <span>Visualizações animadas</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">📊</span>
+        <span>Painel do professor</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-icon">🏆</span>
+        <span>Sistema de progresso</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    // Animated particles
+    const container = document.getElementById('particles');
+    const colors = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#ec4899'];
+    for (let i = 0; i < 25; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const size = Math.random() * 4 + 2;
+      p.style.cssText = `
+        width: ${size}px;
+        height: ${size}px;
+        left: ${Math.random() * 100}%;
+        background: ${colors[Math.floor(Math.random() * colors.length)]};
+        animation-duration: ${Math.random() * 8 + 6}s;
+        animation-delay: ${Math.random() * 8}s;
+      `;
+      container.appendChild(p);
+    }
+  </script>
+</body>
+</html>

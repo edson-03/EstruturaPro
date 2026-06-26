@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EstruturaPRO — Painel do Aluno</title>
+  <meta name="description" content="Painel do aluno na plataforma EstruturaPRO de ensino de estrutura de dados." />
+  <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="css/student.css" />
+  <!-- CodeMirror for student JavaScript coding -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" />
+</head>
+<body>
+
+<div class="bg-mesh"></div>
+<div class="bg-grid"></div>
+
+<!-- Sidebar Overlay (Mobile) -->
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<div class="app-layout">
+
+  <!-- ─── SIDEBAR ─────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- Logo -->
+    <div class="sidebar-logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">
+        <div class="logo-name">EstruturaPRO</div>
+        <div class="logo-sub">Plataforma de Ensino</div>
+      </div>
+    </div>
+
+    <!-- User Info -->
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sidebar-avatar">??</div>
+      <div>
+        <div class="user-name" id="sidebar-name">Carregando...</div>
+        <div class="user-role">🎓 Aluno</div>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="sidebar-progress">
+      <div class="label">
+        <span>Progresso Geral</span>
+        <span id="sidebar-progress-text">0/6</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="sidebar-progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <div class="nav-label">Módulos</div>
+      <div id="nav-modules-list"></div>
+      
+      <div class="nav-label" style="margin-top:1.5rem;">Atividades</div>
+      <div id="nav-activities-list"></div>
+    </nav>
+
+    <!-- Footer -->
+    <div class="sidebar-footer">
+      <button class="btn-logout" id="btn-logout">
+        <span>🚪</span> Sair da Conta
+      </button>
+    </div>
+  </aside>
+
+  <!-- ─── MAIN CONTENT ─────────────────────────────── -->
+  <main class="main-content" id="main-content">
+
+    <!-- Header -->
+    <header class="main-header">
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <button class="mobile-sidebar-toggle" id="sidebar-toggle">☰</button>
+        <div class="header-title">
+          <h2 id="header-title">Meus Módulos</h2>
+          <p id="header-subtitle">Selecione um módulo para começar a aprender</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div id="header-user-badge" style="display:flex;align-items:center;gap:0.5rem;">
+          <div class="user-avatar" id="header-avatar" style="width:32px;height:32px;font-size:0.7rem;"></div>
+          <span style="font-size:0.82rem;color:var(--text-secondary);" id="header-name"></span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ─── DASHBOARD VIEW ─── -->
+    <div id="view-dashboard">
+
+      <!-- Greeting -->
+      <div class="dashboard-greeting">
+        <div class="greeting-text" id="greeting-text">Olá, Aluno! 👋</div>
+        <div class="greeting-sub">Continue sua jornada de aprendizado em estrutura de dados.</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card green">
+          <div class="stat-icon">✅</div>
+          <div class="stat-value green" id="stat-completed">0</div>
+          <div class="stat-label">Módulos Concluídos</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon">🔓</div>
+          <div class="stat-value blue" id="stat-unlocked">0</div>
+          <div class="stat-label">Módulos Liberados</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-icon">⭐</div>
+          <div class="stat-value yellow" id="stat-score">—</div>
+          <div class="stat-label">Nota Média nos Quizzes</div>
+        </div>
+      </div>
+
+      <!-- Modules -->
+      <div class="section-header">
+        <h3 class="section-title">📚 Trilha de Aprendizado</h3>
+        <span class="badge badge-primary" id="modules-count">6 módulos</span>
+      </div>
+
+      <div class="modules-grid" id="modules-grid">
+        <!-- Cards populated by JS -->
+      </div>
+
+    </div>
+
+    <!-- ─── MODULE VIEWER ─── -->
+    <div id="view-module">
+
+      <!-- Module Header -->
+      <div class="module-viewer-header">
+        <button class="btn-back-module" id="btn-back">
+          ← Voltar
+        </button>
+        <div id="module-title-badge" style="display:flex;align-items:center;gap:0.5rem;">
+          <span id="viewer-module-icon" style="font-size:1.3rem;"></span>
+          <span id="viewer-module-title" style="font-size:0.95rem;font-weight:700;"></span>
+        </div>
+        <div class="module-viewer-tabs" id="viewer-tabs">
+          <button class="viewer-tab active" data-tab="theory">📖 Teoria</button>
+          <button class="viewer-tab" data-tab="code">💻 Código</button>
+          <button class="viewer-tab" data-tab="visualizer">🎞️ Visualizador</button>
+          <button class="viewer-tab" data-tab="quiz">📝 Quiz</button>
+          <button class="viewer-tab" data-tab="module-activities" id="tab-module-activities">✏️ Atividades <span id="tab-activities-count" style="font-size:0.7rem;background:rgba(99,102,241,0.25);padding:1px 6px;border-radius:10px;margin-left:2px;">0</span></button>
+        </div>
+      </div>
+
+      <!-- ── THEORY Panel ── -->
+      <div class="viewer-panel active" id="panel-theory">
+        <!-- Complexity -->
+        <div style="margin-bottom:2rem;">
+          <h3 style="margin-bottom:1rem;">⏱️ Complexidade de Tempo</h3>
+          <div class="complexity-grid" id="complexity-grid"></div>
+        </div>
+        <div class="divider"></div>
+        <!-- Theory text (rendered as markdown-ish HTML) -->
+        <div class="theory-content" id="theory-content"></div>
+      </div>
+
+      <!-- ── CODE Panel ── -->
+      <div class="viewer-panel" id="panel-code">
+        <div style="margin-bottom:1.5rem;">
+          <h3 style="margin-bottom:0.5rem;">💻 Exemplo de Implementação</h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);">
+            Código em JavaScript demonstrando a estrutura e suas operações principais.
+          </p>
+        </div>
+        <div class="code-block" id="code-block">
+          <span class="code-lang">JavaScript</span>
+          <pre id="code-content"></pre>
+        </div>
+      </div>
+
+      <!-- ── VISUALIZER Panel ── -->
+      <div class="viewer-panel" id="panel-visualizer">
+        <div style="margin-bottom:1.5rem;">
+          <h3 style="margin-bottom:0.5rem;">🎞️ Visualizador Interativo</h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);">
+            Veja as operações acontecendo em tempo real. Insira valores e execute as ações.
+          </p>
+        </div>
+        <div class="visualizer-wrapper">
+          <div class="canvas-container">
+            <canvas id="viz-canvas"></canvas>
+          </div>
+          <div class="viz-controls" id="viz-controls">
+            <!-- Controls populated by JS per module -->
+          </div>
+          <div class="viz-log" id="viz-log">// Resultado das operações aparece aqui...</div>
+        </div>
+      </div>
+
+      <!-- ── QUIZ Panel ── -->
+      <div class="viewer-panel" id="panel-quiz">
+        <div class="quiz-header">
+          <h3>📝 Mini-Quiz</h3>
+          <p style="color:var(--text-muted);font-size:0.85rem;margin-top:0.3rem;">
+            Teste seus conhecimentos sobre este módulo
+          </p>
+          <div class="quiz-progress-bar progress-bar" style="max-width:300px;margin:0.75rem auto 0;">
+            <div class="progress-fill" id="quiz-progress-fill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div id="quiz-container">
+          <!-- Questions populated by JS -->
+        </div>
+      </div>
+
+      <!-- ── MODULE ACTIVITIES Panel ── -->
+      <div class="viewer-panel" id="panel-module-activities">
+        <div style="margin-bottom:1.5rem;">
+          <h3 style="margin-bottom:0.4rem;">✏️ Atividades deste Módulo</h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);">
+            Atividades criadas pelo professor e vinculadas a este módulo.
+          </p>
+        </div>
+        <div id="module-activities-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ─── ACTIVITY VIEWER ─── -->
+    <div id="view-activity" style="display:none; padding:2rem; animation:fadeSlideUp 0.3s ease;">
+      
+      <div class="module-viewer-header" style="position:static; margin-bottom:1.5rem; padding: 0 0 1rem; border-bottom:1px solid var(--border); display:flex; align-items:center;">
+        <button class="btn-back-module" id="btn-back-activity">
+          ← Voltar
+        </button>
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-left:1rem;">
+          <span style="font-size:1.3rem;">✏️</span>
+          <span id="viewer-activity-title" style="font-size:1.05rem;font-weight:700;"></span>
+        </div>
+      </div>
+
+      <div id="activity-student-container">
+        <!-- populated dynamically by student.js -->
+      </div>
+
+      <div class="ca-actions" style="margin-top:2rem; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:1rem;">
+        <span id="activity-status-info" style="font-size:0.85rem;color:var(--text-secondary);"></span>
+        <button class="btn btn-primary" id="btn-submit-activity-answers">💾 Enviar Respostas</button>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<script src="js/data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="js/visualizer.js"></script>
+<script src="js/student.js"></script>
+</body>
+</html>
