@@ -927,7 +927,10 @@ function selectStudentTheoreticalOption(button, qId, oIdx) {
   }
 }
 
-function testStudentCode(qId) {
+// tracks pending prompt values per question
+const pendingPromptInputs = {};
+
+function testStudentCode(qId, providedPromptValues) {
   const editor = studentEditorInstances[qId];
   if (!editor) return;
   const userCode = editor.getValue();
@@ -953,7 +956,27 @@ function testStudentCode(qId) {
 
   // ── Syntax check
   let syntaxError = null;
-  try { new Function(userCode); } catch (e) { syntaxError = e; }
+  try { new Function('console','prompt','alert','confirm', userCode); } catch (e) { syntaxError = e; }
+
+  // ── Detect prompt() usage — show inline input panel if needed
+  const hasPrompt = /\bprompt\s*\(/.test(userCode);
+  if (hasPrompt && !providedPromptValues) {
+    // Dry-run to discover how many prompts are called and their messages
+    const promptsFound = [];
+    const silentConsole = { log:()=>{}, warn:()=>{}, error:()=>{}, info:()=>{}, dir:()=>{}, table:()=>{} };
+    const recordingPrompt = (msg) => { promptsFound.push(msg || 'Entrada'); return ''; };
+    const silentAlert   = () => {};
+    const silentConfirm = () => false;
+    try {
+      const dryRunner = new Function('console','prompt','alert','confirm', userCode);
+      dryRunner(silentConsole, recordingPrompt, silentAlert, silentConfirm);
+    } catch(_) {}
+
+    if (outputPanel) outputPanel.style.display = 'block';
+    showStudentPromptPanel(qId, promptsFound.length > 0 ? promptsFound : ['Entrada']);
+    logContainer.innerHTML = '<span style="color:#a5f3fc;font-size:0.82rem;">⌨️ Preencha as entradas abaixo e clique em Executar.</span>';
+    return;
+  }
 
   if (syntaxError) {
     if (outputBody) {
@@ -992,6 +1015,34 @@ function testStudentCode(qId) {
     return String(a);
   }).join(' ');
 
+  // Build prompt queue from provided values (or empty)
+  const promptQueue = providedPromptValues ? [...providedPromptValues] : [];
+  let promptQueueIdx = 0;
+  const customPrompt = (msg) => {
+    const val = promptQueue[promptQueueIdx] !== undefined ? promptQueue[promptQueueIdx++] : '';
+    allOutputLines.push({ type: 'info', text: `⌨️ prompt("${msg || ''}") → "${val}"` });
+    return val;
+  };
+  const customAlert   = (msg) => { allOutputLines.push({ type: 'warn', text: `🔔 alert("${msg || ''}")` }); };
+  const customConfirm = (msg) => { allOutputLines.push({ type: 'info', text: `❓ confirm("${msg || ''}") → true` }); return true; };
+
+  // ── Execute the code once at top-level to capture direct console.log calls
+  const topLevelConsole = {
+    log:   (...args) => { const t = fmtArgs(args); allOutputLines.push({ type: 'log',   text: t }); },
+    warn:  (...args) => { const t = fmtArgs(args); allOutputLines.push({ type: 'warn',  text: t }); },
+    error: (...args) => { const t = fmtArgs(args); allOutputLines.push({ type: 'error', text: t }); },
+    info:  (...args) => { const t = fmtArgs(args); allOutputLines.push({ type: 'info',  text: t }); },
+    dir:   (...args) => { const t = fmtArgs(args); allOutputLines.push({ type: 'log',   text: t }); },
+    table: (...args) => { const t = fmtArgs(args); allOutputLines.push({ type: 'log',   text: t }); },
+  };
+  try {
+    promptQueueIdx = 0; // reset before top-level run
+    const topRunner = new Function('console', 'prompt', 'alert', 'confirm', userCode);
+    topRunner(topLevelConsole, customPrompt, customAlert, customConfirm);
+  } catch (_) {
+    // Errors here will be caught again per test case below
+  }
+
   // ── Run test cases
   let passedAll = true;
   let testFeedbacks = [];
@@ -1001,19 +1052,20 @@ function testStudentCode(qId) {
 
     // Create a fresh fake console for each test case
     const fakeConsole = {
-      log:   (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'log',   text: t }); allOutputLines.push({ type: 'log',   text: `[Teste ${idx+1}] ${t}` }); },
-      warn:  (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'warn',  text: t }); allOutputLines.push({ type: 'warn',  text: `[Teste ${idx+1}] ${t}` }); },
-      error: (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'error', text: t }); allOutputLines.push({ type: 'error', text: `[Teste ${idx+1}] ${t}` }); },
-      info:  (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'info',  text: t }); allOutputLines.push({ type: 'info',  text: `[Teste ${idx+1}] ${t}` }); },
-      dir:   (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'log',   text: t }); allOutputLines.push({ type: 'log',   text: `[Teste ${idx+1}] ${t}` }); },
-      table: (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'log',   text: t }); allOutputLines.push({ type: 'log',   text: `[Teste ${idx+1}] ${t}` }); },
+      log:   (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'log',   text: t }); },
+      warn:  (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'warn',  text: t }); },
+      error: (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'error', text: t }); },
+      info:  (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'info',  text: t }); },
+      dir:   (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'log',   text: t }); },
+      table: (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'log',   text: t }); },
     };
 
     try {
       let result;
-      // Pass fakeConsole as the 'console' parameter so student code's console.log is captured
-      const runner = new Function('console', `${userCode}\nreturn (${tc.expression});`);
-      result = runner(fakeConsole);
+      // Pass fakeConsole + prompt/alert/confirm interceptors
+      promptQueueIdx = 0; // reset per test
+      const runner = new Function('console', 'prompt', 'alert', 'confirm', `${userCode}\nreturn (${tc.expression});`);
+      result = runner(fakeConsole, customPrompt, customAlert, customConfirm);
 
       let expectedVal;
       try { expectedVal = eval(tc.expected); } catch (_) { expectedVal = tc.expected; }
@@ -1133,6 +1185,98 @@ function formatValue(val) {
   }
   return String(val);
 }
+
+// ── Inline prompt input panel ──────────────────────────────
+function showStudentPromptPanel(qId, promptMessages) {
+  const outputBody = document.getElementById(`stud_output_body_${qId}`);
+  if (!outputBody) return;
+
+  outputBody.innerHTML = '';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'padding: 0.85rem 1rem; background: #0d1117;';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'color: #a5f3fc; font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;';
+  header.innerHTML = `⌨️ O programa precisa de <strong>${promptMessages.length}</strong> entrada(s). Preencha e execute:`;
+  panel.appendChild(header);
+
+  promptMessages.forEach((msg, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'margin-bottom: 0.6rem;';
+    row.innerHTML = `
+      <label style="display:block;font-size:0.72rem;color:#7d8590;margin-bottom:0.25rem;font-family:var(--font-mono);">
+        <span style="color:#6366f1;font-weight:700;">${i + 1}.</span> ${escapeHtml(msg)}
+      </label>
+      <input
+        id="stud_prompt_input_${qId}_${i}"
+        type="text"
+        placeholder="Digite a entrada aqui..."
+        autocomplete="off"
+        style="
+          width: 100%;
+          box-sizing: border-box;
+          background: #161b22;
+          border: 1px solid #30363d;
+          border-radius: 7px;
+          color: #e2e8f0;
+          font-family: var(--font-mono);
+          font-size: 0.82rem;
+          padding: 0.45rem 0.75rem;
+          outline: none;
+          transition: border-color 0.15s;
+        "
+        onfocus="this.style.borderColor='#6366f1'"
+        onblur="this.style.borderColor='#30363d'"
+      />
+    `;
+    panel.appendChild(row);
+  });
+
+  const runBtn = document.createElement('button');
+  runBtn.type = 'button';
+  runBtn.textContent = '▶ Executar com essas entradas';
+  runBtn.style.cssText = `
+    margin-top: 0.4rem;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 0.45rem 1.1rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: opacity 0.15s;
+  `;
+  runBtn.onmouseenter = () => { runBtn.style.opacity = '0.85'; };
+  runBtn.onmouseleave = () => { runBtn.style.opacity = '1'; };
+  runBtn.onclick = () => runStudentCodeWithInputs(qId, promptMessages.length);
+  panel.appendChild(runBtn);
+
+  outputBody.appendChild(panel);
+  // Focus first input
+  setTimeout(() => {
+    const first = document.getElementById(`stud_prompt_input_${qId}_0`);
+    if (first) first.focus();
+  }, 50);
+}
+
+function runStudentCodeWithInputs(qId, count) {
+  const values = [];
+  for (let i = 0; i < count; i++) {
+    const el = document.getElementById(`stud_prompt_input_${qId}_${i}`);
+    values.push(el ? el.value : '');
+  }
+  // Clear the input panel
+  const outputBody = document.getElementById(`stud_output_body_${qId}`);
+  if (outputBody) outputBody.innerHTML = '';
+  // Re-run with provided values
+  testStudentCode(qId, values);
+}
+
+// Expose for inline use if needed
+window.runStudentCodeWithInputs = runStudentCodeWithInputs;
 
 function updateActivityStatusInfo() {
   if (!currentActivity) return;

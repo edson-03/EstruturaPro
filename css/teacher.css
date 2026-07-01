@@ -1136,3 +1136,313 @@ input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   🖥️ IDE Panel — Practical Question Editor
+   ============================================================ */
+
+/* Wrapper container for the whole IDE block */
+.ide-wrapper {
+  margin-top: 1rem;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0d0f1e;
+  box-shadow: 0 0 0 1px rgba(99,102,241,0.08), 0 8px 32px rgba(0,0,0,0.45);
+}
+
+/* ── IDE Toolbar ── */
+.ide-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.9rem;
+  background: #12142a;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  user-select: none;
+}
+
+.ide-toolbar-dots {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.ide-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+}
+.ide-dot-red    { background: #ff5f57; }
+.ide-dot-yellow { background: #febc2e; }
+.ide-dot-green  { background: #28c840; }
+
+.ide-filename {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.ide-lang-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.18rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(99,102,241,0.2);
+  color: var(--accent-light);
+  border: 1px solid rgba(99,102,241,0.3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Run button in toolbar */
+.ide-run-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.85rem;
+  border-radius: 6px;
+  border: none;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 12px rgba(16,185,129,0.3);
+  flex-shrink: 0;
+}
+.ide-run-btn:hover {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  box-shadow: 0 4px 16px rgba(16,185,129,0.45);
+  transform: translateY(-1px);
+}
+.ide-run-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 6px rgba(16,185,129,0.25);
+}
+.ide-run-btn.running {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 2px 12px rgba(245,158,11,0.3);
+  cursor: not-allowed;
+}
+.ide-run-icon {
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+/* ── Editor area (CodeMirror override) ── */
+.ide-editor-area {
+  position: relative;
+}
+.ide-editor-area .CodeMirror {
+  height: 220px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  background: #0d0f1e;
+  border-radius: 0;
+}
+.ide-editor-area .CodeMirror-scroll {
+  padding-bottom: 0;
+}
+.ide-editor-area .CodeMirror-gutters {
+  background: #0a0c17;
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+.ide-editor-area .CodeMirror-linenumber {
+  color: rgba(148,163,184,0.35);
+  font-size: 0.72rem;
+}
+
+/* ── Output / Console Panel ── */
+.ide-output-panel {
+  border-top: 1px solid rgba(255,255,255,0.07);
+  background: #080a15;
+}
+
+.ide-output-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: #0d0f1e;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.ide-tab {
+  padding: 0.42rem 0.9rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  user-select: none;
+}
+.ide-tab.active {
+  color: var(--accent-light);
+  border-bottom-color: var(--accent);
+}
+.ide-tab:hover:not(.active) {
+  color: var(--text-secondary);
+}
+
+.ide-output-pane {
+  display: none;
+  padding: 0.65rem 0.9rem;
+  min-height: 90px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.ide-output-pane.active { display: block; }
+
+/* Console output */
+.ide-console-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  padding: 0.1rem 0;
+}
+.ide-console-line.log   { color: #e2e8f0; }
+.ide-console-line.error { color: #f87171; }
+.ide-console-line.warn  { color: #fbbf24; }
+.ide-console-line.info  { color: #60a5fa; }
+.ide-console-line.success { color: #34d399; }
+.ide-console-prompt {
+  color: rgba(148,163,184,0.4);
+  flex-shrink: 0;
+}
+.ide-console-empty {
+  color: rgba(148,163,184,0.3);
+  font-size: 0.72rem;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 0.5rem 0;
+  font-style: italic;
+}
+
+/* Test cases panel */
+.ide-test-case-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.ide-test-case-row:last-child { border-bottom: none; }
+
+.ide-tc-status {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem;
+  flex-shrink: 0;
+  font-weight: 800;
+}
+.ide-tc-status.pass { background: rgba(16,185,129,0.2); color: var(--green); border: 1px solid rgba(16,185,129,0.35); }
+.ide-tc-status.fail { background: rgba(239,68,68,0.15); color: var(--red);   border: 1px solid rgba(239,68,68,0.3); }
+.ide-tc-status.pending { background: rgba(148,163,184,0.1); color: var(--text-muted); border: 1px solid rgba(148,163,184,0.2); }
+
+.ide-tc-expr {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--accent-light);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ide-tc-sep { color: var(--text-muted); font-size: 0.7rem; flex-shrink: 0; }
+.ide-tc-expected { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--green-light); flex-shrink: 0; }
+.ide-tc-got { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--red-light); flex-shrink: 0; }
+
+.ide-tests-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+  font-size: 0.72rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  margin-bottom: 0.35rem;
+}
+.ide-tests-summary .pass-count { color: var(--green); font-weight: 700; }
+.ide-tests-summary .fail-count { color: var(--red);   font-weight: 700; }
+.ide-tests-summary .pending-note { color: var(--text-muted); font-style: italic; }
+
+/* ── Test Case Input Rows (below IDE) ── */
+.ide-testcase-input-section {
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 0.85rem 0.9rem 0.9rem;
+  background: #0a0c17;
+}
+.ide-testcase-input-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+.ide-testcase-input-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ca-test-case-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+.ca-test-case-row .ca-input {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  padding: 0.4rem 0.6rem;
+  flex: 1;
+}
+.ca-test-case-remove {
+  background: rgba(239,68,68,0.1);
+  color: var(--red);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.ca-test-case-remove:hover { background: rgba(239,68,68,0.22); }
+
+/* ── CodeMirror: hint dropdown (autocomplete) ── */
+.CodeMirror-hints {
+  background: #12142a !important;
+  border: 1px solid rgba(99,102,241,0.35) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 0.78rem !important;
+  padding: 4px !important;
+  z-index: 9999 !important;
+}
+.CodeMirror-hint {
+  color: #e2e8f0 !important;
+  border-radius: 5px !important;
+  padding: 3px 8px !important;
+}
+li.CodeMirror-hint-active {
+  background: rgba(99,102,241,0.25) !important;
+  color: #818cf8 !important;
+}
+
+/* ── CodeMirror: active line highlight ── */
+.CodeMirror-activeline-background {
+  background: rgba(255,255,255,0.04) !important;
+}

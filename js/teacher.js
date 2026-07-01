@@ -696,27 +696,64 @@ function addQuestion(type) {
         <span class="ca-q-type-icon">💻</span>
         <span class="ca-q-type-label">Pergunta Prática (JavaScript)</span>
       </div>
+
       <div class="ca-field ca-field-full">
         <label class="ca-label">Instruções / Enunciado <span class="ca-required">*</span></label>
-        <textarea class="ca-input ca-textarea q-prompt" placeholder="Descreva o que a função deve fazer, parâmetros e retorno..." required></textarea>
-      </div>
-      
-      <div class="ca-field ca-field-full" style="margin-top:0.75rem;">
-        <label class="ca-label">Código Inicial / Template</label>
-        <div class="ca-codemirror-wrapper">
-          <textarea class="q-template-code" id="template_${qId}"></textarea>
-        </div>
+        <textarea class="ca-input ca-textarea q-prompt" placeholder="Descreva o que a função deve fazer, os parâmetros esperados e o valor de retorno..." required></textarea>
       </div>
 
-      <div class="ca-test-cases-section">
-        <div class="ca-section-header" style="margin-bottom:0.5rem; border:none; padding:0; background:none;">
-          <span class="ca-label">Casos de Teste (Mínimo 1)</span>
-          <button type="button" class="btn btn-sm btn-ghost" style="padding:0.25rem 0.5rem;font-size:0.7rem;" onclick="addTestCaseRow('${qId}')">+ Add Teste</button>
+      <!-- ▸ IDE Panel -->
+      <div class="ide-wrapper" style="margin-top:1rem;">
+
+        <!-- Toolbar -->
+        <div class="ide-toolbar">
+          <div class="ide-toolbar-dots">
+            <div class="ide-dot ide-dot-red"></div>
+            <div class="ide-dot ide-dot-yellow"></div>
+            <div class="ide-dot ide-dot-green"></div>
+          </div>
+          <span class="ide-filename">solucao_${qNum}.js</span>
+          <span class="ide-lang-badge">JS</span>
+          <button type="button" class="ide-run-btn" id="run_${qId}" onclick="runPracticalQuestion('${qId}')">
+            <span class="ide-run-icon">▶</span> Executar
+          </button>
         </div>
-        <div class="q-test-cases-list" id="testcases_${qId}">
-          <!-- Test cases go here -->
+
+        <!-- Editor area -->
+        <div class="ide-editor-area">
+          <textarea class="q-template-code" id="template_${qId}"></textarea>
         </div>
-      </div>
+
+        <!-- Output panel -->
+        <div class="ide-output-panel">
+          <div class="ide-output-tabs">
+            <div class="ide-tab active" id="tab-console-${qId}" onclick="switchIDETab('${qId}','console')">Console</div>
+            <div class="ide-tab" id="tab-tests-${qId}"  onclick="switchIDETab('${qId}','tests')">Testes</div>
+          </div>
+
+          <!-- Console pane -->
+          <div class="ide-output-pane active" id="pane-console-${qId}">
+            <div class="ide-console-empty">// Execute o código para ver a saída aqui</div>
+          </div>
+
+          <!-- Test results pane -->
+          <div class="ide-output-pane" id="pane-tests-${qId}">
+            <div class="ide-console-empty">// Execute o código para ver os resultados dos testes</div>
+          </div>
+        </div>
+
+        <!-- Test case inputs -->
+        <div class="ide-testcase-input-section">
+          <div class="ide-testcase-input-header">
+            <span class="ide-testcase-input-title">📋 Casos de Teste (mínimo 1)</span>
+            <button type="button" class="btn btn-sm btn-ghost" style="padding:0.25rem 0.65rem;font-size:0.7rem;" onclick="addTestCaseRow('${qId}')">+ Adicionar</button>
+          </div>
+          <div class="q-test-cases-list" id="testcases_${qId}">
+            <!-- injected by addTestCaseRow -->
+          </div>
+        </div>
+
+      </div><!-- /ide-wrapper -->
     `;
   }
 
@@ -726,17 +763,33 @@ function addQuestion(type) {
   // Initialize CodeMirror if practical
   if (type === 'practical') {
     const textarea = document.getElementById(`template_${qId}`);
-    // Default template code
-    textarea.value = `function minhaFuncao() {\n  // Escreva seu código aqui\n  return;\n}`;
+    // Default template
+    textarea.value = `function minhaFuncao(a, b) {\n  // Escreva sua solução aqui\n  return;\n}`;
     const editor = CodeMirror.fromTextArea(textarea, {
       mode: 'javascript',
       theme: 'dracula',
       lineNumbers: true,
       tabSize: 2,
-      lineWrapping: true
+      indentWithTabs: false,
+      lineWrapping: false,
+      autoCloseBrackets: true,
+      matchBrackets: true,
+      styleActiveLine: true,
+      hintOptions: { completeSingle: false },
+      extraKeys: {
+        'Ctrl-Enter':  () => runPracticalQuestion(qId),
+        'Cmd-Enter':   () => runPracticalQuestion(qId),
+        'Ctrl-Space':  (cm) => cm.showHint({ hint: CodeMirror.hint.javascript }),
+        'Ctrl-/':      (cm) => cm.toggleComment(),
+        Tab: (cm) => {
+          if (cm.somethingSelected()) cm.indentSelection('add');
+          else cm.replaceSelection('  ', 'end');
+        },
+        'Shift-Tab': (cm) => cm.indentSelection('subtract')
+      }
     });
     editorInstances[qId] = editor;
-    
+
     // Add first test case row automatically
     addTestCaseRow(qId);
   }
@@ -962,10 +1015,177 @@ function resetCreateActivityForm() {
   showToast('🗑️ Formulário redefinido com sucesso.', 'info');
 }
 
+// ── IDE: Switch tabs ────────────────────────────────────────
+function switchIDETab(qId, tab) {
+  const consoleTab = document.getElementById(`tab-console-${qId}`);
+  const testsTab   = document.getElementById(`tab-tests-${qId}`);
+  const consolePane = document.getElementById(`pane-console-${qId}`);
+  const testsPane   = document.getElementById(`pane-tests-${qId}`);
+
+  if (!consoleTab) return;
+
+  consoleTab.classList.toggle('active', tab === 'console');
+  testsTab.classList.toggle('active',   tab === 'tests');
+  consolePane.classList.toggle('active', tab === 'console');
+  testsPane.classList.toggle('active',   tab === 'tests');
+}
+
+// ── IDE: Run code and validate test cases ──────────────────
+function runPracticalQuestion(qId) {
+  const editor = editorInstances[qId];
+  if (!editor) return;
+
+  const runBtn = document.getElementById(`run_${qId}`);
+  const consolePane = document.getElementById(`pane-console-${qId}`);
+  const testsPane   = document.getElementById(`pane-tests-${qId}`);
+  if (!consolePane || !testsPane) return;
+
+  // Collect test case inputs
+  const card    = document.getElementById(qId);
+  const tcRows  = card ? card.querySelectorAll('.ca-test-case-row') : [];
+  const tests   = Array.from(tcRows).map(row => ({
+    expression: row.querySelector('.tc-expression')?.value?.trim() || '',
+    expected:   row.querySelector('.tc-expected')?.value?.trim()   || ''
+  })).filter(t => t.expression);
+
+  // Animate run button
+  if (runBtn) {
+    runBtn.classList.add('running');
+    runBtn.innerHTML = '<span class="ide-run-icon">⏳</span> Executando...';
+  }
+
+  // Capture console output
+  const logs = [];
+  const fakeConsole = {
+    log:   (...args) => logs.push({ type: 'log',   msg: args.map(safeStringify).join(' ') }),
+    warn:  (...args) => logs.push({ type: 'warn',  msg: args.map(safeStringify).join(' ') }),
+    error: (...args) => logs.push({ type: 'error', msg: args.map(safeStringify).join(' ') }),
+    info:  (...args) => logs.push({ type: 'info',  msg: args.map(safeStringify).join(' ') })
+  };
+
+  const code = editor.getValue();
+  let execError = null;
+  let sandboxFn = null;
+
+  try {
+    // Build sandbox function that exposes fakeConsole
+    // eslint-disable-next-line no-new-func
+    sandboxFn = new Function('console', code + '\n; return typeof minhaFuncao !== "undefined" ? minhaFuncao : undefined;');
+    sandboxFn = sandboxFn(fakeConsole);
+  } catch (err) {
+    execError = err;
+    logs.push({ type: 'error', msg: '⛔ Erro de compilação: ' + err.message });
+  }
+
+  // ── Render Console ──
+  if (logs.length === 0 && !execError) {
+    consolePane.innerHTML = '<div class="ide-console-empty">// sem saída de console</div>';
+  } else {
+    consolePane.innerHTML = logs.map(l => `
+      <div class="ide-console-line ${l.type}">
+        <span class="ide-console-prompt">›</span>
+        <span>${escapeHtml(l.msg)}</span>
+      </div>
+    `).join('');
+  }
+
+  // ── Run Test Cases ──
+  let passCount = 0;
+  let failCount = 0;
+  const testResults = tests.map(tc => {
+    if (execError || typeof sandboxFn !== 'function') {
+      return { ...tc, status: 'error', got: execError ? execError.message : 'Função não encontrada' };
+    }
+    try {
+      // We need to run the full code so user-defined functions are in scope
+      // Re-run with the test expression appended
+      // eslint-disable-next-line no-new-func
+      const evalFn = new Function('console', code + '\n; return (' + tc.expression + ');');
+      const got = evalFn(fakeConsole);
+      const gotStr      = safeStringify(got);
+      const expectedStr = tc.expected.trim();
+      // Try numeric & strict string comparison
+      let pass = false;
+      try {
+        // eslint-disable-next-line no-eval
+        const expectedVal = JSON.parse(expectedStr);
+        pass = JSON.stringify(got) === JSON.stringify(expectedVal);
+      } catch {
+        pass = gotStr === expectedStr;
+      }
+      if (pass) passCount++; else failCount++;
+      return { ...tc, status: pass ? 'pass' : 'fail', got: gotStr };
+    } catch (err) {
+      failCount++;
+      return { ...tc, status: 'fail', got: '⛔ ' + err.message };
+    }
+  });
+
+  // ── Render Test Pane ──
+  if (tests.length === 0) {
+    testsPane.innerHTML = '<div class="ide-console-empty">// Adicione casos de teste para validar sua solução.</div>';
+  } else {
+    let html = `<div class="ide-tests-summary">`;
+    html += `<span class="pass-count">✓ ${passCount} passou${passCount !== 1 ? 'ram' : ''}</span>`;
+    if (failCount > 0) html += `<span class="fail-count">✗ ${failCount} falhou${failCount !== 1 ? 'ram' : ''}</span>`;
+    html += `<span style="color:var(--text-muted);">(${tests.length} total)</span></div>`;
+
+    html += testResults.map(r => {
+      const statusClass = r.status === 'pass' ? 'pass' : 'fail';
+      const statusIcon  = r.status === 'pass' ? '✓' : '✗';
+      let rowHtml = `
+        <div class="ide-test-case-row">
+          <div class="ide-tc-status ${statusClass}">${statusIcon}</div>
+          <span class="ide-tc-expr" title="${escapeHtml(r.expression)}">${escapeHtml(r.expression)}</span>
+          <span class="ide-tc-sep">===</span>
+          <span class="ide-tc-expected">${escapeHtml(r.expected)}</span>
+      `;
+      if (r.status === 'fail' && r.got !== undefined) {
+        rowHtml += `<span class="ide-tc-sep" style="margin-left:0.25rem;">obtido:</span><span class="ide-tc-got">${escapeHtml(String(r.got))}</span>`;
+      }
+      rowHtml += `</div>`;
+      return rowHtml;
+    }).join('');
+
+    testsPane.innerHTML = html;
+  }
+
+  // Switch to correct tab based on result
+  if (tests.length > 0) {
+    switchIDETab(qId, 'tests');
+  } else {
+    switchIDETab(qId, 'console');
+  }
+
+  // Restore run button
+  setTimeout(() => {
+    if (runBtn) {
+      runBtn.classList.remove('running');
+      runBtn.innerHTML = '<span class="ide-run-icon">▶</span> Executar';
+    }
+  }, 400);
+}
+
+function safeStringify(val) {
+  if (val === undefined) return 'undefined';
+  if (val === null)      return 'null';
+  try { return JSON.stringify(val); } catch { return String(val); }
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // Bind globally for inline event handlers
 window.removeQuestionCard = removeQuestionCard;
 window.addTestCaseRow = addTestCaseRow;
 window.removeTestCaseRow = removeTestCaseRow;
+window.runPracticalQuestion = runPracticalQuestion;
+window.switchIDETab = switchIDETab;
 
 // ============================================================
 //  👥 Gerenciar Alunos Logic
