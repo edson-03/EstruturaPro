@@ -1,4 +1,4 @@
-﻿# ⚡ EstruturaPRO
+# ⚡ EstruturaPRO
 
 > **Plataforma interativa de ensino de Estrutura de Dados com visualizações animadas, exercícios práticos e painel do professor.**
 
@@ -16,13 +16,21 @@ O **EstruturaPRO** é uma aplicação web educacional desenvolvida para facilita
 - Login com perfil de aluno
 - Visualizações animadas de estruturas de dados (pilha, fila, lista, árvore, grafos, etc.)
 - Exercícios interativos com correção automática
-- Acompanhamento do progresso pessoal
+- Acompanhamento do progresso pessoal, ranking, pontuação e conquistas
 
 ### 👨‍🏫 Professor
 - Login com perfil de professor
-- Painel de controle com visão geral da turma
-- Gerenciamento de alunos e exercícios
-- Relatórios de desempenho detalhados
+- Painel de controle com visão geral da turma (número de alunos, taxa de conclusão média, etc.)
+- Gerenciamento de acessos e liberação manual de módulos e atividades
+- **Novo: Página de Desempenho Completo**: Análise individual de progresso, taxa de acerto e tentativas de quiz, conquistas (badges) desbloqueadas, ranking da turma e linha do tempo de atividades de cada aluno.
+- **Novo: Configurações Gerais do Sistema**:
+  - **Geral**: Dados da instituição, disciplina, professor e período letivo.
+  - **Plataforma**: Nota mínima, liberação automática de módulos, gabaritos e modo manutenção.
+  - **Segurança**: Alteração de senha com medidor de força, política de senha dos alunos e logs.
+  - **Pontuação**: Edição das regras de pontuação (pesos de início/fim de módulos, quizzes e atividades).
+  - **Aparência**: Personalização da cor de destaque (hexadecimal/paleta), nome, tagline e ícone do sistema com preview ao vivo.
+  - **Exportação e PDF**: Geração de relatórios completos em formato PDF (pronto para imprimir), planilhas em CSV, textos em TXT e backup completo em JSON.
+  - **Zona de Perigo Protegida**: Operações destrutivas (limpar dados, apagar atividades ou resetar sistema) exigem confirmação segura por modal com a senha atual do professor.
 
 ---
 

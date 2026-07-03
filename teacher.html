@@ -52,6 +52,13 @@
       <div class="t-nav-item" data-view="students" id="nav-students">
         <span class="t-nav-icon">👥</span> Gerenciar Alunos
       </div>
+      <div class="t-nav-item" data-view="performance" id="nav-performance">
+        <span class="t-nav-icon">🏆</span> Desempenho
+      </div>
+      <div class="t-nav-divider"></div>
+      <div class="t-nav-item" data-view="settings" id="nav-settings">
+        <span class="t-nav-icon">⚙️</span> Configurações
+      </div>
     </nav>
 
     <div class="sidebar-footer">
@@ -73,7 +80,8 @@
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:0.75rem;">
-        <button class="btn btn-ghost btn-sm" id="btn-export">📥 Exportar Relatório</button>
+        <button class="btn btn-ghost btn-sm" id="btn-export" title="Exportar relatório em TXT">📥 Exportar TXT</button>
+        <button class="btn btn-ghost btn-sm" id="btn-export-pdf" title="Exportar relatório em PDF">📄 Exportar PDF</button>
         <div style="display:flex;align-items:center;gap:0.5rem;">
           <div class="user-avatar" id="header-avatar" style="width:32px;height:32px;font-size:0.7rem;background:#6366f1;">CS</div>
           <span style="font-size:0.82rem;color:var(--text-secondary);" id="header-name"></span>
@@ -400,6 +408,108 @@
 
     </div>
 
+    <!-- ─── PERFORMANCE VIEW ─── -->
+    <div id="view-performance">
+
+      <!-- ── Top KPIs ── -->
+      <div class="perf-kpi-grid" id="perf-kpi-grid">
+        <div class="perf-kpi purple">
+          <div class="perf-kpi-icon">🏆</div>
+          <div class="perf-kpi-value" id="kpi-total-points">0</div>
+          <div class="perf-kpi-label">Pontos Totais na Turma</div>
+        </div>
+        <div class="perf-kpi green">
+          <div class="perf-kpi-icon">🎯</div>
+          <div class="perf-kpi-value" id="kpi-avg-accuracy">0%</div>
+          <div class="perf-kpi-label">Taxa Média de Acerto</div>
+        </div>
+        <div class="perf-kpi yellow">
+          <div class="perf-kpi-icon">⚡</div>
+          <div class="perf-kpi-value" id="kpi-quiz-attempts">0</div>
+          <div class="perf-kpi-label">Tentativas de Quiz</div>
+        </div>
+        <div class="perf-kpi pink">
+          <div class="perf-kpi-icon">🎖️</div>
+          <div class="perf-kpi-value" id="kpi-badges-earned">0</div>
+          <div class="perf-kpi-label">Conquistas Desbloqueadas</div>
+        </div>
+      </div>
+
+      <!-- ── Two-col: Ranking + Module Stats ── -->
+      <div class="perf-main-grid">
+
+        <!-- Ranking -->
+        <div class="perf-ranking-section">
+          <div class="section-header">
+            <h3 class="section-title">🏅 Ranking de Alunos</h3>
+            <div class="perf-filter-tabs" id="perf-filter-tabs">
+              <button class="perf-filter-btn active" data-filter="points" id="filter-points">Pontos</button>
+              <button class="perf-filter-btn" data-filter="accuracy" id="filter-accuracy">Acerto</button>
+              <button class="perf-filter-btn" data-filter="modules" id="filter-modules">Módulos</button>
+            </div>
+          </div>
+          <div class="perf-ranking-list" id="perf-ranking-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Module Performance Bars -->
+        <div class="perf-module-section">
+          <div class="section-header">
+            <h3 class="section-title">📊 Desempenho por Módulo</h3>
+          </div>
+          <div class="perf-module-list" id="perf-module-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Quiz Attempt Analysis ── -->
+      <div class="perf-quiz-section">
+        <div class="section-header">
+          <h3 class="section-title">🎯 Análise de Tentativas por Quiz</h3>
+          <span class="badge badge-primary" id="perf-quiz-badge">Todos os módulos</span>
+        </div>
+        <div class="perf-quiz-grid" id="perf-quiz-grid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- ── Points History & Badges ── -->
+      <div class="perf-bottom-grid">
+
+        <!-- Badges / Conquistas -->
+        <div class="perf-badges-section">
+          <div class="section-header">
+            <h3 class="section-title">🎖️ Conquistas por Aluno</h3>
+          </div>
+          <div class="perf-badges-selector" id="perf-badges-selector">
+            <!-- Student tabs -->
+          </div>
+          <div class="perf-badges-grid" id="perf-badges-grid">
+            <!-- Badges -->
+          </div>
+        </div>
+
+        <!-- Points Timeline -->
+        <div class="perf-timeline-section">
+          <div class="section-header">
+            <h3 class="section-title">📈 Evolução de Pontuação</h3>
+          </div>
+          <div class="perf-timeline-selector" id="perf-timeline-selector">
+            <!-- Student tabs -->
+          </div>
+          <div class="perf-timeline" id="perf-timeline">
+            <!-- Timeline items -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- ─── END PERFORMANCE VIEW ─── -->
+
     <!-- ─── STUDENT DETAIL VIEW ─── -->
     <div id="view-student-detail">
 
@@ -451,7 +561,630 @@
 
     </div>
 
+    <!-- ─── SETTINGS VIEW ─── -->
+    <div id="view-settings">
+
+      <!-- ── Settings Tab Navigation ── -->
+      <div class="cfg-tabs-bar" id="cfg-tabs-bar">
+        <button class="cfg-tab active" data-tab="general"    id="cfg-tab-general">   ⚙️ Geral       </button>
+        <button class="cfg-tab"        data-tab="platform"   id="cfg-tab-platform">  🎓 Plataforma  </button>
+        <button class="cfg-tab"        data-tab="security"   id="cfg-tab-security">  🔐 Segurança   </button>
+        <button class="cfg-tab"        data-tab="scoring"    id="cfg-tab-scoring">   🏆 Pontuação   </button>
+        <button class="cfg-tab"        data-tab="appearance" id="cfg-tab-appearance">🎨 Aparência   </button>
+        <button class="cfg-tab"        data-tab="data"       id="cfg-tab-data">      💾 Dados       </button>
+        <button class="cfg-tab"        data-tab="about"      id="cfg-tab-about">     ℹ️ Sobre        </button>
+      </div>
+
+      <!-- ══════════ TAB: GERAL ══════════ -->
+      <div class="cfg-panel active" id="cfgpanel-general">
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">🏫 Informações da Instituição</div>
+          <div class="cfg-grid-2">
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-inst-name">Nome da Instituição</label>
+              <input type="text" id="cfg-inst-name" class="cfg-input" placeholder="Ex: Universidade XYZ" />
+            </div>
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-inst-semester">Semestre / Turma</label>
+              <input type="text" id="cfg-inst-semester" class="cfg-input" placeholder="Ex: 2026.1 — Turma A" />
+            </div>
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-inst-discipline">Disciplina</label>
+              <input type="text" id="cfg-inst-discipline" class="cfg-input" placeholder="Ex: Estrutura de Dados" />
+            </div>
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-inst-teacher">Nome do Professor</label>
+              <input type="text" id="cfg-inst-teacher" class="cfg-input" placeholder="Ex: Prof. Carlos Silva" />
+            </div>
+            <div class="cfg-field cfg-field-full">
+              <label class="cfg-label" for="cfg-inst-desc">Descrição da Turma</label>
+              <textarea id="cfg-inst-desc" class="cfg-input cfg-textarea" rows="2" placeholder="Descreva o objetivo da disciplina..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">📅 Período Letivo</div>
+          <div class="cfg-grid-2">
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-start-date">Data de Início</label>
+              <input type="date" id="cfg-start-date" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-end-date">Data de Término</label>
+              <input type="date" id="cfg-end-date" class="cfg-input" />
+            </div>
+          </div>
+        </div>
+
+        <div class="cfg-actions">
+          <div></div>
+          <button class="btn btn-primary" id="btn-cfg-general-save">💾 Salvar Informações Gerais</button>
+        </div>
+
+      </div>
+
+      <!-- ══════════ TAB: PLATAFORMA ══════════ -->
+      <div class="cfg-panel" id="cfgpanel-platform">
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">🔓 Controle de Acesso Padrão</div>
+          <div class="cfg-toggles-list">
+
+            <div class="cfg-toggle-row">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Liberar módulo 1 automaticamente</div>
+                <div class="cfg-toggle-desc">Novos alunos recebem acesso ao 1º módulo ao serem cadastrados</div>
+              </div>
+              <label class="cfg-switch">
+                <input type="checkbox" id="cfg-auto-unlock-first" checked>
+                <span class="cfg-slider"></span>
+              </label>
+            </div>
+
+            <div class="cfg-toggle-row">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Liberar próximo módulo após conclusão</div>
+                <div class="cfg-toggle-desc">Ao concluir um módulo, o seguinte é liberado automaticamente</div>
+              </div>
+              <label class="cfg-switch">
+                <input type="checkbox" id="cfg-auto-unlock-next">
+                <span class="cfg-slider"></span>
+              </label>
+            </div>
+
+            <div class="cfg-toggle-row">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Permitir retentativa de quiz</div>
+                <div class="cfg-toggle-desc">Alunos podem refazer o quiz do módulo quantas vezes quiserem</div>
+              </div>
+              <label class="cfg-switch">
+                <input type="checkbox" id="cfg-allow-retry" checked>
+                <span class="cfg-slider"></span>
+              </label>
+            </div>
+
+            <div class="cfg-toggle-row">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Mostrar gabarito após conclusão</div>
+                <div class="cfg-toggle-desc">Exibe a resposta correta ao finalizar o quiz</div>
+              </div>
+              <label class="cfg-switch">
+                <input type="checkbox" id="cfg-show-answers" checked>
+                <span class="cfg-slider"></span>
+              </label>
+            </div>
+
+            <div class="cfg-toggle-row">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Mostrar progresso de outros alunos</div>
+                <div class="cfg-toggle-desc">Alunos podem ver o ranking público da turma</div>
+              </div>
+              <label class="cfg-switch">
+                <input type="checkbox" id="cfg-show-ranking">
+                <span class="cfg-slider"></span>
+              </label>
+            </div>
+
+            <div class="cfg-toggle-row">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Ativar modo de manutenção</div>
+                <div class="cfg-toggle-desc">Bloqueia o acesso de alunos à plataforma temporariamente</div>
+              </div>
+              <label class="cfg-switch">
+                <input type="checkbox" id="cfg-maintenance-mode">
+                <span class="cfg-slider cfg-slider-red"></span>
+              </label>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">📊 Requisitos de Aprovação</div>
+          <div class="cfg-grid-2">
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-min-score">Nota mínima para aprovação (%)</label>
+              <div class="cfg-range-wrap">
+                <input type="range" id="cfg-min-score" min="0" max="100" value="60" class="cfg-range" />
+                <span class="cfg-range-val" id="cfg-min-score-val">60%</span>
+              </div>
+            </div>
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-min-modules">Módulos mínimos para aprovação</label>
+              <input type="number" id="cfg-min-modules" class="cfg-input" min="1" max="10" value="4" />
+            </div>
+          </div>
+        </div>
+
+        <div class="cfg-actions">
+          <div></div>
+          <button class="btn btn-primary" id="btn-cfg-platform-save">💾 Salvar Configurações da Plataforma</button>
+        </div>
+
+      </div>
+
+      <!-- ══════════ TAB: SEGURANÇA ══════════ -->
+      <div class="cfg-panel" id="cfgpanel-security">
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">🔑 Alterar Senha do Professor</div>
+          <div class="cfg-grid-2">
+            <div class="cfg-field cfg-field-full">
+              <label class="cfg-label" for="cfg-cur-pass">Senha Atual</label>
+              <input type="password" id="cfg-cur-pass" class="cfg-input" placeholder="••••••••" autocomplete="current-password" />
+            </div>
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-new-pass">Nova Senha</label>
+              <input type="password" id="cfg-new-pass" class="cfg-input" placeholder="Mínimo 4 caracteres" autocomplete="new-password" />
+            </div>
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-confirm-pass">Confirmar Nova Senha</label>
+              <input type="password" id="cfg-confirm-pass" class="cfg-input" placeholder="Repita a nova senha" autocomplete="new-password" />
+            </div>
+          </div>
+          <div class="cfg-actions" style="padding-top:0;margin-top:1rem;">
+            <div id="cfg-pass-strength" class="cfg-pass-strength"></div>
+            <button class="btn btn-primary" id="btn-cfg-change-pass">🔐 Alterar Senha</button>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">🛡️ Política de Senhas dos Alunos</div>
+          <div class="cfg-grid-2">
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-pass-min-len">Comprimento mínimo de senha</label>
+              <input type="number" id="cfg-pass-min-len" class="cfg-input" min="3" max="20" value="4" />
+            </div>
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-default-pass">Senha padrão para novos alunos</label>
+              <input type="text" id="cfg-default-pass" class="cfg-input" value="1234" />
+            </div>
+          </div>
+          <div class="cfg-toggles-list" style="margin-top:1rem;">
+            <div class="cfg-toggle-row">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Forçar troca de senha no 1º acesso</div>
+                <div class="cfg-toggle-desc">Aluno deve criar uma senha própria ao fazer login pela 1ª vez</div>
+              </div>
+              <label class="cfg-switch">
+                <input type="checkbox" id="cfg-force-pass-change">
+                <span class="cfg-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">📋 Log de Sessões</div>
+          <div class="cfg-session-info" id="cfg-session-info">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div class="cfg-actions">
+          <div></div>
+          <button class="btn btn-primary" id="btn-cfg-security-save">💾 Salvar Configurações de Segurança</button>
+        </div>
+
+      </div>
+
+      <!-- ══════════ TAB: PONTUAÇÃO ══════════ -->
+      <div class="cfg-panel" id="cfgpanel-scoring">
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">⚡ Regras de Pontuação</div>
+          <p class="cfg-hint">Configure quantos pontos cada ação vale. Esses valores afetam o ranking e as conquistas.</p>
+          <div class="cfg-scoring-grid">
+
+            <div class="cfg-score-card" data-key="MODULE_STARTED">
+              <div class="cfg-score-icon">🚀</div>
+              <div class="cfg-score-info">
+                <div class="cfg-score-label">Módulo Iniciado</div>
+                <div class="cfg-score-desc">Ao abrir um módulo pela 1ª vez</div>
+              </div>
+              <div class="cfg-score-input-wrap">
+                <input type="number" class="cfg-score-input" id="score-MODULE_STARTED" value="10" min="0" max="999" />
+                <span class="cfg-score-unit">pts</span>
+              </div>
+            </div>
+
+            <div class="cfg-score-card" data-key="MODULE_COMPLETED">
+              <div class="cfg-score-icon">✅</div>
+              <div class="cfg-score-info">
+                <div class="cfg-score-label">Módulo Concluído</div>
+                <div class="cfg-score-desc">Ao completar o quiz e passar no módulo</div>
+              </div>
+              <div class="cfg-score-input-wrap">
+                <input type="number" class="cfg-score-input" id="score-MODULE_COMPLETED" value="50" min="0" max="999" />
+                <span class="cfg-score-unit">pts</span>
+              </div>
+            </div>
+
+            <div class="cfg-score-card" data-key="QUIZ_ATTEMPT">
+              <div class="cfg-score-icon">🎯</div>
+              <div class="cfg-score-info">
+                <div class="cfg-score-label">Tentativa de Quiz</div>
+                <div class="cfg-score-desc">Por cada retentativa do quiz (após a 1ª)</div>
+              </div>
+              <div class="cfg-score-input-wrap">
+                <input type="number" class="cfg-score-input" id="score-QUIZ_ATTEMPT" value="5" min="0" max="999" />
+                <span class="cfg-score-unit">pts</span>
+              </div>
+            </div>
+
+            <div class="cfg-score-card" data-key="QUIZ_SCORE_BONUS">
+              <div class="cfg-score-icon">📊</div>
+              <div class="cfg-score-info">
+                <div class="cfg-score-label">Bônus de Acerto (multiplicador)</div>
+                <div class="cfg-score-desc">Multiplicado pelo % de acerto do quiz</div>
+              </div>
+              <div class="cfg-score-input-wrap">
+                <input type="number" class="cfg-score-input" id="score-QUIZ_SCORE_BONUS" value="1" min="0" max="10" step="0.5" />
+                <span class="cfg-score-unit">×pts</span>
+              </div>
+            </div>
+
+            <div class="cfg-score-card" data-key="ACTIVITY_DONE">
+              <div class="cfg-score-icon">✏️</div>
+              <div class="cfg-score-info">
+                <div class="cfg-score-label">Atividade Concluída</div>
+                <div class="cfg-score-desc">Ao completar uma atividade criada pelo professor</div>
+              </div>
+              <div class="cfg-score-input-wrap">
+                <input type="number" class="cfg-score-input" id="score-ACTIVITY_DONE" value="30" min="0" max="999" />
+                <span class="cfg-score-unit">pts</span>
+              </div>
+            </div>
+
+            <div class="cfg-score-card" data-key="PERFECT_BONUS">
+              <div class="cfg-score-icon">💯</div>
+              <div class="cfg-score-info">
+                <div class="cfg-score-label">Bônus Nota Perfeita</div>
+                <div class="cfg-score-desc">Bônus adicional por 100% de acerto</div>
+              </div>
+              <div class="cfg-score-input-wrap">
+                <input type="number" class="cfg-score-input" id="score-PERFECT_BONUS" value="25" min="0" max="999" />
+                <span class="cfg-score-unit">pts</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">🎖️ Níveis de Rank</div>
+          <p class="cfg-hint">Defina os limiares de pontuação para cada nível de ranking dos alunos.</p>
+          <div class="cfg-rank-levels" id="cfg-rank-levels">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div class="cfg-actions">
+          <button class="btn btn-ghost" id="btn-cfg-scoring-reset">↩ Restaurar Padrões</button>
+          <button class="btn btn-primary" id="btn-cfg-scoring-save">💾 Salvar Pontuação</button>
+        </div>
+
+      </div>
+
+      <!-- ══════════ TAB: APARÊNCIA ══════════ -->
+      <div class="cfg-panel" id="cfgpanel-appearance">
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">🎨 Cor de Destaque do Sistema</div>
+          <p class="cfg-hint">Escolha a cor principal da plataforma. Afeta botões, barras de progresso e destaques.</p>
+          <div class="cfg-accent-palette" id="cfg-accent-palette">
+            <div class="cfg-color-swatch active" data-color="#6366f1" style="background:#6366f1;" title="Índigo (padrão)"></div>
+            <div class="cfg-color-swatch" data-color="#8b5cf6" style="background:#8b5cf6;" title="Violeta"></div>
+            <div class="cfg-color-swatch" data-color="#ec4899" style="background:#ec4899;" title="Rosa"></div>
+            <div class="cfg-color-swatch" data-color="#10b981" style="background:#10b981;" title="Verde"></div>
+            <div class="cfg-color-swatch" data-color="#f59e0b" style="background:#f59e0b;" title="Âmbar"></div>
+            <div class="cfg-color-swatch" data-color="#06b6d4" style="background:#06b6d4;" title="Ciano"></div>
+            <div class="cfg-color-swatch" data-color="#f97316" style="background:#f97316;" title="Laranja"></div>
+            <div class="cfg-color-swatch" data-color="#ef4444" style="background:#ef4444;" title="Vermelho"></div>
+            <div class="cfg-color-custom-wrap">
+              <input type="color" id="cfg-custom-color" value="#6366f1" class="cfg-custom-color-input" title="Cor personalizada" />
+              <span style="font-size:0.7rem;color:var(--text-muted);">Personalizar</span>
+            </div>
+          </div>
+          <div class="cfg-accent-preview" id="cfg-accent-preview">
+            <div class="cap-preview-bar" id="cap-preview-bar"></div>
+            <button class="cap-preview-btn" id="cap-preview-btn">Botão de exemplo</button>
+            <div class="cap-preview-badge" id="cap-preview-badge">Badge</div>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">🖼️ Identidade Visual</div>
+          <div class="cfg-grid-2">
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-platform-name">Nome da Plataforma</label>
+              <input type="text" id="cfg-platform-name" class="cfg-input" value="EstruturaPRO" />
+            </div>
+            <div class="cfg-field">
+              <label class="cfg-label" for="cfg-platform-icon">Ícone / Emoji do Logo</label>
+              <input type="text" id="cfg-platform-icon" class="cfg-input" placeholder="⚡" maxlength="4" value="⚡" />
+            </div>
+            <div class="cfg-field cfg-field-full">
+              <label class="cfg-label" for="cfg-platform-tagline">Tagline / Subtítulo</label>
+              <input type="text" id="cfg-platform-tagline" class="cfg-input" placeholder="Painel do Professor" value="Painel do Professor" />
+            </div>
+          </div>
+          <div class="cfg-live-preview" id="cfg-logo-preview">
+            <div class="clp-logo-icon" id="clp-icon">⚡</div>
+            <div>
+              <div class="clp-logo-name" id="clp-name">EstruturaPRO</div>
+              <div class="clp-logo-sub" id="clp-sub">Painel do Professor</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">🌗 Preferências de Interface</div>
+          <div class="cfg-toggles-list">
+            <div class="cfg-toggle-row">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Animações e transições</div>
+                <div class="cfg-toggle-desc">Desative para melhorar performance em dispositivos lentos</div>
+              </div>
+              <label class="cfg-switch">
+                <input type="checkbox" id="cfg-animations" checked>
+                <span class="cfg-slider"></span>
+              </label>
+            </div>
+            <div class="cfg-toggle-row">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Efeito de fundo (mesh/grid)</div>
+                <div class="cfg-toggle-desc">Exibe o padrão decorativo no fundo da página</div>
+              </div>
+              <label class="cfg-switch">
+                <input type="checkbox" id="cfg-bg-effects" checked>
+                <span class="cfg-slider"></span>
+              </label>
+            </div>
+            <div class="cfg-toggle-row">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Notificações Toast compactas</div>
+                <div class="cfg-toggle-desc">Usa notificações menores, no canto inferior direito</div>
+              </div>
+              <label class="cfg-switch">
+                <input type="checkbox" id="cfg-compact-toast">
+                <span class="cfg-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="cfg-actions">
+          <button class="btn btn-ghost" id="btn-cfg-appearance-reset">↩ Restaurar Visual Padrão</button>
+          <button class="btn btn-primary" id="btn-cfg-appearance-save">💾 Aplicar Aparência</button>
+        </div>
+
+      </div>
+
+      <!-- ══════════ TAB: DADOS ══════════ -->
+      <div class="cfg-panel" id="cfgpanel-data">
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">📊 Visão Geral dos Dados</div>
+          <div class="cfg-data-stats" id="cfg-data-stats">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">📥 Exportar Dados</div>
+          <p class="cfg-hint">Faça backup ou exporte os dados da plataforma nos formatos disponíveis.</p>
+          <div class="cfg-export-grid">
+            <div class="cfg-export-card">
+              <div class="cfg-export-icon">📋</div>
+              <div class="cfg-export-info">
+                <div class="cfg-export-label">Relatório da Turma (TXT)</div>
+                <div class="cfg-export-desc">Progresso de todos os alunos em texto simples</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="btn-export-report">📥 Exportar TXT</button>
+            </div>
+            <div class="cfg-export-card">
+              <div class="cfg-export-icon">📄</div>
+              <div class="cfg-export-info">
+                <div class="cfg-export-label">Relatório da Turma (PDF)</div>
+                <div class="cfg-export-desc">Relatório formatado pronto para imprimir ou salvar em PDF</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="btn-export-pdf-settings">📄 Exportar PDF</button>
+            </div>
+            <div class="cfg-export-card">
+              <div class="cfg-export-icon">📊</div>
+              <div class="cfg-export-info">
+                <div class="cfg-export-label">Dados em CSV</div>
+                <div class="cfg-export-desc">Alunos, notas e módulos em planilha</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="btn-export-csv">📊 Exportar CSV</button>
+            </div>
+            <div class="cfg-export-card">
+              <div class="cfg-export-icon">🗂️</div>
+              <div class="cfg-export-info">
+                <div class="cfg-export-label">Backup Completo (JSON)</div>
+                <div class="cfg-export-desc">Todos os dados em formato JSON</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="btn-export-json">🗂️ Exportar JSON</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">📤 Importar Dados</div>
+          <p class="cfg-hint">Restaure um backup JSON previamente exportado.</p>
+          <div class="cfg-import-area" id="cfg-import-area">
+            <div class="cfg-import-icon">📤</div>
+            <div class="cfg-import-text">Arraste um arquivo JSON aqui ou</div>
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer;margin-top:0.5rem;">
+              📁 Escolher Arquivo
+              <input type="file" id="cfg-import-file" accept=".json" style="display:none;" />
+            </label>
+          </div>
+          <div id="cfg-import-result"></div>
+        </div>
+
+        <div class="cfg-section cfg-danger-zone">
+          <div class="cfg-section-title" style="color:var(--red);">⚠️ Zona de Perigo</div>
+          <p class="cfg-hint" style="color:var(--red-light);opacity:0.8;">Ações irreversíveis. Pense bem antes de prosseguir.</p>
+          <div class="cfg-danger-grid">
+
+            <div class="cfg-danger-card">
+              <div class="cfg-danger-icon">🧹</div>
+              <div class="cfg-danger-info">
+                <div class="cfg-danger-label">Limpar Progresso de Todos</div>
+                <div class="cfg-danger-desc">Remove todo o progresso e logs, mantendo os alunos cadastrados</div>
+              </div>
+              <button class="btn cfg-btn-danger btn-sm" id="btn-danger-clear-progress">Limpar Progresso</button>
+            </div>
+
+            <div class="cfg-danger-card">
+              <div class="cfg-danger-icon">🗑️</div>
+              <div class="cfg-danger-info">
+                <div class="cfg-danger-label">Remover Todas as Atividades</div>
+                <div class="cfg-danger-desc">Deleta todas as atividades criadas pelo professor</div>
+              </div>
+              <button class="btn cfg-btn-danger btn-sm" id="btn-danger-clear-activities">Remover Atividades</button>
+            </div>
+
+            <div class="cfg-danger-card">
+              <div class="cfg-danger-icon">💣</div>
+              <div class="cfg-danger-info">
+                <div class="cfg-danger-label">Resetar Sistema Completo</div>
+                <div class="cfg-danger-desc">Remove TODOS os dados e restaura os padrões de fábrica</div>
+              </div>
+              <button class="btn cfg-btn-danger-full btn-sm" id="btn-danger-reset-all">⚠️ Reset Completo</button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══════════ TAB: SOBRE ══════════ -->
+      <div class="cfg-panel" id="cfgpanel-about">
+
+        <div class="cfg-about-hero">
+          <div class="cfg-about-logo">
+            <div class="cfg-about-logo-icon">⚡</div>
+            <div class="cfg-about-logo-text">
+              <div class="cfg-about-app-name">EstruturaPRO</div>
+              <div class="cfg-about-version">Versão 2.0.0 — 2026</div>
+            </div>
+          </div>
+          <p class="cfg-about-desc">
+            Plataforma interativa para ensino de Estruturas de Dados, desenvolvida para tornar o aprendizado de algoritmos e estruturas mais visual, gamificado e acessível.
+          </p>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">🧩 Funcionalidades</div>
+          <div class="cfg-features-grid">
+            <div class="cfg-feature-item"><span>📦</span> 6 módulos de estruturas de dados</div>
+            <div class="cfg-feature-item"><span>📊</span> Dashboard do professor</div>
+            <div class="cfg-feature-item"><span>🏆</span> Sistema de gamificação e pontos</div>
+            <div class="cfg-feature-item"><span>✏️</span> Criação de atividades customizadas</div>
+            <div class="cfg-feature-item"><span>💻</span> IDE JavaScript integrado</div>
+            <div class="cfg-feature-item"><span>🎖️</span> Sistema de conquistas (badges)</div>
+            <div class="cfg-feature-item"><span>📈</span> Visualizador de estruturas animado</div>
+            <div class="cfg-feature-item"><span>👥</span> Gerenciamento completo de alunos</div>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">🛠️ Tecnologias Utilizadas</div>
+          <div class="cfg-tech-list">
+            <div class="cfg-tech-item"><span class="cfg-tech-icon">🌐</span> HTML5 + CSS3 + JavaScript</div>
+            <div class="cfg-tech-item"><span class="cfg-tech-icon">💾</span> LocalStorage (persistência de dados)</div>
+            <div class="cfg-tech-item"><span class="cfg-tech-icon">💻</span> CodeMirror 5 (IDE de código)</div>
+            <div class="cfg-tech-item"><span class="cfg-tech-icon">🔤</span> Inter + JetBrains Mono (tipografia)</div>
+            <div class="cfg-tech-item"><span class="cfg-tech-icon">🎨</span> CSS Glassmorphism + Animações</div>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title">📋 Informações do Sistema</div>
+          <div class="cfg-sys-info" id="cfg-sys-info">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- ─── END SETTINGS VIEW ─── -->
+
   </main>
+</div>
+
+<!-- ─── DANGER PASSWORD MODAL ─── -->
+<div id="danger-modal-overlay" class="danger-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="danger-modal-title">
+  <div class="danger-modal">
+
+    <!-- Header -->
+    <div class="danger-modal-header">
+      <div class="danger-modal-icon" id="danger-modal-icon">⚠️</div>
+      <div>
+        <div class="danger-modal-title" id="danger-modal-title">Confirmação de Segurança</div>
+        <div class="danger-modal-subtitle" id="danger-modal-subtitle">Esta ação é irreversível</div>
+      </div>
+      <button class="danger-modal-close" id="danger-modal-close" aria-label="Fechar">✕</button>
+    </div>
+
+    <!-- Body -->
+    <div class="danger-modal-body">
+      <div class="danger-modal-warning" id="danger-modal-warning">
+        <!-- Warning text populated by JS -->
+      </div>
+      <div class="danger-modal-field">
+        <label class="danger-modal-label" for="danger-password-input">
+          🔐 Digite sua senha de professor para confirmar
+        </label>
+        <div class="danger-password-wrap">
+          <input
+            type="password"
+            id="danger-password-input"
+            class="danger-password-input"
+            placeholder="Sua senha atual..."
+            autocomplete="current-password"
+          />
+          <button class="danger-toggle-vis" id="danger-toggle-vis" type="button" title="Mostrar/ocultar senha">👁️</button>
+        </div>
+        <div class="danger-modal-error" id="danger-modal-error"></div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="danger-modal-footer">
+      <button class="btn btn-ghost" id="danger-modal-cancel">Cancelar</button>
+      <button class="btn danger-modal-confirm-btn" id="danger-modal-confirm">
+        <span id="danger-modal-confirm-label">Confirmar Ação</span>
+      </button>
+    </div>
+
+  </div>
 </div>
 
 <!-- Toast -->
