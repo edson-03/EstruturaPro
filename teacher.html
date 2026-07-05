@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https:; frame-ancestors 'none';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EstruturaPRO — Painel do Professor</title>
   <meta name="description" content="Painel do professor na plataforma EstruturaPRO para acompanhamento e gerenciamento de alunos." />
@@ -44,7 +45,10 @@
         <span class="t-nav-icon">📊</span> Visão Geral
       </div>
       <div class="t-nav-item" data-view="modules" id="nav-modules">
-        <span class="t-nav-icon">🔓</span> Gerenciar Módulos
+        <span class="t-nav-icon">🔓</span> Gerenciar Acesso
+      </div>
+      <div class="t-nav-item" data-view="modules-crud" id="nav-modules-crud">
+        <span class="t-nav-icon">📦</span> Módulos de Aula
       </div>
       <div class="t-nav-item" data-view="create-activity" id="nav-create-activity">
         <span class="t-nav-icon">✏️</span> Criar Atividade
@@ -80,6 +84,11 @@
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:0.75rem;">
+        <!-- Supabase Connection Indicator -->
+        <div id="supabase-status-badge" style="display:flex; align-items:center; gap:0.35rem; font-size:0.75rem; padding:0.3rem 0.6rem; border-radius:15px; border:1px solid var(--border); background:rgba(255,255,255,0.02); cursor:help;">
+          <span id="supabase-status-dot" style="width:7px; height:7px; border-radius:50%; background:#94a3b8; display:inline-block; box-shadow:0 0 8px #94a3b8; transition:all 0.3s;"></span>
+          <span id="supabase-status-text" style="color:var(--text-secondary);">Verificando...</span>
+        </div>
         <button class="btn btn-ghost btn-sm" id="btn-export" title="Exportar relatório em TXT">📥 Exportar TXT</button>
         <button class="btn btn-ghost btn-sm" id="btn-export-pdf" title="Exportar relatório em PDF">📄 Exportar PDF</button>
         <div style="display:flex;align-items:center;gap:0.5rem;">
@@ -175,6 +184,163 @@
         <table class="access-table" id="access-table">
           <!-- Populated by JS -->
         </table>
+      </div>
+
+    </div>
+
+    <!-- ─── MODULES CRUD VIEW ─── -->
+    <div id="view-modules-crud" style="display:none;">
+      
+      <!-- List Section -->
+      <div id="modules-crud-list-sec">
+        <div class="ca-header" style="margin-bottom:1.5rem;">
+          <div class="ca-header-info">
+            <h2>📦 Gerenciar Módulos de Aula</h2>
+            <p class="ca-header-sub">Crie novos tópicos de estudo, edite a teoria e monte os questionários (quizzes).</p>
+          </div>
+          <button class="btn btn-primary" id="btn-new-module">➕ Criar Novo Módulo</button>
+        </div>
+
+        <div class="table-section" style="padding:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; gap:1rem; flex-wrap:wrap;">
+            <input type="text" id="modules-crud-search" class="ca-input" placeholder="🔍 Pesquisar módulos por título ou dificuldade..." style="max-width:320px; margin:0;" />
+            <span class="badge badge-primary" id="modules-crud-count">0 módulos</span>
+          </div>
+
+          <div id="modules-crud-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:1.25rem;">
+            <!-- Populated dynamically by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Section (Create/Edit) -->
+      <div id="modules-crud-form-sec" style="display:none;">
+        <div class="ca-header" style="margin-bottom:1.5rem;">
+          <div class="ca-header-info">
+            <h2 id="modules-form-title">➕ Criar Novo Módulo</h2>
+            <p class="ca-header-sub">Preencha os detalhes teóricos, práticos e configure o quiz.</p>
+          </div>
+          <button class="btn btn-ghost" id="btn-modules-form-back">⬅️ Voltar para a Lista</button>
+        </div>
+
+        <form id="modules-crud-form" autocomplete="off">
+          <!-- Seção 1: Informações Básicas -->
+          <div class="ca-section">
+            <div class="ca-section-title">📋 Informações Básicas</div>
+            <div class="ca-fields-grid">
+              <div class="ca-field">
+                <label class="ca-label" for="mod-id">ID Único do Módulo <span class="ca-required">*</span></label>
+                <input type="text" id="mod-id" class="ca-input" placeholder="Ex: queue-double (letras, números e hifens)" required />
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" for="mod-title">Título <span class="ca-required">*</span></label>
+                <input type="text" id="mod-title" class="ca-input" placeholder="Ex: Deque (Fila de Duas Pontas)" required />
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" for="mod-subtitle">Subtítulo</label>
+                <input type="text" id="mod-subtitle" class="ca-input" placeholder="Ex: Inserção e remoção em ambas as pontas" />
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" for="mod-emoji">Emoji/Ícone</label>
+                <input type="text" id="mod-emoji" class="ca-input" placeholder="Ex: 🔄" />
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" for="mod-color">Cor de Destaque (Hex)</label>
+                <input type="color" id="mod-color" class="ca-input" value="#6366f1" style="height:42px; padding:2px; cursor:pointer;" />
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" for="mod-difficulty">Dificuldade</label>
+                <select id="mod-difficulty" class="ca-input ca-select">
+                  <option value="Iniciante">Iniciante</option>
+                  <option value="Básico">Básico</option>
+                  <option value="Intermediário" selected>Intermediário</option>
+                  <option value="Avançado">Avançado</option>
+                </select>
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" for="mod-duration">Duração Estimada</label>
+                <input type="text" id="mod-duration" class="ca-input" placeholder="Ex: 50 min" value="45 min" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Seção 2: Complexidade Assintótica (Big O) -->
+          <div class="ca-section">
+            <div class="ca-section-title">⏱️ Complexidade Temporal/Espacial (Big-O Notation)</div>
+            <div class="ca-fields-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+              <div class="ca-field">
+                <label class="ca-label" for="mod-c-access">Acesso</label>
+                <input type="text" id="mod-c-access" class="ca-input" placeholder="Ex: O(n)" value="O(n)" />
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" for="mod-c-search">Busca</label>
+                <input type="text" id="mod-c-search" class="ca-input" placeholder="Ex: O(n)" value="O(n)" />
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" for="mod-c-insert">Inserção</label>
+                <input type="text" id="mod-c-insert" class="ca-input" placeholder="Ex: O(1)" value="O(1)" />
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" for="mod-c-delete">Remoção</label>
+                <input type="text" id="mod-c-delete" class="ca-input" placeholder="Ex: O(1)" value="O(1)" />
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" for="mod-c-space">Espaço</label>
+                <input type="text" id="mod-c-space" class="ca-input" placeholder="Ex: O(n)" value="O(n)" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Seção 3: Teoria e Código -->
+          <div class="ca-section">
+            <div class="ca-section-title">📖 Teoria e Código de Exemplo</div>
+            <div class="ca-fields-grid">
+              <div class="ca-field ca-field-full">
+                <label class="ca-label" for="mod-theory">Conteúdo Teórico (Markdown)</label>
+                <textarea id="mod-theory" class="ca-input ca-textarea" rows="8" placeholder="Escreva a teoria usando Markdown. Ex:&#10;### Título do Conteúdo&#10;Aqui você descreve o funcionamento da estrutura..." required></textarea>
+              </div>
+              <div class="ca-field ca-field-full">
+                <label class="ca-label" for="mod-code">Código de Exemplo (Javascript/HTML)</label>
+                <textarea id="mod-code" class="ca-input ca-textarea" rows="8" placeholder="Cole o código de demonstração aqui..." required></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Seção 4: Quiz de Avaliação -->
+          <div class="ca-section">
+            <div class="ca-section-header">
+              <div class="ca-section-title">❓ Quiz do Módulo</div>
+              <button type="button" class="btn btn-sm" id="btn-mod-add-quiz-q" style="background:var(--primary); color:#fff;">+ Adicionar Pergunta</button>
+            </div>
+            <div id="mod-quiz-questions-container" class="ca-questions-list">
+              <!-- Quiz questions populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Ações do Formulário -->
+          <div class="ca-actions">
+            <button type="button" class="btn btn-ghost" id="btn-mod-cancel">Cancelar</button>
+            <div style="display:flex; gap:0.75rem;">
+              <button type="submit" class="btn btn-primary" id="btn-mod-save">💾 Salvar Módulo</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Preview Modal de Módulo -->
+      <div class="ca-modal-overlay" id="mod-preview-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center;">
+        <div class="ca-modal" style="max-width:850px; width:90%; height:90%; display:flex; flex-direction:column; background:var(--card-bg); border-radius:12px; border:1px solid var(--border); box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+          <div class="ca-modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:1.25rem; border-bottom:1px solid var(--border);">
+            <h3 id="mod-preview-header-title" style="margin:0; font-size:1.2rem;">Prévia do Módulo</h3>
+            <button class="ca-modal-close" id="btn-mod-close-preview" style="background:none; border:none; color:var(--text-secondary); font-size:1.2rem; cursor:pointer;">✕</button>
+          </div>
+          <div class="ca-modal-body" id="mod-preview-header-body" style="flex:1; overflow-y:auto; padding:1.5rem; color:var(--text-primary);">
+            <!-- Dynamic rendered student view preview -->
+          </div>
+          <div class="ca-modal-footer" style="padding:1.25rem; border-top:1px solid var(--border); display:flex; justify-content:flex-end;">
+            <button class="btn btn-ghost" id="btn-mod-close-preview-2">Fechar Prévia</button>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -1190,6 +1356,10 @@
 <!-- Toast -->
 <div id="toast-container"></div>
 
+<!-- Supabase SDK & Config -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/supabase.js"></script>
 <script src="js/data.js"></script>
 
 <!-- CodeMirror core -->

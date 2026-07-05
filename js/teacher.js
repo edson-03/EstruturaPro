@@ -31,6 +31,9 @@ function initTeacherUI() {
 
   setupNavigation();
   setupEventListeners();
+  if (typeof setupModulesCrudEvents === 'function') {
+    setupModulesCrudEvents();
+  }
   switchView('overview');
 }
 
@@ -61,6 +64,9 @@ function switchView(view, studentId = null) {
   if (document.getElementById('view-settings')) {
     document.getElementById('view-settings').style.display = 'none';
   }
+  if (document.getElementById('view-modules-crud')) {
+    document.getElementById('view-modules-crud').style.display = 'none';
+  }
 
   // Deactivate nav
   document.querySelectorAll('.t-nav-item').forEach(n => n.classList.remove('active'));
@@ -80,6 +86,14 @@ function switchView(view, studentId = null) {
       document.getElementById('header-title').textContent = 'Gerenciar Módulos';
       document.getElementById('header-subtitle').textContent = 'Libere ou bloqueie módulos por aluno';
       renderAccessMatrix();
+      break;
+
+    case 'modules-crud':
+      document.getElementById('view-modules-crud').style.display = 'block';
+      document.getElementById('nav-modules-crud').classList.add('active');
+      document.getElementById('header-title').textContent = 'Módulos de Aula';
+      document.getElementById('header-subtitle').textContent = 'Gerencie o conteúdo teórico e os questionários (quizzes)';
+      renderModulesCrudList();
       break;
 
     case 'create-activity':
@@ -2419,6 +2433,9 @@ function saveSettings(patch) {
   const current = getSettings();
   const updated = { ...current, ...patch };
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
+  if (typeof syncSettingsToSupabase === 'function') {
+    syncSettingsToSupabase(updated);
+  }
   return updated;
 }
 
@@ -3145,4 +3162,484 @@ function _setupDangerModal() {
       closeModal();
     }
   });
+}
+
+// ============================================================
+//  📦 GERENCIAMENTO DE MÓDULOS (CRUD) — Modules CRUD Logic
+// ============================================================
+
+let currentEditModuleId = null;
+
+function setupModulesCrudEvents() {
+  // Search bar
+  document.getElementById('modules-crud-search').addEventListener('input', () => {
+    renderModulesCrudList();
+  });
+
+  // New Module button
+  document.getElementById('btn-new-module').addEventListener('click', () => {
+    currentEditModuleId = null;
+    document.getElementById('modules-form-title').textContent = '➕ Criar Novo Módulo';
+    document.getElementById('modules-crud-form').reset();
+    document.getElementById('mod-id').disabled = false;
+    document.getElementById('mod-quiz-questions-container').innerHTML = '';
+    
+    // Default values
+    document.getElementById('mod-color').value = '#6366f1';
+    document.getElementById('mod-difficulty').value = 'Intermediário';
+    document.getElementById('mod-duration').value = '45 min';
+    document.getElementById('mod-c-access').value = 'O(n)';
+    document.getElementById('mod-c-search').value = 'O(n)';
+    document.getElementById('mod-c-insert').value = 'O(1)';
+    document.getElementById('mod-c-delete').value = 'O(1)';
+    document.getElementById('mod-c-space').value = 'O(n)';
+
+    // Switch views
+    document.getElementById('modules-crud-list-sec').style.display = 'none';
+    document.getElementById('modules-crud-form-sec').style.display = 'block';
+  });
+
+  // Back to list button
+  document.getElementById('btn-modules-form-back').addEventListener('click', () => {
+    document.getElementById('modules-crud-form-sec').style.display = 'none';
+    document.getElementById('modules-crud-list-sec').style.display = 'block';
+  });
+
+  // Cancel form button
+  document.getElementById('btn-mod-cancel').addEventListener('click', () => {
+    document.getElementById('modules-crud-form-sec').style.display = 'none';
+    document.getElementById('modules-crud-list-sec').style.display = 'block';
+  });
+
+  // Add quiz question button
+  document.getElementById('btn-mod-add-quiz-q').addEventListener('click', () => {
+    addQuizQuestionEditor();
+  });
+
+  // Form submit
+  document.getElementById('modules-crud-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    saveModuleCrudForm();
+  });
+
+  // Preview modals close
+  document.getElementById('btn-mod-close-preview').addEventListener('click', () => {
+    document.getElementById('mod-preview-modal').style.display = 'none';
+  });
+  document.getElementById('btn-mod-close-preview-2').addEventListener('click', () => {
+    document.getElementById('mod-preview-modal').style.display = 'none';
+  });
+}
+
+function addQuizQuestionEditor(q = null) {
+  const container = document.getElementById('mod-quiz-questions-container');
+  const card = document.createElement('div');
+  card.className = 'ca-question-card quiz-question-block';
+  card.style.cssText = 'padding:1.25rem; margin-top:1rem; border-left:3px solid var(--primary); background:var(--card-bg);';
+  const qId = q ? q.id : 'q_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+  card.dataset.questionId = qId;
+
+  card.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <h4 style="margin:0; font-size:0.9rem; font-weight:600; color:var(--text-primary);">Pergunta</h4>
+      <button type="button" class="btn btn-ghost btn-sm btn-mod-delete-q" style="color:var(--red-light); padding:2px 8px;">🗑️ Remover</button>
+    </div>
+    <div class="ca-fields-grid" style="grid-template-columns: 1fr;">
+      <div class="ca-field ca-field-full">
+        <label class="ca-label">Texto da Pergunta <span class="ca-required">*</span></label>
+        <textarea class="ca-input q-text" rows="2" required placeholder="Ex: Qual é a complexidade de tempo do acesso em um Array?">${q ? q.question : ''}</textarea>
+      </div>
+    </div>
+    <div class="ca-fields-grid" style="grid-template-columns: 1fr 1fr; gap:0.75rem; margin-top:0.75rem;">
+      <div class="ca-field">
+        <label class="ca-label">Opção 1 (Índice 0) <span class="ca-required">*</span></label>
+        <input type="text" class="ca-input q-opt-0" required placeholder="Opção 1" value="${q ? q.options[0] : ''}" />
+      </div>
+      <div class="ca-field">
+        <label class="ca-label">Opção 2 (Índice 1) <span class="ca-required">*</span></label>
+        <input type="text" class="ca-input q-opt-1" required placeholder="Opção 2" value="${q ? q.options[1] : ''}" />
+      </div>
+      <div class="ca-field">
+        <label class="ca-label">Opção 3 (Índice 2) <span class="ca-required">*</span></label>
+        <input type="text" class="ca-input q-opt-2" required placeholder="Opção 3" value="${q ? q.options[2] : ''}" />
+      </div>
+      <div class="ca-field">
+        <label class="ca-label">Opção 4 (Índice 3) <span class="ca-required">*</span></label>
+        <input type="text" class="ca-input q-opt-3" required placeholder="Opção 4" value="${q ? q.options[3] : ''}" />
+      </div>
+    </div>
+    <div class="ca-fields-grid" style="grid-template-columns: 1fr 1fr; margin-top:0.75rem;">
+      <div class="ca-field">
+        <label class="ca-label">Opção Correta <span class="ca-required">*</span></label>
+        <select class="ca-input ca-select q-correct">
+          <option value="0" ${q && q.correct === 0 ? 'selected' : ''}>Opção 1 (Índice 0)</option>
+          <option value="1" ${q && q.correct === 1 ? 'selected' : ''}>Opção 2 (Índice 1)</option>
+          <option value="2" ${q && q.correct === 2 ? 'selected' : ''}>Opção 3 (Índice 2)</option>
+          <option value="3" ${q && q.correct === 3 ? 'selected' : ''}>Opção 4 (Índice 3)</option>
+        </select>
+      </div>
+      <div class="ca-field">
+        <label class="ca-label">Explicação da Resposta</label>
+        <input type="text" class="ca-input q-explanation" placeholder="Explicação para quando o aluno errar..." value="${q ? q.explanation : ''}" />
+      </div>
+    </div>
+  `;
+
+  card.querySelector('.btn-mod-delete-q').addEventListener('click', () => {
+    card.remove();
+  });
+
+  container.appendChild(card);
+}
+
+function renderModulesCrudList() {
+  const grid = document.getElementById('modules-crud-grid');
+  const countEl = document.getElementById('modules-crud-count');
+  const searchVal = document.getElementById('modules-crud-search').value.toLowerCase().trim();
+  const modules = getModules();
+
+  const filtered = modules.filter(m => 
+    m.title.toLowerCase().includes(searchVal) || 
+    m.difficulty.toLowerCase().includes(searchVal)
+  );
+
+  countEl.textContent = `${filtered.length} módulo${filtered.length !== 1 ? 's' : ''}`;
+  grid.innerHTML = '';
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div class="ca-empty-questions" style="grid-column:1/-1; padding:3rem;">
+        <div class="ca-empty-icon">📦</div>
+        <p>Nenhum módulo encontrado.</p>
+        <p class="ca-empty-hint">Use o botão "+ Criar Novo Módulo" no topo para criar um novo tópico.</p>
+      </div>
+    `;
+    return;
+  }
+
+  filtered.forEach(m => {
+    const isDefault = ['arrays', 'linked-list', 'stack', 'queue', 'tree', 'graph'].includes(m.id);
+    const card = document.createElement('div');
+    card.className = 'ca-question-card';
+    card.style.cssText = `
+      position: relative; 
+      border-left: 4px solid ${m.color || '#6366f1'}; 
+      padding: 1.25rem; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: space-between; 
+      height: 100%;
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    `;
+
+    card.innerHTML = `
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:0.5rem;">
+          <div style="font-size:1.8rem; background:${m.color || '#6366f1'}15; width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center; border:1px solid ${m.color || '#6366f1'}30;">
+            ${m.emoji || '📦'}
+          </div>
+          <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+            <span class="badge" style="background:${m.color || '#6366f1'}20; color:${m.color || '#6366f1'};">${m.difficulty}</span>
+            ${isDefault ? '<span class="badge" style="background:#6366f115; color:#6366f1;">Padrão</span>' : '<span class="badge" style="background:#10b98115; color:#10b981;">Custom</span>'}
+          </div>
+        </div>
+        <h3 style="font-size:1.15rem; font-weight:600; color:var(--text-primary); margin:0.5rem 0 0.25rem 0;">${m.title}</h3>
+        <p style="font-size:0.8rem; color:var(--text-secondary); margin:0 0 0.75rem 0; font-style:italic;">${m.subtitle || ''}</p>
+        <p style="font-size:0.82rem; color:var(--text-muted); margin:0; line-clamp:2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${m.description || 'Sem descrição.'}</p>
+      </div>
+      <div style="margin-top:1.25rem; border-top:1px solid var(--border); padding-top:0.75rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; font-size:0.75rem; color:var(--text-secondary);">
+          <span>⏱️ ${m.duration}</span>
+          <span>📝 ${m.quiz ? m.quiz.length : 0} perguntas</span>
+        </div>
+        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+          <button class="btn btn-ghost btn-sm btn-mod-preview" data-id="${m.id}" title="Visualizar prévia do aluno">👁️ Prévia</button>
+          <button class="btn btn-ghost btn-sm btn-mod-edit" data-id="${m.id}" title="Editar módulo">✏️ Editar</button>
+          ${isDefault ? '' : `<button class="btn btn-ghost btn-sm btn-mod-delete" data-id="${m.id}" style="color:var(--red-light);" title="Excluir módulo">🗑️ Excluir</button>`}
+        </div>
+      </div>
+    `;
+
+    // Bind edit/delete/preview actions
+    card.querySelector('.btn-mod-preview').addEventListener('click', () => {
+      previewModuleCrud(m);
+    });
+
+    card.querySelector('.btn-mod-edit').addEventListener('click', () => {
+      renderModulesCrudForm(m.id);
+    });
+
+    if (!isDefault) {
+      card.querySelector('.btn-mod-delete').addEventListener('click', () => {
+        if (confirm(`Tem certeza que deseja excluir o módulo "${m.title}"? Esta ação não pode ser desfeita.`)) {
+          deleteCustomModule(m.id);
+          showToast('✓ Módulo excluído com sucesso!');
+          renderModulesCrudList();
+        }
+      });
+    }
+
+    grid.appendChild(card);
+  });
+}
+
+function renderModulesCrudForm(moduleId) {
+  const m = getModuleById(moduleId);
+  if (!m) return;
+
+  currentEditModuleId = moduleId;
+  document.getElementById('modules-form-title').textContent = `✏️ Editar Módulo: ${m.title}`;
+
+  // Fill basics
+  document.getElementById('mod-id').value = m.id;
+  // If it's a system default module, lock ID to prevent renaming which would break visualizer triggers
+  const isDefault = ['arrays', 'linked-list', 'stack', 'queue', 'tree', 'graph'].includes(m.id);
+  document.getElementById('mod-id').disabled = isDefault;
+
+  document.getElementById('mod-title').value = m.title;
+  document.getElementById('mod-subtitle').value = m.subtitle || '';
+  document.getElementById('mod-emoji').value = m.emoji || '';
+  document.getElementById('mod-color').value = m.color || '#6366f1';
+  document.getElementById('mod-difficulty').value = m.difficulty || 'Intermediário';
+  document.getElementById('mod-duration').value = m.duration || '45 min';
+
+  // Fill complexities
+  document.getElementById('mod-c-access').value = m.complexity?.access || '';
+  document.getElementById('mod-c-search').value = m.complexity?.search || '';
+  document.getElementById('mod-c-insert').value = m.complexity?.insert || '';
+  document.getElementById('mod-c-delete').value = m.complexity?.delete || '';
+  document.getElementById('mod-c-space').value = m.complexity?.space || '';
+
+  // Fill theory and code
+  document.getElementById('mod-theory').value = m.theory || '';
+  document.getElementById('mod-code').value = m.codeExample || '';
+
+  // Populate quiz questions
+  const container = document.getElementById('mod-quiz-questions-container');
+  container.innerHTML = '';
+  if (m.quiz && m.quiz.length > 0) {
+    m.quiz.forEach(q => {
+      addQuizQuestionEditor(q);
+    });
+  }
+
+  // Switch views
+  document.getElementById('modules-crud-list-sec').style.display = 'none';
+  document.getElementById('modules-crud-form-sec').style.display = 'block';
+}
+
+function saveModuleCrudForm() {
+  const idInput = document.getElementById('mod-id');
+  const id = idInput.value.trim().toLowerCase();
+
+  // Validate ID format
+  if (!/^[a-z0-9\-]+$/.test(id)) {
+    showToast('❌ O ID Único do módulo deve conter apenas letras minúsculas, números e hifens (sem espaços).', 'warning');
+    return;
+  }
+
+  // Validate ID collision for new modules
+  if (currentEditModuleId === null) {
+    const existing = getModuleById(id);
+    if (existing) {
+      showToast('❌ Este ID Único de módulo já está em uso por outro módulo.', 'warning');
+      return;
+    }
+  }
+
+  // Gather complexity
+  const complexity = {
+    access: document.getElementById('mod-c-access').value.trim() || 'O(n)',
+    search: document.getElementById('mod-c-search').value.trim() || 'O(n)',
+    insert: document.getElementById('mod-c-insert').value.trim() || 'O(1)',
+    delete: document.getElementById('mod-c-delete').value.trim() || 'O(1)',
+    space: document.getElementById('mod-c-space').value.trim() || 'O(n)'
+  };
+
+  // Gather Quiz
+  const quiz = [];
+  const questionBlocks = document.querySelectorAll('.quiz-question-block');
+  let quizValid = true;
+  questionBlocks.forEach(block => {
+    const qText = block.querySelector('.q-text').value.trim();
+    const opt0 = block.querySelector('.q-opt-0').value.trim();
+    const opt1 = block.querySelector('.q-opt-1').value.trim();
+    const opt2 = block.querySelector('.q-opt-2').value.trim();
+    const opt3 = block.querySelector('.q-opt-3').value.trim();
+    const correct = parseInt(block.querySelector('.q-correct').value);
+    const explanation = block.querySelector('.q-explanation').value.trim();
+
+    if (!qText || !opt0 || !opt1 || !opt2 || !opt3) {
+      quizValid = false;
+      return;
+    }
+
+    quiz.push({
+      question: qText,
+      options: [opt0, opt1, opt2, opt3],
+      correct: correct,
+      explanation: explanation
+    });
+  });
+
+  if (!quizValid) {
+    showToast('❌ Preencha todos os campos obrigatórios em todas as perguntas do quiz.', 'warning');
+    return;
+  }
+
+  // Colors and Gradients
+  const color = document.getElementById('mod-color').value;
+  const gradient = `linear-gradient(135deg, ${color} 0%, #111827 100%)`;
+
+  const newModule = {
+    id: id,
+    title: document.getElementById('mod-title').value.trim(),
+    subtitle: document.getElementById('mod-subtitle').value.trim() || '',
+    icon: document.getElementById('mod-emoji').value.trim() || '📦',
+    emoji: document.getElementById('mod-emoji').value.trim() || '📦',
+    color: color,
+    gradient: gradient,
+    description: document.getElementById('mod-theory').value.trim().substring(0, 120) + '...',
+    duration: document.getElementById('mod-duration').value.trim() || '45 min',
+    difficulty: document.getElementById('mod-difficulty').value,
+    complexity: complexity,
+    theory: document.getElementById('mod-theory').value,
+    codeExample: document.getElementById('mod-code').value,
+    quiz: quiz
+  };
+
+  // Save
+  saveCustomModule(newModule);
+
+  showToast('✓ Módulo salvo com sucesso!');
+  
+  // Return to list view
+  document.getElementById('modules-crud-form-sec').style.display = 'none';
+  document.getElementById('modules-crud-list-sec').style.display = 'block';
+  renderModulesCrudList();
+}
+
+function previewModuleCrud(m) {
+  const modal = document.getElementById('mod-preview-modal');
+  const body = document.getElementById('mod-preview-header-body');
+  document.getElementById('mod-preview-header-title').textContent = `👁️ Prévia do Aluno: ${m.title}`;
+
+  // Render Theory & Code & Quiz Preview
+  let quizHtml = '';
+  if (m.quiz && m.quiz.length > 0) {
+    quizHtml = `
+      <div style="margin-top:2rem; border-top:1px solid var(--border); padding-top:1.5rem;">
+        <h3 style="font-size:1.1rem; margin-bottom:1.25rem; font-weight:600; color:var(--text-primary);">❓ Exercícios de Fixação (Quiz)</h3>
+        <div style="display:flex; flex-direction:column; gap:1.25rem;">
+          ${m.quiz.map((q, idx) => `
+            <div style="padding:1.25rem; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,0.015); border-left:3px solid ${m.color || '#6366f1'};">
+              <div style="font-weight:600; font-size:0.9rem; margin-bottom:0.75rem; color:var(--text-primary);">${idx + 1}. ${q.question}</div>
+              <div style="display:grid; grid-template-columns:1fr; gap:0.5rem; margin-left:0.5rem;">
+                ${q.options.map((opt, optIdx) => `
+                  <div style="font-size:0.82rem; padding:0.5rem 1rem; border-radius:6px; border:1px solid ${optIdx === q.correct ? 'rgba(16,185,129,0.4)' : 'var(--border)'}; background:${optIdx === q.correct ? 'rgba(16,185,129,0.08)' : 'transparent'}; color:${optIdx === q.correct ? 'var(--green-light)' : 'var(--text-secondary)'};">
+                    ${opt} ${optIdx === q.correct ? ' <span style="font-weight:700; margin-left:0.5rem;">✓ Resposta Correta</span>' : ''}
+                  </div>
+                `).join('')}
+              </div>
+              ${q.explanation ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.75rem; font-style:italic; display:flex; gap:0.35rem; align-items:center;"><span>💡</span><span>Explicação: ${q.explanation}</span></div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  } else {
+    quizHtml = `
+      <div style="margin-top:2rem; border-top:1px solid var(--border); padding-top:1.5rem; color:var(--text-muted); font-style:italic;">
+        Nenhuma pergunta cadastrada para o quiz deste módulo.
+      </div>
+    `;
+  }
+
+  // Convert theory markdown using basic local renderer matching the student.js one
+  const theoryHtml = renderMarkdownLocal(m.theory);
+
+  body.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:start; border-bottom:1px solid var(--border); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <span style="font-size:2.2rem; background:${m.color || '#6366f1'}15; width:56px; height:56px; border-radius:12px; display:flex; align-items:center; justify-content:center; border:1px solid ${m.color || '#6366f1'}30;">${m.emoji || '📦'}</span>
+        <div>
+          <h2 style="font-size:1.4rem; font-weight:700; margin:0; color:var(--text-primary);">${m.title}</h2>
+          <p style="margin:0.2rem 0 0 0; font-size:0.85rem; color:var(--text-secondary); font-style:italic;">${m.subtitle || ''}</p>
+        </div>
+      </div>
+      <div style="display:flex; gap:0.5rem;">
+        <span class="badge" style="background:${m.color || '#6366f1'}20; color:${m.color || '#6366f1'}; padding:0.4rem 0.8rem;">${m.difficulty}</span>
+        <span class="badge badge-muted" style="padding:0.4rem 0.8rem;">⏱️ ${m.duration}</span>
+      </div>
+    </div>
+
+    <!-- Complexity Grid -->
+    <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary);">⏱️ Complexidade Temporal / Espacial</h3>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:0.5rem; margin-bottom:2rem;">
+      <div style="text-align:center; padding:0.75rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:rgba(0,0,0,0.15);"><div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">Acesso</div><div style="font-weight:700; font-size:0.95rem; color:${m.color || '#6366f1'};">${m.complexity?.access || 'O(n)'}</div></div>
+      <div style="text-align:center; padding:0.75rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:rgba(0,0,0,0.15);"><div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">Busca</div><div style="font-weight:700; font-size:0.95rem; color:${m.color || '#6366f1'};">${m.complexity?.search || 'O(n)'}</div></div>
+      <div style="text-align:center; padding:0.75rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:rgba(0,0,0,0.15);"><div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">Inserção</div><div style="font-weight:700; font-size:0.95rem; color:${m.color || '#6366f1'};">${m.complexity?.insert || 'O(n)'}</div></div>
+      <div style="text-align:center; padding:0.75rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:rgba(0,0,0,0.15);"><div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">Remoção</div><div style="font-weight:700; font-size:0.95rem; color:${m.color || '#6366f1'};">${m.complexity?.delete || 'O(n)'}</div></div>
+      <div style="text-align:center; padding:0.75rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:rgba(0,0,0,0.15);"><div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">Espaço</div><div style="font-weight:700; font-size:0.95rem; color:${m.color || '#6366f1'};">${m.complexity?.space || 'O(n)'}</div></div>
+    </div>
+
+    <!-- Theory -->
+    <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary); border-left:3px solid ${m.color || '#6366f1'}; padding-left:0.5rem;">📖 Explicação Teórica</h3>
+    <div class="theory-text" style="font-size:0.88rem; line-height:1.6; color:var(--text-secondary); margin-bottom:2rem; padding-left:0.5rem;">
+      ${theoryHtml}
+    </div>
+
+    <!-- Code Block -->
+    <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary); border-left:3px solid ${m.color || '#6366f1'}; padding-left:0.5rem;">💻 Código de Exemplo</h3>
+    <pre style="background:#1e1e2e; color:#a6adc8; padding:1.25rem; border-radius:10px; overflow-x:auto; font-size:0.82rem; border:1px solid var(--border); margin-bottom:2rem;"><code style="font-family:'Courier New', Courier, monospace; line-height:1.4;">${escapeHtml(m.codeExample || '')}</code></pre>
+
+    <!-- Quiz -->
+    ${quizHtml}
+  `;
+
+  modal.style.display = 'flex';
+}
+
+function renderMarkdownLocal(text) {
+  if (!text) return '';
+  const sanitized = escapeDangerousHtmlLocal(text);
+  return sanitized
+    .trim()
+    .replace(/### (.+)/g, '<h3 style="font-size:1.05rem; font-weight:600; color:var(--text-primary); margin:1.25rem 0 0.5rem 0;">$1</h3>')
+    .replace(/## (.+)/g, '<h2 style="font-size:1.2rem; font-weight:700; color:var(--text-primary); margin:1.5rem 0 0.75rem 0;">$1</h2>')
+    .replace(/# (.+)/g, '<h1 style="font-size:1.4rem; font-weight:800; color:var(--text-primary); margin:2rem 0 1rem 0;">$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text-primary); font-weight:600;">$1</strong>')
+    .replace(/\`\`\`[\s\S]*?\`\`\`/g, '')
+    .replace(/\| (.+) \|/g, (match) => {
+      const cells = match.split('|').filter(c => c.trim());
+      const isHeader = cells.some(c => /^[-\s]+$/.test(c.trim()));
+      if (isHeader) return '';
+      const tag = cells[0] && cells[0].includes('**') ? 'th' : 'td';
+      return `<tr>${cells.map(c => `<${tag} style="padding:0.5rem 0.75rem; border:1px solid var(--border);">${c.trim().replace(/\*\*\"/g,'')}</${tag}>`).join('')}</tr>`;
+    })
+    .replace(/(<tr>.*<\/tr>)/gs, (m) => `<table style="width:100%; border-collapse:collapse; margin:1rem 0; font-size:0.82rem;">${m}</table>`)
+    .replace(/\n\n/g, '</p><p style="margin-bottom:0.75rem;">')
+    .replace(/^/, '<p style="margin-bottom:0.75rem;">')
+    .replace(/$/, '</p>')
+    .replace(/✅/g, '<span style="color:var(--green-light)">✅</span>')
+    .replace(/❌/g, '<span style="color:var(--red-light)">❌</span>');
+}
+
+function escapeDangerousHtmlLocal(text) {
+  if (!text) return '';
+  return text
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]*)/gi, '')
+    .replace(/href\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*"|javascript:[^\s>]*)/gi, '');
+}
+
+function escapeHtml(string) {
+  return String(string)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

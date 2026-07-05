@@ -746,6 +746,180 @@ function initDB() {
   if (!localStorage.getItem(DB_KEYS.ACTIVITY_LOG)) {
     localStorage.setItem(DB_KEYS.ACTIVITY_LOG, JSON.stringify({}));
   }
+
+  // Se o Supabase estiver ativo, inicializa a sincronização em segundo plano
+  if (isSupabaseConfigured()) {
+    syncFromSupabase();
+  }
+}
+
+async function syncFromSupabase() {
+  if (!isSupabaseConfigured()) return;
+  try {
+    console.log('🔄 Sincronizando dados com o Supabase...');
+    
+    // 1. Sincronização de Usuários
+    let { data: users, error: errUsers } = await supabaseClient.from('users').select('*');
+    if (errUsers) throw errUsers;
+
+    // Se o banco remoto estiver vazio, fazer upload dos dados locais (Auto-migração)
+    if (!users || users.length === 0) {
+      console.log('📤 Banco Supabase vazio detectado. Exportando dados locais para o banco remoto...');
+      const localUsers = getUsers();
+      const { error: errPushUsers } = await supabaseClient.from('users').insert(
+        localUsers.map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          password: u.password,
+          role: u.role,
+          avatar: u.avatar,
+          avatar_color: u.avatarColor,
+          created_at: u.createdAt || new Date().toISOString()
+        }))
+      );
+      if (errPushUsers) console.error('Erro ao inicializar usuários no Supabase:', errPushUsers);
+
+      const localAccess = getModuleAccess();
+      const accessArray = Object.keys(localAccess).map(studentId => ({
+        student_id: studentId,
+        module_ids: localAccess[studentId]
+      }));
+      if (accessArray.length > 0) {
+        await supabaseClient.from('module_access').insert(accessArray);
+      }
+
+      const localProgress = getAllProgress();
+      const progressArray = [];
+      Object.keys(localProgress).forEach(studentId => {
+        if (studentId === '_lastAccess') return;
+        Object.keys(localProgress[studentId]).forEach(moduleId => {
+          const m = localProgress[studentId][moduleId];
+          progressArray.push({
+            student_id: studentId,
+            module_id: moduleId,
+            started: m.started || false,
+            started_at: m.startedAt || null,
+            completed: m.completed || false,
+            completed_at: m.completedAt || null,
+            score: m.score || 0
+          });
+        });
+      });
+      if (progressArray.length > 0) {
+        await supabaseClient.from('progress').insert(progressArray);
+      }
+
+      const savedSettings = localStorage.getItem('ep_settings');
+      if (savedSettings) {
+        await supabaseClient.from('settings').upsert({
+          key: 'general',
+          value: JSON.parse(savedSettings)
+        });
+      }
+
+      console.log('✅ Banco Supabase inicializado com dados locais.');
+      return;
+    }
+
+    // Se o banco remoto já tem dados, sobrescreve o cache local com os dados remotos
+    localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+    
+    // 2. Acesso aos Módulos
+    const { data: access, error: errAccess } = await supabaseClient.from('module_access').select('*');
+    if (!errAccess && access) {
+      const accessObj = {};
+      access.forEach(row => {
+        accessObj[row.student_id] = row.module_ids;
+      });
+      localStorage.setItem(DB_KEYS.MODULE_ACCESS, JSON.stringify(accessObj));
+    }
+    
+    // 3. Progresso
+    const { data: progress, error: errProgress } = await supabaseClient.from('progress').select('*');
+    if (!errProgress && progress) {
+      const progressObj = {};
+      progress.forEach(row => {
+        if (!progressObj[row.student_id]) progressObj[row.student_id] = {};
+        progressObj[row.student_id][row.module_id] = {
+          started: row.started,
+          startedAt: row.started_at,
+          completed: row.completed,
+          completedAt: row.completed_at,
+          score: row.score
+        };
+      });
+      localStorage.setItem(DB_KEYS.PROGRESS, JSON.stringify(progressObj));
+    }
+
+    // 4. Logs de Atividades
+    const { data: logs, error: errLogs } = await supabaseClient.from('activity_log').select('*').order('timestamp', { ascending: false });
+    if (!errLogs && logs) {
+      const logsObj = {};
+      logs.forEach(row => {
+        if (!logsObj[row.student_id]) logsObj[row.student_id] = [];
+        logsObj[row.student_id].push({
+          message: row.message,
+          timestamp: row.timestamp
+        });
+      });
+      localStorage.setItem(DB_KEYS.ACTIVITY_LOG, JSON.stringify(logsObj));
+    }
+
+    // 5. Atividades Personalizadas
+    const { data: activities, error: errActivities } = await supabaseClient.from('activities').select('*');
+    if (!errActivities && activities) {
+      localStorage.setItem(DB_KEYS.ACTIVITIES, JSON.stringify(activities));
+    }
+
+    // 6. Respostas dos Exercícios
+    const { data: answers, error: errAnswers } = await supabaseClient.from('student_answers').select('*');
+    if (!errAnswers && answers) {
+      const answersObj = {};
+      answers.forEach(row => {
+        if (!answersObj[row.student_id]) answersObj[row.student_id] = {};
+        if (!answersObj[row.student_id][row.activity_id]) answersObj[row.student_id][row.activity_id] = {};
+        answersObj[row.student_id][row.activity_id][row.question_id] = row.answer_data;
+      });
+      localStorage.setItem(DB_KEYS.STUDENT_ANSWERS, JSON.stringify(answersObj));
+    }
+
+    // 6.5. Módulos Personalizados
+    const { data: remoteModules, error: errRemoteModules } = await supabaseClient.from('modules').select('*');
+    if (!errRemoteModules && remoteModules) {
+      const mappedModules = remoteModules.map(rm => ({
+        id: rm.id,
+        title: rm.title,
+        subtitle: rm.subtitle,
+        icon: rm.icon,
+        emoji: rm.emoji,
+        color: rm.color,
+        gradient: rm.gradient,
+        description: rm.description,
+        duration: rm.duration,
+        difficulty: rm.difficulty,
+        complexity: rm.complexity,
+        theory: rm.theory,
+        codeExample: rm.code_example,
+        quiz: rm.quiz
+      }));
+      localStorage.setItem('ep_custom_modules', JSON.stringify(mappedModules));
+    }
+
+    // 7. Configurações
+    const { data: settings, error: errSettings } = await supabaseClient.from('settings').select('*');
+    if (!errSettings && settings) {
+      const generalSettings = settings.find(s => s.key === 'general');
+      if (generalSettings) {
+        localStorage.setItem('ep_settings', JSON.stringify(generalSettings.value));
+      }
+    }
+
+    console.log('✅ Dados sincronizados do Supabase para o LocalStorage.');
+    document.dispatchEvent(new CustomEvent('supabaseSynced'));
+  } catch (error) {
+    console.error('❌ Falha ao sincronizar dados com o Supabase:', error);
+  }
 }
 
 // ── Users ──
@@ -790,6 +964,29 @@ function addStudent({ name, email, password, avatarColor }) {
   const progress = getAllProgress();
   progress[newUser.id] = {};
   localStorage.setItem(DB_KEYS.PROGRESS, JSON.stringify(progress));
+
+  // Sync para o Supabase
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('users').insert({
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      password: newUser.password,
+      role: newUser.role,
+      avatar: newUser.avatar,
+      avatar_color: newUser.avatarColor,
+      created_at: newUser.createdAt
+    }).then(({ error }) => {
+      if (error) console.error('Erro ao sincronizar usuário no Supabase:', error);
+    });
+    supabaseClient.from('module_access').insert({
+      student_id: newUser.id,
+      module_ids: []
+    }).then(({ error }) => {
+      if (error) console.error('Erro ao sincronizar module_access no Supabase:', error);
+    });
+  }
+
   return { ok: true, user: newUser };
 }
 
@@ -810,6 +1007,13 @@ function removeStudent(studentId) {
   const answers = JSON.parse(localStorage.getItem(DB_KEYS.STUDENT_ANSWERS) || '{}');
   delete answers[studentId];
   localStorage.setItem(DB_KEYS.STUDENT_ANSWERS, JSON.stringify(answers));
+
+  // Sync para o Supabase (ON DELETE CASCADE lidará com as tabelas filhas)
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('users').delete().eq('id', studentId).then(({ error }) => {
+      if (error) console.error('Erro ao remover usuário no Supabase:', error);
+    });
+  }
 }
 
 function updateStudent(studentId, { name, email, password, avatarColor }) {
@@ -828,6 +1032,20 @@ function updateStudent(studentId, { name, email, password, avatarColor }) {
     avatarColor: avatarColor || users[idx].avatarColor,
   };
   localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+
+  // Sync para o Supabase
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('users').update({
+      name: users[idx].name,
+      email: users[idx].email,
+      password: users[idx].password,
+      avatar: users[idx].avatar,
+      avatar_color: users[idx].avatarColor
+    }).eq('id', studentId).then(({ error }) => {
+      if (error) console.error('Erro ao atualizar usuário no Supabase:', error);
+    });
+  }
+
   return { ok: true, user: users[idx] };
 }
 
@@ -859,6 +1077,27 @@ function setStudentModuleAccess(studentId, moduleIds) {
   const access = getModuleAccess();
   access[studentId] = moduleIds;
   localStorage.setItem(DB_KEYS.MODULE_ACCESS, JSON.stringify(access));
+
+  // Sync para o Supabase
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('module_access').upsert({
+      student_id: studentId,
+      module_ids: moduleIds
+    }).then(({ error }) => {
+      if (error) console.error('Erro ao salvar module_access no Supabase:', error);
+    });
+  }
+}
+
+function syncSettingsToSupabase(settings) {
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('settings').upsert({
+      key: 'general',
+      value: settings
+    }).then(({ error }) => {
+      if (error) console.error('Erro ao salvar configurações no Supabase:', error);
+    });
+  }
 }
 
 function toggleModuleAccess(studentId, moduleId) {
@@ -893,6 +1132,22 @@ function setModuleProgress(studentId, moduleId, data) {
   if (!all[studentId]) all[studentId] = {};
   all[studentId][moduleId] = { ...all[studentId][moduleId], ...data };
   localStorage.setItem(DB_KEYS.PROGRESS, JSON.stringify(all));
+
+  // Sync para o Supabase
+  if (isSupabaseConfigured()) {
+    const currentModule = all[studentId][moduleId];
+    supabaseClient.from('progress').upsert({
+      student_id: studentId,
+      module_id: moduleId,
+      started: currentModule.started || false,
+      started_at: currentModule.startedAt || null,
+      completed: currentModule.completed || false,
+      completed_at: currentModule.completedAt || null,
+      score: currentModule.score || 0
+    }).then(({ error }) => {
+      if (error) console.error('Erro ao salvar progresso no Supabase:', error);
+    });
+  }
 }
 
 function markModuleComplete(studentId, moduleId, score) {
@@ -925,15 +1180,27 @@ function getActivityLog() {
 }
 
 function logActivity(studentId, message) {
+  const timestamp = new Date().toISOString();
   const log = getActivityLog();
   if (!log[studentId]) log[studentId] = [];
   log[studentId].unshift({
     message,
-    timestamp: new Date().toISOString(),
+    timestamp,
   });
   // Keep only last 50 entries
   if (log[studentId].length > 50) log[studentId] = log[studentId].slice(0, 50);
   localStorage.setItem(DB_KEYS.ACTIVITY_LOG, JSON.stringify(log));
+
+  // Sync para o Supabase
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('activity_log').insert({
+      student_id: studentId,
+      message,
+      timestamp
+    }).then(({ error }) => {
+      if (error) console.error('Erro ao registrar log no Supabase:', error);
+    });
+  }
 }
 
 // ── Activities ──
@@ -945,12 +1212,33 @@ function saveActivity(activity) {
   const activities = getActivities();
   activities.push(activity);
   localStorage.setItem(DB_KEYS.ACTIVITIES, JSON.stringify(activities));
+
+  // Sync para o Supabase
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('activities').insert({
+      id: activity.id,
+      title: activity.title,
+      description: activity.description || '',
+      created_by: activity.createdBy || 'teacher1',
+      questions: activity.questions,
+      created_at: activity.createdAt || new Date().toISOString()
+    }).then(({ error }) => {
+      if (error) console.error('Erro ao salvar atividade no Supabase:', error);
+    });
+  }
 }
 
 function deleteActivity(id) {
   let activities = getActivities();
   activities = activities.filter(act => act.id !== id);
   localStorage.setItem(DB_KEYS.ACTIVITIES, JSON.stringify(activities));
+
+  // Sync para o Supabase
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('activities').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('Erro ao deletar atividade no Supabase:', error);
+    });
+  }
 }
 
 function getStudentAnswers(studentId) {
@@ -964,6 +1252,19 @@ function saveStudentAnswer(studentId, activityId, questionId, answerData) {
   if (!all[studentId][activityId]) all[studentId][activityId] = {};
   all[studentId][activityId][questionId] = answerData;
   localStorage.setItem(DB_KEYS.STUDENT_ANSWERS, JSON.stringify(all));
+
+  // Sync para o Supabase
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('student_answers').upsert({
+      student_id: studentId,
+      activity_id: activityId,
+      question_id: questionId,
+      answer_data: answerData,
+      updated_at: new Date().toISOString()
+    }).then(({ error }) => {
+      if (error) console.error('Erro ao salvar resposta no Supabase:', error);
+    });
+  }
 }
 
 function getStudentActivityScore(studentId, activityId) {
@@ -991,12 +1292,64 @@ function getStudentActivityScore(studentId, activityId) {
 }
 
 // ── Modules ──
+function getCustomModules() {
+  return JSON.parse(localStorage.getItem('ep_custom_modules') || '[]');
+}
+
 function getModules() {
-  return MODULES;
+  const custom = getCustomModules();
+  const defaultFiltered = MODULES.filter(dm => !custom.some(cm => cm.id === dm.id));
+  return [...defaultFiltered, ...custom];
 }
 
 function getModuleById(id) {
-  return MODULES.find(m => m.id === id) || null;
+  return getModules().find(m => m.id === id) || null;
+}
+
+function saveCustomModule(module) {
+  const custom = getCustomModules();
+  const idx = custom.findIndex(m => m.id === module.id);
+  if (idx !== -1) {
+    custom[idx] = module;
+  } else {
+    custom.push(module);
+  }
+  localStorage.setItem('ep_custom_modules', JSON.stringify(custom));
+
+  // Sync to Supabase
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('modules').upsert({
+      id: module.id,
+      title: module.title,
+      subtitle: module.subtitle || '',
+      icon: module.icon || '',
+      emoji: module.emoji || '',
+      color: module.color || '',
+      gradient: module.gradient || '',
+      description: module.description || '',
+      duration: module.duration || '',
+      difficulty: module.difficulty || '',
+      complexity: module.complexity || {},
+      theory: module.theory || '',
+      code_example: module.codeExample || '',
+      quiz: module.quiz || []
+    }).then(({ error }) => {
+      if (error) console.error('Erro ao sincronizar módulo no Supabase:', error);
+    });
+  }
+}
+
+function deleteCustomModule(id) {
+  let custom = getCustomModules();
+  custom = custom.filter(m => m.id !== id);
+  localStorage.setItem('ep_custom_modules', JSON.stringify(custom));
+
+  // Sync to Supabase
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('modules').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('Erro ao deletar módulo no Supabase:', error);
+    });
+  }
 }
 
 // ── Stats ──

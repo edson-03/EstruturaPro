@@ -1,0 +1,33 @@
+# ============================================================
+#  EstruturaPRO — Git Ignore Configuration
+# ============================================================
+
+# Ignorar arquivo de credenciais sensíveis do banco de dados (Supabase)
+js/config.js
+
+# Arquivos de Sistema e IDEs
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Arquivos temporários e backups
+*.tmp
+*.bak
+*.swp
+*~
+
+# Logs do npm e Node
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+node_modules/
+package-lock.json
+
+# Diretório de agentes e caches locais do assistente
+.gemini/
+.agents/
+.git/
+Caches/
+downloads/
+logs/

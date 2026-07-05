@@ -296,7 +296,9 @@ function populateTheory(mod) {
 }
 
 function renderMarkdown(text) {
-  return text
+  if (!text) return '';
+  const sanitized = escapeDangerousHtml(text);
+  return sanitized
     .trim()
     .replace(/### (.+)/g, '<h3>$1</h3>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -316,9 +318,49 @@ function renderMarkdown(text) {
     .replace(/❌/g, '<span style="color:var(--red)">❌</span>');
 }
 
+function escapeDangerousHtml(text) {
+  if (!text) return '';
+  return text
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]*)/gi, '')
+    .replace(/href\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*"|javascript:[^\s>]*)/gi, '');
+}
+
 // ── Code ─────────────────────────────────────────────────
 function populateCode(mod) {
-  document.getElementById('code-content').innerHTML = mod.codeExample;
+  const textarea = document.getElementById('code-editor-textarea');
+  if (!textarea) return;
+
+  const rawCode = mod.codeExample || '';
+  const cleanCode = stripHtmlTags(rawCode);
+  originalModuleCode = cleanCode;
+
+  // Clear previous console outputs
+  const consoleOutput = document.getElementById('code-console-output');
+  if (consoleOutput) {
+    consoleOutput.textContent = '// Clique em "Executar" para ver a saída do console aqui...';
+    consoleOutput.style.color = '#a6adc8';
+  }
+
+  if (!studentCodeEditorInstance) {
+    studentCodeEditorInstance = CodeMirror.fromTextArea(textarea, {
+      mode: 'javascript',
+      theme: 'dracula',
+      lineNumbers: true,
+      autoCloseBrackets: true,
+      matchBrackets: true,
+      tabSize: 2,
+      viewportMargin: Infinity
+    });
+    studentCodeEditorInstance.setSize('100%', '320px');
+  }
+
+  studentCodeEditorInstance.setValue(cleanCode);
+  
+  // Refresh layout after transition animations
+  setTimeout(() => {
+    studentCodeEditorInstance.refresh();
+  }, 120);
 }
 
 // ── Visualizer ───────────────────────────────────────────
@@ -751,8 +793,29 @@ function setupEventListeners() {
   // Viewer tabs
   document.getElementById('viewer-tabs').addEventListener('click', (e) => {
     const tab = e.target.closest('.viewer-tab');
-    if (tab) switchViewerTab(tab.dataset.tab);
+    if (tab) {
+      switchViewerTab(tab.dataset.tab);
+      // Refresh editor layout when switching to code tab
+      if (tab.dataset.tab === 'code' && studentCodeEditorInstance) {
+        setTimeout(() => studentCodeEditorInstance.refresh(), 100);
+      }
+    }
   });
+
+  // Code playground executions
+  const runBtn = document.getElementById('btn-run-code');
+  if (runBtn) {
+    runBtn.addEventListener('click', runPlaygroundCode);
+  }
+  const resetBtn = document.getElementById('btn-reset-code');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      if (studentCodeEditorInstance) {
+        studentCodeEditorInstance.setValue(originalModuleCode);
+        showToast('🔄 Código resetado para o original!', 'info');
+      }
+    });
+  }
 
   // Logout
   document.getElementById('btn-logout').addEventListener('click', () => {
@@ -1326,4 +1389,60 @@ function clearOutputPanel(qId) {
   if (outputBody) outputBody.innerHTML = '';
   // Reset run counter so numbers restart from 1
   runCounters[qId] = 0;
+}
+
+let studentCodeEditorInstance = null;
+let originalModuleCode = '';
+
+function runPlaygroundCode() {
+  if (!studentCodeEditorInstance) return;
+  const code = studentCodeEditorInstance.getValue();
+  const consoleOutputEl = document.getElementById('code-console-output');
+  if (!consoleOutputEl) return;
+  consoleOutputEl.textContent = '';
+  
+  const logs = [];
+  const customConsole = {
+    log: (...args) => {
+      const formatted = args.map(arg => {
+        if (typeof arg === 'object') {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch {
+            return String(arg);
+          }
+        }
+        return String(arg);
+      }).join(' ');
+      logs.push(formatted);
+    },
+    error: (...args) => {
+      logs.push('❌ Erro: ' + args.join(' '));
+    },
+    warn: (...args) => {
+      logs.push('⚠️ Aviso: ' + args.join(' '));
+    }
+  };
+
+  try {
+    const executor = new Function('console', code);
+    executor(customConsole);
+    
+    if (logs.length === 0) {
+      consoleOutputEl.textContent = '// Código executado com sucesso (nenhum console.log emitido).';
+      consoleOutputEl.style.color = 'var(--text-muted)';
+    } else {
+      consoleOutputEl.textContent = logs.join('\n');
+      consoleOutputEl.style.color = '#a6adc8';
+    }
+  } catch (error) {
+    consoleOutputEl.textContent = '❌ Erro de Execução:\n' + error.message;
+    consoleOutputEl.style.color = 'var(--red-light)';
+  }
+}
+
+function stripHtmlTags(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || '';
 }
