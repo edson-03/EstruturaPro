@@ -4,6 +4,8 @@
 
 let currentTeacher = null;
 let currentDetailStudentId = null;
+let modTheoryEditor = null;
+let modCodeEditor = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   initDB();
@@ -16,6 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!currentTeacher) { clearSession(); window.location.href = 'index.html'; return; }
 
   initTeacherUI();
+  
+  setTimeout(() => {
+    if (typeof initModulesCrud === 'function') {
+      initModulesCrud();
+    }
+  }, 200);
 });
 
 // ── Init ──────────────────────────────────────────────────
@@ -67,6 +75,9 @@ function switchView(view, studentId = null) {
   if (document.getElementById('view-modules-crud')) {
     document.getElementById('view-modules-crud').style.display = 'none';
   }
+  if (document.getElementById('view-questions-crud')) {
+    document.getElementById('view-questions-crud').style.display = 'none';
+  }
 
   // Deactivate nav
   document.querySelectorAll('.t-nav-item').forEach(n => n.classList.remove('active'));
@@ -94,6 +105,18 @@ function switchView(view, studentId = null) {
       document.getElementById('header-title').textContent = 'Módulos de Aula';
       document.getElementById('header-subtitle').textContent = 'Gerencie o conteúdo teórico e os questionários (quizzes)';
       renderModulesCrudList();
+      break;
+
+    case 'questions-crud':
+      if (document.getElementById('view-questions-crud')) {
+        document.getElementById('view-questions-crud').style.display = 'block';
+      }
+      if (document.getElementById('nav-questions-crud')) {
+        document.getElementById('nav-questions-crud').classList.add('active');
+      }
+      document.getElementById('header-title').textContent = 'Banco de Questões';
+      document.getElementById('header-subtitle').textContent = 'Organize, crie e gerencie as questões para simulação aleatória';
+      renderQuestionsCrud();
       break;
 
     case 'create-activity':
@@ -178,10 +201,10 @@ function renderStudentsTable() {
     tr.innerHTML = `
       <td>
         <div class="student-cell">
-          <div class="s-avatar" style="background:${student.avatarColor};">${student.avatar}</div>
+          <div class="s-avatar" style="background:${student.avatarColor};">${escapeHtml(student.avatar)}</div>
           <div>
-            <div class="s-name">${student.name}</div>
-            <div class="s-email">${student.email}</div>
+            <div class="s-name">${escapeHtml(student.name)}</div>
+            <div class="s-email">${escapeHtml(student.email)}</div>
           </div>
         </div>
       </td>
@@ -259,10 +282,10 @@ function renderModuleCompletionGrid() {
     div.style.padding = '1rem';
     div.innerHTML = `
       <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
-        <div style="width:36px;height:36px;border-radius:8px;background:${mod.gradient};display:flex;align-items:center;justify-content:center;font-size:1rem;">${mod.emoji}</div>
+        <div style="width:36px;height:36px;border-radius:8px;background:${mod.gradient};display:flex;align-items:center;justify-content:center;font-size:1rem;">${escapeHtml(mod.emoji)}</div>
         <div>
-          <div style="font-size:0.85rem;font-weight:700;">${mod.title}</div>
-          <div style="font-size:0.72rem;color:var(--text-muted);">${mod.difficulty}</div>
+          <div style="font-size:0.85rem;font-weight:700;">${escapeHtml(mod.title)}</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);">${escapeHtml(mod.difficulty)}</div>
         </div>
         <div style="margin-left:auto;font-weight:800;font-size:1.1rem;color:${pct>=70?'var(--green)':pct>=40?'var(--yellow)':'var(--text-muted)'};">${pct}%</div>
       </div>
@@ -292,8 +315,8 @@ function renderAccessMatrix() {
         ${modules.map(m => `
           <th>
             <div class="module-header-cell">
-              <span class="module-col-icon">${m.emoji}</span>
-              <span class="module-col-name">${m.title.split(' ')[0]}</span>
+              <span class="module-col-icon">${escapeHtml(m.emoji)}</span>
+              <span class="module-col-name">${escapeHtml(m.title.split(' ')[0])}</span>
             </div>
           </th>
         `).join('')}
@@ -310,7 +333,7 @@ function renderAccessMatrix() {
       return `
         <td>
           <div class="toggle-wrap">
-            <label class="access-toggle" title="${mod.title}">
+            <label class="access-toggle" title="${escapeHtml(mod.title)}">
               <input type="checkbox" ${checked}
                 data-student-id="${student.id}"
                 data-module-id="${mod.id}"
@@ -326,9 +349,9 @@ function renderAccessMatrix() {
       <tr>
         <td>
           <div class="student-row-info">
-            <div class="s-avatar" style="background:${student.avatarColor};width:30px;height:30px;font-size:0.65rem;">${student.avatar}</div>
+            <div class="s-avatar" style="background:${student.avatarColor};width:30px;height:30px;font-size:0.65rem;">${escapeHtml(student.avatar)}</div>
             <div>
-              <div style="font-size:0.83rem;font-weight:600;">${student.name.split(' ')[0]} ${student.name.split(' ').slice(-1)[0]}</div>
+              <div style="font-size:0.83rem;font-weight:600;">${escapeHtml(student.name.split(' ')[0])} ${escapeHtml(student.name.split(' ').slice(-1)[0])}</div>
             </div>
           </div>
         </td>
@@ -419,7 +442,7 @@ function renderStudentDetail(studentId) {
     card.innerHTML = `
       <div class="dm-top">
         <div style="display:flex;align-items:center;gap:0.5rem;">
-          <div style="width:32px;height:32px;border-radius:8px;background:${mod.gradient};display:flex;align-items:center;justify-content:center;font-size:0.9rem;">${mod.emoji}</div>
+          <div style="width:32px;height:32px;border-radius:8px;background:${mod.gradient};display:flex;align-items:center;justify-content:center;font-size:0.9rem;">${escapeHtml(mod.emoji)}</div>
         </div>
         <label class="access-toggle" title="Toggle acesso">
           <input type="checkbox" ${unlocked ? 'checked' : ''}
@@ -427,7 +450,7 @@ function renderStudentDetail(studentId) {
           <span class="access-slider"></span>
         </label>
       </div>
-      <div class="dm-title">${mod.title}</div>
+      <div class="dm-title">${escapeHtml(mod.title)}</div>
       <div class="dm-status" style="color:${statusColor};">${statusIcon} ${statusText}</div>
       ${completed ? `
         <div class="dm-score" style="color:${prog.score >= 70 ? 'var(--green)' : 'var(--yellow)'}">
@@ -478,15 +501,54 @@ function renderStudentDetail(studentId) {
         card.style.padding = '1rem';
         
         card.innerHTML = `
-          <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.25rem;">${act.title}</div>
+          <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.25rem;">${escapeHtml(act.title)}</div>
           <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">
-            📚 Módulo: ${act.moduleId ? (getModuleById(act.moduleId)?.title || act.moduleId) : 'Nenhum'}
+            📚 Módulo: ${escapeHtml(act.moduleId ? (getModuleById(act.moduleId)?.title || act.moduleId) : 'Nenhum')}
           </div>
           <div style="font-size:0.78rem;color:${isDone ? 'var(--green)' : 'var(--yellow)'};font-weight:600;">
             ${isDone ? `Concluída (${score}% de acerto)` : answeredCount > 0 ? `Em andamento (${answeredCount}/${totalCount} resp.)` : 'Não resolvida'}
           </div>
         `;
         actGrid.appendChild(card);
+      });
+    }
+  }
+
+  // Question Bank cards
+  const qbGrid = document.getElementById('detail-qb-grid');
+  if (qbGrid) {
+    qbGrid.innerHTML = '';
+    const mList = getModules();
+    const studentScores = getStudentBankScores(studentId);
+
+    if (studentScores.length === 0) {
+      qbGrid.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;padding:1rem;grid-column:1/-1;">Nenhum simulado realizado por este aluno.</div>`;
+    } else {
+      mList.forEach(mod => {
+        const modScores = studentScores.filter(s => s.module_id === mod.id);
+        if (modScores.length === 0) return;
+        
+        const bestScore = Math.max(...modScores.map(s => s.score));
+        const totalAttempts = modScores.length;
+        const lastAttempt = modScores[modScores.length - 1];
+
+        const card = document.createElement('div');
+        card.className = `detail-module-card completed`;
+        card.style.padding = '1rem';
+        
+        card.innerHTML = `
+          <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.25rem;">${escapeHtml(mod.title)}</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">
+            Tentativas: <strong>${totalAttempts}</strong>
+          </div>
+          <div style="font-size:0.78rem;color:var(--green);font-weight:600;">
+            Melhor Pontuação: <strong style="color:var(--green-light)">${bestScore}%</strong>
+          </div>
+          <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.25rem;">
+            Última: ${formatRelativeTime(lastAttempt.completed_at)} (${lastAttempt.score}%)
+          </div>
+        `;
+        qbGrid.appendChild(card);
       });
     }
   }
@@ -571,6 +633,57 @@ function setupEventListeners() {
     showToast(`📖 Módulo "${getModules()[0].title}" liberado para todos!`, 'success');
     renderAccessMatrix();
   });
+
+  // Question Bank Event Listeners
+  const btnAddQ = document.getElementById('btn-qb-add-question');
+  if (btnAddQ) btnAddQ.addEventListener('click', () => openQuestionModal());
+
+  const btnCloseModal = document.getElementById('btn-qb-modal-close');
+  if (btnCloseModal) btnCloseModal.addEventListener('click', () => closeQuestionModal());
+  const btnCancelModal = document.getElementById('btn-qb-modal-cancel');
+  if (btnCancelModal) btnCancelModal.addEventListener('click', () => closeQuestionModal());
+  const btnSaveModal = document.getElementById('btn-qb-modal-save');
+  if (btnSaveModal) btnSaveModal.addEventListener('click', saveQuestionFromForm);
+
+  // Type change inside modal to update fields
+  const modalTypeSelect = document.getElementById('qb-modal-type');
+  if (modalTypeSelect) {
+    modalTypeSelect.addEventListener('change', (e) => {
+      renderDynamicModalOptions(e.target.value);
+    });
+  }
+
+  // Filters
+  const filterModuleSelect = document.getElementById('qb-filter-module');
+  if (filterModuleSelect) filterModuleSelect.addEventListener('change', renderQuestionsTable);
+  const filterTypeSelect = document.getElementById('qb-filter-type');
+  if (filterTypeSelect) filterTypeSelect.addEventListener('change', renderQuestionsTable);
+  const searchKeywordInput = document.getElementById('qb-search-keyword');
+  if (searchKeywordInput) searchKeywordInput.addEventListener('input', renderQuestionsTable);
+
+  // CSV Import Modals
+  const btnOpenCSV = document.getElementById('btn-qb-open-csv-modal');
+  if (btnOpenCSV) btnOpenCSV.addEventListener('click', openCSVImportModal);
+  const btnCloseCSV = document.getElementById('btn-qb-csv-modal-close');
+  if (btnCloseCSV) btnCloseCSV.addEventListener('click', closeCSVImportModal);
+  const btnCancelCSV = document.getElementById('btn-qb-csv-modal-cancel');
+  if (btnCancelCSV) btnCancelCSV.addEventListener('click', closeCSVImportModal);
+  const btnImportCSV = document.getElementById('btn-qb-csv-modal-import');
+  if (btnImportCSV) btnImportCSV.addEventListener('click', importQuestionsFromCSV);
+
+  // CSV file loader helper
+  const csvFileInput = document.getElementById('qb-csv-file');
+  if (csvFileInput) {
+    csvFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        document.getElementById('qb-csv-text').value = ev.target.result;
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
+  }
 }
 
 // ── Export Report ─────────────────────────────────────────
@@ -914,8 +1027,8 @@ function exportReportPDF() {
   <div class="header-container">
     <div>
       <span class="logo-badge">EstruturaPRO</span>
-      <h1 class="inst-title">${instName}</h1>
-      <p class="inst-subtitle">${instDiscipline} — ${instSemester}</p>
+      <h1 class="inst-title">${escapeHtml(instName)}</h1>
+      <p class="inst-subtitle">${escapeHtml(instDiscipline)} — ${escapeHtml(instSemester)}</p>
     </div>
     <div style="text-align: right; font-size: 0.85rem; color: #64748b;">
       <div><strong>Relatório de Desempenho</strong></div>
@@ -926,11 +1039,11 @@ function exportReportPDF() {
   <div class="meta-grid">
     <div class="meta-item">
       <span class="meta-label">Professor:</span>
-      <span class="meta-value">${instTeacher}</span>
+      <span class="meta-value">${escapeHtml(instTeacher)}</span>
     </div>
     <div class="meta-item">
       <span class="meta-label">Disciplina:</span>
-      <span class="meta-value">${instDiscipline}</span>
+      <span class="meta-value">${escapeHtml(instDiscipline)}</span>
     </div>
   </div>
   
@@ -969,8 +1082,8 @@ function exportReportPDF() {
         const lastDate = stats.lastAccess ? new Date(stats.lastAccess).toLocaleDateString('pt-BR') : 'Sem acesso';
         return `
           <tr>
-            <td style="font-weight: 600; color: #0f172a;">${st.name}</td>
-            <td>${st.email}</td>
+            <td style="font-weight: 600; color: #0f172a;">${escapeHtml(st.name)}</td>
+            <td>${escapeHtml(st.email)}</td>
             <td><strong>${stats.completed}</strong> de ${stats.total}</td>
             <td><strong>${stats.completed > 0 ? stats.avgScore + '%' : '—'}</strong></td>
             <td style="font-size: 0.85rem; color: #64748b;">${lastDate}</td>
@@ -993,8 +1106,8 @@ function exportReportPDF() {
       <div class="student-detail-card">
         <div class="student-header">
           <div>
-            <h3 class="student-name">${st.name}</h3>
-            <div class="student-email">${st.email}</div>
+            <h3 class="student-name">${escapeHtml(st.name)}</h3>
+            <div class="student-email">${escapeHtml(st.email)}</div>
           </div>
           <span class="status-badge ${stats.completed === stats.total ? 'status-completed' : 'status-started'}">
             ${stats.completed === stats.total ? 'Concluído' : 'Em Progresso'}
@@ -1037,7 +1150,7 @@ function exportReportPDF() {
 
             return `
               <div class="module-row">
-                <span class="module-title">${mod.title}</span>
+                <span class="module-title">${escapeHtml(mod.title)}</span>
                 <span class="status-badge ${badgeClass}">${statusText}</span>
               </div>
             `;
@@ -1087,7 +1200,7 @@ function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
-  toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-msg">${message}</span>`;
+  toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
     toast.classList.add('hiding');
@@ -1395,13 +1508,13 @@ function renderActivityPreview(activity) {
   const body = document.getElementById('ca-preview-body');
   
   let html = `
-    <div class="cap-title">${activity.title || 'Atividade Sem Título'}</div>
+    <div class="cap-title">${escapeHtml(activity.title) || 'Atividade Sem Título'}</div>
     <div class="cap-meta">
-      <span>📚 Módulo: ${activity.moduleId ? (getModuleById(activity.moduleId)?.title || activity.moduleId) : 'Nenhum'}</span>
+      <span>📚 Módulo: ${escapeHtml(activity.moduleId ? (getModuleById(activity.moduleId)?.title || activity.moduleId) : 'Nenhum')}</span>
       <span>📅 Prazo: ${activity.deadline ? new Date(activity.deadline).toLocaleString('pt-BR') : 'Sem prazo'}</span>
       <span>❓ Questões: ${activity.questions.length}</span>
     </div>
-    ${activity.description ? `<div class="cap-desc">${activity.description}</div>` : ''}
+    ${activity.description ? `<div class="cap-desc">${escapeHtml(activity.description)}</div>` : ''}
   `;
 
   if (!activity.questions.length) {
@@ -1411,7 +1524,7 @@ function renderActivityPreview(activity) {
       html += `
         <div class="cap-q-card">
           <div class="cap-q-num">Questão ${idx + 1} — ${q.type === 'theoretical' ? 'Teórica' : 'Prática'}</div>
-          <div class="cap-q-text">${q.question || 'Sem enunciado'}</div>
+          <div class="cap-q-text">${escapeHtml(q.question) || 'Sem enunciado'}</div>
       `;
 
       if (q.type === 'theoretical') {
@@ -1664,14 +1777,6 @@ function safeStringify(val) {
   try { return JSON.stringify(val); } catch { return String(val); }
 }
 
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 // Bind globally for inline event handlers
 window.removeQuestionCard = removeQuestionCard;
 window.addTestCaseRow = addTestCaseRow;
@@ -1700,14 +1805,14 @@ function initStudentsView() {
   });
 
   // Manual register form
-  document.getElementById('student-register-form').addEventListener('submit', (e) => {
+  document.getElementById('student-register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('stud-name').value.trim();
     const email = document.getElementById('stud-email').value.trim();
     const password = document.getElementById('stud-password').value.trim() || '1234';
     const avatarColor = document.getElementById('stud-color').value;
 
-    const result = addStudent({ name, email, password, avatarColor });
+    const result = await addStudent({ name, email, password, avatarColor });
     if (!result.ok) {
       showToast(`❌ ${result.error}`, 'error');
       return;
@@ -1733,31 +1838,31 @@ function initStudentsView() {
   });
 
   // CSV import
-  document.getElementById('btn-import-csv').addEventListener('click', () => {
+  document.getElementById('btn-import-csv').addEventListener('click', async () => {
     const raw = document.getElementById('stud-csv-text').value.trim();
     if (!raw) { showToast('⚠️ Cole os dados CSV antes de importar.', 'warning'); return; }
     const lines = raw.split('\n').filter(l => l.trim());
     let imported = 0;
     let errors = [];
 
-    lines.forEach((line, idx) => {
-      const parts = line.split(',').map(p => p.trim());
+    for (let idx = 0; idx < lines.length; idx++) {
+      const parts = lines[idx].split(',').map(p => p.trim());
       if (parts.length < 2) {
         errors.push(`Linha ${idx + 1}: formato inválido (esperado: nome,email[,senha])`);
-        return;
+        continue;
       }
       const [name, email, password = '1234'] = parts;
-      if (!name || !email) {
-        errors.push(`Linha ${idx + 1}: nome ou email vazio`);
-        return;
+      if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errors.push(`Linha ${idx + 1}: nome ou e-mail inválido`);
+        continue;
       }
-      const result = addStudent({ name, email, password, avatarColor: randomAvatarColor() });
+      const result = await addStudent({ name, email, password, avatarColor: randomAvatarColor() });
       if (!result.ok) {
         errors.push(`Linha ${idx + 1} (${email}): ${result.error}`);
       } else {
         imported++;
       }
-    });
+    }
 
     const resultEl = document.getElementById('csv-import-result');
     let html = '';
@@ -1792,14 +1897,14 @@ function initStudentsView() {
   });
 
   // Edit save
-  document.getElementById('btn-stud-edit-save').addEventListener('click', () => {
+  document.getElementById('btn-stud-edit-save').addEventListener('click', async () => {
     const id = document.getElementById('edit-stud-id').value;
     const name = document.getElementById('edit-stud-name').value.trim();
     const email = document.getElementById('edit-stud-email').value.trim();
     const password = document.getElementById('edit-stud-password').value.trim();
     const avatarColor = document.getElementById('edit-stud-color').value;
     if (!name || !email) { showToast('⚠️ Preencha nome e email.', 'warning'); return; }
-    const result = updateStudent(id, { name, email, password: password || undefined, avatarColor });
+    const result = await updateStudent(id, { name, email, password: password || undefined, avatarColor });
     if (!result.ok) { showToast(`❌ ${result.error}`, 'error'); return; }
     showToast('✅ Aluno atualizado com sucesso!', 'success');
     closeStudentEditModal();
@@ -1830,15 +1935,15 @@ function renderStudentsManagementTable() {
     tr.innerHTML = `
       <td>
         <div class="student-cell">
-          <div class="s-avatar" style="background:${student.avatarColor};">${student.avatar}</div>
+          <div class="s-avatar" style="background:${student.avatarColor};">${escapeHtml(student.avatar)}</div>
           <div>
-            <div class="s-name">${student.name}</div>
+            <div class="s-name">${escapeHtml(student.name)}</div>
           </div>
         </div>
       </td>
-      <td><span style="font-size:0.82rem;color:var(--text-secondary);">${student.email}</span></td>
+      <td><span style="font-size:0.82rem;color:var(--text-secondary);">${escapeHtml(student.email)}</span></td>
       <td>
-        <span style="font-family:var(--font-mono);font-size:0.78rem;background:rgba(255,255,255,0.05);padding:0.2rem 0.5rem;border-radius:4px;letter-spacing:0.05em;">${student.password || '••••'}</span>
+        <span style="font-family:var(--font-mono);font-size:0.78rem;background:rgba(255,255,255,0.05);padding:0.2rem 0.5rem;border-radius:4px;letter-spacing:0.05em;">${escapeHtml(student.password) || '••••'}</span>
       </td>
       <td><span style="font-size:0.8rem;color:var(--text-muted);">${createdAt}</span></td>
       <td>
@@ -1874,9 +1979,10 @@ function closeStudentEditModal() {
   document.getElementById('stud-edit-modal').classList.remove('open');
 }
 
-function confirmRemoveStudent(studentId, studentName) {
+async function confirmRemoveStudent(studentId, studentName) {
   if (!confirm(`Tem certeza que deseja remover o aluno "${studentName}"?\nEsta ação apagará todo o progresso e respostas desse aluno.`)) return;
-  removeStudent(studentId);
+  const result = await removeStudent(studentId);
+  if (!result.ok) return;
   showToast(`🗑️ Aluno "${studentName}" removido.`, 'warning');
   renderStudentsManagementTable();
   renderOverview();
@@ -2130,9 +2236,9 @@ function renderRanking(studentData, filter) {
     card.className = `perf-rank-card ${idx === 0 ? 'rank-first' : ''}`;
     card.innerHTML = `
       <div class="rank-medal">${medal}</div>
-      <div class="rank-avatar" style="background:${d.student.avatarColor};">${d.student.avatar}</div>
+      <div class="rank-avatar" style="background:${d.student.avatarColor};">${escapeHtml(d.student.avatar)}</div>
       <div class="rank-info">
-        <div class="rank-name">${d.student.name.split(' ').slice(0, 2).join(' ')}</div>
+        <div class="rank-name">${escapeHtml(d.student.name.split(' ').slice(0, 2).join(' '))}</div>
         <div class="rank-badge-chip" style="color:${rank.color};background:${rank.color}22;border-color:${rank.color}44;">
           ${rank.icon} ${rank.label}
         </div>
@@ -2166,10 +2272,10 @@ function renderModulePerformance(modules, students, allProgress) {
     item.className = 'perf-module-item';
     item.innerHTML = `
       <div class="perf-mod-header">
-        <div class="perf-mod-icon" style="background:${mod.gradient};">${mod.emoji}</div>
+        <div class="perf-mod-icon" style="background:${mod.gradient};">${escapeHtml(mod.emoji)}</div>
         <div class="perf-mod-meta">
-          <div class="perf-mod-name">${mod.title}</div>
-          <div class="perf-mod-sub">${mod.difficulty} · ${completedStudents.length}/${students.length} concluíram</div>
+          <div class="perf-mod-name">${escapeHtml(mod.title)}</div>
+          <div class="perf-mod-sub">${escapeHtml(mod.difficulty)} · ${completedStudents.length}/${students.length} concluíram</div>
         </div>
         <div class="perf-mod-score" style="color:${scoreColor};">${completedStudents.length > 0 ? avgScore + '%' : '—'}</div>
       </div>
@@ -2198,8 +2304,9 @@ function renderModulePerformance(modules, students, allProgress) {
           else if (prog?.started) status = 'progress';
           else if (hasAccess) status = 'unlocked';
           const colors2 = { done: 'var(--green)', progress: 'var(--yellow)', unlocked: 'var(--accent-light)', locked: 'var(--border)' };
-          const tips = { done: `${s.name}: Concluído (${prog?.score || 0}%)`, progress: `${s.name}: Em andamento`, unlocked: `${s.name}: Liberado`, locked: `${s.name}: Bloqueado` };
-          return `<div class="perf-student-dot" style="background:${s.avatarColor};border-color:${colors2[status]};" title="${tips[status]}">${s.avatar}</div>`;
+          const sName = escapeHtml(s.name);
+          const tips = { done: `${sName}: Concluído (${prog?.score || 0}%)`, progress: `${sName}: Em andamento`, unlocked: `${sName}: Liberado`, locked: `${sName}: Bloqueado` };
+          return `<div class="perf-student-dot" style="background:${s.avatarColor};border-color:${colors2[status]};" title="${tips[status]}">${escapeHtml(s.avatar)}</div>`;
         }).join('')}
       </div>
     `;
@@ -2243,9 +2350,9 @@ function renderQuizAnalysis(modules, students, allProgress) {
 
     card.innerHTML = `
       <div class="perf-quiz-card-header">
-        <div class="perf-quiz-mod-icon" style="background:${mod.gradient};">${mod.emoji}</div>
+        <div class="perf-quiz-mod-icon" style="background:${mod.gradient};">${escapeHtml(mod.emoji)}</div>
         <div>
-          <div class="perf-quiz-mod-name">${mod.title}</div>
+          <div class="perf-quiz-mod-name">${escapeHtml(mod.title)}</div>
           <div class="perf-quiz-mod-sub">${completedCount} concluíram · ${totalAttempts} tentativas</div>
         </div>
       </div>
@@ -2255,8 +2362,8 @@ function renderQuizAnalysis(modules, students, allProgress) {
           const scoreColor = r.score >= 70 ? 'var(--green)' : r.score >= 40 ? 'var(--yellow)' : 'var(--red)';
           return `
             <div class="perf-quiz-row">
-              <div class="perf-qr-avatar" style="background:${r.student.avatarColor};">${r.student.avatar}</div>
-              <div class="perf-qr-name">${r.student.name.split(' ')[0]}</div>
+              <div class="perf-qr-avatar" style="background:${r.student.avatarColor};">${escapeHtml(r.student.avatar)}</div>
+              <div class="perf-qr-name">${escapeHtml(r.student.name.split(' ')[0])}</div>
               <div class="perf-qr-attempts">
                 ${r.status === 'completed' || r.status === 'progress'
                   ? `<span class="attempt-chip">${r.attempts}x</span>`
@@ -2289,7 +2396,7 @@ function renderBadgesSelector(studentData) {
   studentData.forEach(d => {
     const btn = document.createElement('button');
     btn.className = `perf-stud-tab ${d.student.id === perfCurrentBadgeStudent ? 'active' : ''}`;
-    btn.innerHTML = `<span class="tab-avatar" style="background:${d.student.avatarColor};">${d.student.avatar}</span>${d.student.name.split(' ')[0]}`;
+    btn.innerHTML = `<span class="tab-avatar" style="background:${d.student.avatarColor};">${escapeHtml(d.student.avatar)}</span>${escapeHtml(d.student.name.split(' ')[0])}`;
     btn.onclick = () => {
       perfCurrentBadgeStudent = d.student.id;
       document.querySelectorAll('#perf-badges-selector .perf-stud-tab').forEach(b => b.classList.remove('active'));
@@ -2327,7 +2434,7 @@ function renderTimelineSelector(studentData) {
   studentData.forEach(d => {
     const btn = document.createElement('button');
     btn.className = `perf-stud-tab ${d.student.id === perfCurrentTimelineStudent ? 'active' : ''}`;
-    btn.innerHTML = `<span class="tab-avatar" style="background:${d.student.avatarColor};">${d.student.avatar}</span>${d.student.name.split(' ')[0]}`;
+    btn.innerHTML = `<span class="tab-avatar" style="background:${d.student.avatarColor};">${escapeHtml(d.student.avatar)}</span>${escapeHtml(d.student.name.split(' ')[0])}`;
     btn.onclick = () => {
       perfCurrentTimelineStudent = d.student.id;
       document.querySelectorAll('#perf-timeline-selector .perf-stud-tab').forEach(b => b.classList.remove('active'));
@@ -2347,7 +2454,7 @@ function renderTimeline(studentId, studentData) {
   const breakdown = d.perf.breakdown;
 
   if (breakdown.length === 0) {
-    container.innerHTML = `<div class="perf-empty">📭 Nenhuma atividade registrada para ${student.name.split(' ')[0]} ainda.</div>`;
+    container.innerHTML = `<div class="perf-empty">📭 Nenhuma atividade registrada para ${escapeHtml(student.name.split(' ')[0])} ainda.</div>`;
     return;
   }
 
@@ -2533,23 +2640,30 @@ function initSettingsView() {
     `;
   });
 
-  document.getElementById('btn-cfg-change-pass').addEventListener('click', () => {
+  document.getElementById('btn-cfg-change-pass').addEventListener('click', async () => {
     const current = document.getElementById('cfg-cur-pass').value;
     const newPass  = document.getElementById('cfg-new-pass').value;
     const confirm  = document.getElementById('cfg-confirm-pass').value;
     if (!current || !newPass || !confirm) { showToast('⚠️ Preencha todos os campos de senha.', 'warning'); return; }
     if (newPass !== confirm) { showToast('❌ As senhas não coincidem.', 'error'); return; }
     if (newPass.length < 4) { showToast('❌ A nova senha deve ter pelo menos 4 caracteres.', 'error'); return; }
-    // Validate current password
-    const teacher = getUserById(getSession().userId);
-    if (teacher.password !== current) { showToast('❌ Senha atual incorreta.', 'error'); return; }
-    // Update password
-    const users = JSON.parse(localStorage.getItem('ep_users') || '[]');
-    const idx = users.findIndex(u => u.id === teacher.id);
-    if (idx !== -1) {
-      users[idx].password = newPass;
-      localStorage.setItem('ep_users', JSON.stringify(users));
+
+    if (isSupabaseConfigured()) {
+      // A verificação da senha atual e o hash da nova senha acontecem no servidor
+      // (Edge Function "change-password"), nunca no client.
+      const result = await callEdgeFunction('change-password', { oldPassword: current, newPassword: newPass });
+      if (!result.ok) { showToast(`❌ ${result.error}`, 'error'); return; }
+    } else {
+      const teacher = getUserById(getSession().userId);
+      if (teacher.password !== current) { showToast('❌ Senha atual incorreta.', 'error'); return; }
+      const users = JSON.parse(localStorage.getItem('ep_users') || '[]');
+      const idx = users.findIndex(u => u.id === teacher.id);
+      if (idx !== -1) {
+        users[idx].password = newPass;
+        localStorage.setItem('ep_users', JSON.stringify(users));
+      }
     }
+
     document.getElementById('cfg-cur-pass').value    = '';
     document.getElementById('cfg-new-pass').value    = '';
     document.getElementById('cfg-confirm-pass').value = '';
@@ -3083,7 +3197,7 @@ function _setupDangerModal() {
     setTimeout(() => inputEl.classList.remove('input-error'), 450);
   }
 
-  function attemptConfirm() {
+  async function attemptConfirm() {
     const password = inputEl.value;
     if (!password) {
       showError('Digite sua senha para continuar.');
@@ -3091,33 +3205,44 @@ function _setupDangerModal() {
       return;
     }
 
-    // Validate password against current teacher
     const session = getSession();
-    const teacher = session ? getUserById(session.userId) : null;
-
-    if (!teacher) {
+    if (!session) {
       showError('Sessão expirada. Faça login novamente.');
       return;
     }
 
-    if (teacher.password !== password) {
+    confirmBtn.disabled = true;
+    confirmBtn.classList.add('loading');
+    document.getElementById('danger-modal-confirm-label').textContent = 'Verificando...';
+
+    // A verificação da senha acontece no servidor (Edge Function "verify-password")
+    // quando o Supabase está configurado; nunca compara contra dado já exposto no client.
+    let passwordOk;
+    if (isSupabaseConfigured()) {
+      const result = await callEdgeFunction('verify-password', { password });
+      passwordOk = result.ok && result.data.ok;
+    } else {
+      const teacher = getUserById(session.userId);
+      passwordOk = teacher && teacher.password === password;
+    }
+
+    if (!passwordOk) {
+      confirmBtn.disabled = false;
+      confirmBtn.classList.remove('loading');
+      document.getElementById('danger-modal-confirm-label').textContent = 'Confirmar';
       showError('Senha incorreta. Tente novamente.');
       inputEl.value = '';
       inputEl.focus();
       return;
     }
 
-    // Password correct — execute
-    confirmBtn.disabled = true;
-    confirmBtn.classList.add('loading');
     document.getElementById('danger-modal-confirm-label').textContent = 'Executando...';
-
     setTimeout(() => {
       closeModal();
       if (typeof _dangerModalCallback === 'function') {
         _dangerModalCallback();
       }
-    }, 500);
+    }, 300);
   }
 
   // Close on overlay click
@@ -3197,6 +3322,18 @@ function setupModulesCrudEvents() {
     // Switch views
     document.getElementById('modules-crud-list-sec').style.display = 'none';
     document.getElementById('modules-crud-form-sec').style.display = 'block';
+
+    // Initialize/Refresh CodeMirror Editors
+    initModulesCodeMirrorEditors();
+    if (modTheoryEditor) {
+      modTheoryEditor.setValue('');
+      modTheoryEditor.refresh();
+    }
+    if (modCodeEditor) {
+      modCodeEditor.setValue('');
+      modCodeEditor.refresh();
+    }
+    updateModulesTheoryPreview();
   });
 
   // Back to list button
@@ -3338,20 +3475,20 @@ function renderModulesCrudList() {
       <div>
         <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:0.5rem;">
           <div style="font-size:1.8rem; background:${m.color || '#6366f1'}15; width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center; border:1px solid ${m.color || '#6366f1'}30;">
-            ${m.emoji || '📦'}
+            ${escapeHtml(m.emoji) || '📦'}
           </div>
           <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
-            <span class="badge" style="background:${m.color || '#6366f1'}20; color:${m.color || '#6366f1'};">${m.difficulty}</span>
+            <span class="badge" style="background:${m.color || '#6366f1'}20; color:${m.color || '#6366f1'};">${escapeHtml(m.difficulty)}</span>
             ${isDefault ? '<span class="badge" style="background:#6366f115; color:#6366f1;">Padrão</span>' : '<span class="badge" style="background:#10b98115; color:#10b981;">Custom</span>'}
           </div>
         </div>
-        <h3 style="font-size:1.15rem; font-weight:600; color:var(--text-primary); margin:0.5rem 0 0.25rem 0;">${m.title}</h3>
-        <p style="font-size:0.8rem; color:var(--text-secondary); margin:0 0 0.75rem 0; font-style:italic;">${m.subtitle || ''}</p>
-        <p style="font-size:0.82rem; color:var(--text-muted); margin:0; line-clamp:2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${m.description || 'Sem descrição.'}</p>
+        <h3 style="font-size:1.15rem; font-weight:600; color:var(--text-primary); margin:0.5rem 0 0.25rem 0;">${escapeHtml(m.title)}</h3>
+        <p style="font-size:0.8rem; color:var(--text-secondary); margin:0 0 0.75rem 0; font-style:italic;">${escapeHtml(m.subtitle)}</p>
+        <p style="font-size:0.82rem; color:var(--text-muted); margin:0; line-clamp:2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escapeHtml(m.description) || 'Sem descrição.'}</p>
       </div>
       <div style="margin-top:1.25rem; border-top:1px solid var(--border); padding-top:0.75rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; font-size:0.75rem; color:var(--text-secondary);">
-          <span>⏱️ ${m.duration}</span>
+          <span>⏱️ ${escapeHtml(m.duration)}</span>
           <span>📝 ${m.quiz ? m.quiz.length : 0} perguntas</span>
         </div>
         <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
@@ -3413,8 +3550,7 @@ function renderModulesCrudForm(moduleId) {
   document.getElementById('mod-c-space').value = m.complexity?.space || '';
 
   // Fill theory and code
-  document.getElementById('mod-theory').value = m.theory || '';
-  document.getElementById('mod-code').value = m.codeExample || '';
+  // We'll set these values on CodeMirror after showing the form and initializing the editors
 
   // Populate quiz questions
   const container = document.getElementById('mod-quiz-questions-container');
@@ -3428,6 +3564,18 @@ function renderModulesCrudForm(moduleId) {
   // Switch views
   document.getElementById('modules-crud-list-sec').style.display = 'none';
   document.getElementById('modules-crud-form-sec').style.display = 'block';
+
+  // Initialize/Refresh CodeMirror Editors
+  initModulesCodeMirrorEditors();
+  if (modTheoryEditor) {
+    modTheoryEditor.setValue(m.theory || '');
+    modTheoryEditor.refresh();
+  }
+  if (modCodeEditor) {
+    modCodeEditor.setValue(m.codeExample || '');
+    modCodeEditor.refresh();
+  }
+  updateModulesTheoryPreview();
 }
 
 function saveModuleCrudForm() {
@@ -3489,6 +3637,18 @@ function saveModuleCrudForm() {
     return;
   }
 
+  const theoryVal = modTheoryEditor ? modTheoryEditor.getValue() : '';
+  const codeVal   = modCodeEditor ? modCodeEditor.getValue() : '';
+
+  if (!theoryVal.trim()) {
+    showToast('❌ O conteúdo teórico do módulo é obrigatório.', 'warning');
+    return;
+  }
+  if (!codeVal.trim()) {
+    showToast('❌ O código de exemplo do módulo é obrigatório.', 'warning');
+    return;
+  }
+
   // Colors and Gradients
   const color = document.getElementById('mod-color').value;
   const gradient = `linear-gradient(135deg, ${color} 0%, #111827 100%)`;
@@ -3501,12 +3661,12 @@ function saveModuleCrudForm() {
     emoji: document.getElementById('mod-emoji').value.trim() || '📦',
     color: color,
     gradient: gradient,
-    description: document.getElementById('mod-theory').value.trim().substring(0, 120) + '...',
+    description: theoryVal.trim().substring(0, 120) + '...',
     duration: document.getElementById('mod-duration').value.trim() || '45 min',
     difficulty: document.getElementById('mod-difficulty').value,
     complexity: complexity,
-    theory: document.getElementById('mod-theory').value,
-    codeExample: document.getElementById('mod-code').value,
+    theory: theoryVal,
+    codeExample: codeVal,
     quiz: quiz
   };
 
@@ -3535,15 +3695,15 @@ function previewModuleCrud(m) {
         <div style="display:flex; flex-direction:column; gap:1.25rem;">
           ${m.quiz.map((q, idx) => `
             <div style="padding:1.25rem; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,0.015); border-left:3px solid ${m.color || '#6366f1'};">
-              <div style="font-weight:600; font-size:0.9rem; margin-bottom:0.75rem; color:var(--text-primary);">${idx + 1}. ${q.question}</div>
+              <div style="font-weight:600; font-size:0.9rem; margin-bottom:0.75rem; color:var(--text-primary);">${idx + 1}. ${escapeHtml(q.question)}</div>
               <div style="display:grid; grid-template-columns:1fr; gap:0.5rem; margin-left:0.5rem;">
                 ${q.options.map((opt, optIdx) => `
                   <div style="font-size:0.82rem; padding:0.5rem 1rem; border-radius:6px; border:1px solid ${optIdx === q.correct ? 'rgba(16,185,129,0.4)' : 'var(--border)'}; background:${optIdx === q.correct ? 'rgba(16,185,129,0.08)' : 'transparent'}; color:${optIdx === q.correct ? 'var(--green-light)' : 'var(--text-secondary)'};">
-                    ${opt} ${optIdx === q.correct ? ' <span style="font-weight:700; margin-left:0.5rem;">✓ Resposta Correta</span>' : ''}
+                    ${escapeHtml(opt)} ${optIdx === q.correct ? ' <span style="font-weight:700; margin-left:0.5rem;">✓ Resposta Correta</span>' : ''}
                   </div>
                 `).join('')}
               </div>
-              ${q.explanation ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.75rem; font-style:italic; display:flex; gap:0.35rem; align-items:center;"><span>💡</span><span>Explicação: ${q.explanation}</span></div>` : ''}
+              ${q.explanation ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.75rem; font-style:italic; display:flex; gap:0.35rem; align-items:center;"><span>💡</span><span>Explicação: ${escapeHtml(q.explanation)}</span></div>` : ''}
             </div>
           `).join('')}
         </div>
@@ -3563,15 +3723,15 @@ function previewModuleCrud(m) {
   body.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:start; border-bottom:1px solid var(--border); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
       <div style="display:flex; align-items:center; gap:0.75rem;">
-        <span style="font-size:2.2rem; background:${m.color || '#6366f1'}15; width:56px; height:56px; border-radius:12px; display:flex; align-items:center; justify-content:center; border:1px solid ${m.color || '#6366f1'}30;">${m.emoji || '📦'}</span>
+        <span style="font-size:2.2rem; background:${m.color || '#6366f1'}15; width:56px; height:56px; border-radius:12px; display:flex; align-items:center; justify-content:center; border:1px solid ${m.color || '#6366f1'}30;">${escapeHtml(m.emoji) || '📦'}</span>
         <div>
-          <h2 style="font-size:1.4rem; font-weight:700; margin:0; color:var(--text-primary);">${m.title}</h2>
-          <p style="margin:0.2rem 0 0 0; font-size:0.85rem; color:var(--text-secondary); font-style:italic;">${m.subtitle || ''}</p>
+          <h2 style="font-size:1.4rem; font-weight:700; margin:0; color:var(--text-primary);">${escapeHtml(m.title)}</h2>
+          <p style="margin:0.2rem 0 0 0; font-size:0.85rem; color:var(--text-secondary); font-style:italic;">${escapeHtml(m.subtitle)}</p>
         </div>
       </div>
       <div style="display:flex; gap:0.5rem;">
-        <span class="badge" style="background:${m.color || '#6366f1'}20; color:${m.color || '#6366f1'}; padding:0.4rem 0.8rem;">${m.difficulty}</span>
-        <span class="badge badge-muted" style="padding:0.4rem 0.8rem;">⏱️ ${m.duration}</span>
+        <span class="badge" style="background:${m.color || '#6366f1'}20; color:${m.color || '#6366f1'}; padding:0.4rem 0.8rem;">${escapeHtml(m.difficulty)}</span>
+        <span class="badge badge-muted" style="padding:0.4rem 0.8rem;">⏱️ ${escapeHtml(m.duration)}</span>
       </div>
     </div>
 
@@ -3604,7 +3764,7 @@ function previewModuleCrud(m) {
 
 function renderMarkdownLocal(text) {
   if (!text) return '';
-  const sanitized = escapeDangerousHtmlLocal(text);
+  const sanitized = escapeDangerousHtml(text);
   return sanitized
     .trim()
     .replace(/### (.+)/g, '<h3 style="font-size:1.05rem; font-weight:600; color:var(--text-primary); margin:1.25rem 0 0.5rem 0;">$1</h3>')
@@ -3627,19 +3787,617 @@ function renderMarkdownLocal(text) {
     .replace(/❌/g, '<span style="color:var(--red-light)">❌</span>');
 }
 
-function escapeDangerousHtmlLocal(text) {
-  if (!text) return '';
-  return text
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]*)/gi, '')
-    .replace(/href\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*"|javascript:[^\s>]*)/gi, '');
+
+// ── Upgraded Module Editors & Live Preview Helpers ────────────────
+
+function initModulesCodeMirrorEditors() {
+  if (modTheoryEditor && modCodeEditor) {
+    // Already initialized, refresh sizes
+    modTheoryEditor.refresh();
+    modCodeEditor.refresh();
+    updateModulesTheoryPreview();
+    return;
+  }
+
+  // Initialize modTheoryEditor (Markdown)
+  const theoryTextArea = document.getElementById('mod-theory');
+  if (theoryTextArea && !modTheoryEditor) {
+    modTheoryEditor = CodeMirror.fromTextArea(theoryTextArea, {
+      mode: 'markdown',
+      theme: 'dracula',
+      lineNumbers: true,
+      tabSize: 2,
+      lineWrapping: true,
+      autoCloseBrackets: true,
+      matchBrackets: true,
+      styleActiveLine: true,
+      extraKeys: {
+        Tab: (cm) => {
+          if (cm.somethingSelected()) cm.indentSelection('add');
+          else cm.replaceSelection('  ', 'end');
+        },
+        'Shift-Tab': (cm) => cm.indentSelection('subtract')
+      }
+    });
+
+    modTheoryEditor.on('change', () => {
+      updateModulesTheoryPreview();
+    });
+  }
+
+  // Initialize modCodeEditor (JavaScript)
+  const codeTextArea = document.getElementById('mod-code');
+  if (codeTextArea && !modCodeEditor) {
+    modCodeEditor = CodeMirror.fromTextArea(codeTextArea, {
+      mode: 'javascript',
+      theme: 'dracula',
+      lineNumbers: true,
+      tabSize: 2,
+      lineWrapping: true,
+      autoCloseBrackets: true,
+      matchBrackets: true,
+      styleActiveLine: true,
+      extraKeys: {
+        Tab: (cm) => {
+          if (cm.somethingSelected()) cm.indentSelection('add');
+          else cm.replaceSelection('  ', 'end');
+        },
+        'Shift-Tab': (cm) => cm.indentSelection('subtract')
+      }
+    });
+  }
+
+  // Setup toolbar events and layout toggles
+  setupModulesEditorControls();
+
+  // Force first preview build
+  updateModulesTheoryPreview();
 }
 
-function escapeHtml(string) {
-  return String(string)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+function updateModulesTheoryPreview() {
+  const previewPane = document.getElementById('theory-preview-pane');
+  if (!previewPane) return;
+  const theoryText = modTheoryEditor ? modTheoryEditor.getValue() : '';
+  if (!theoryText.trim()) {
+    previewPane.innerHTML = '<div class="preview-placeholder">// A prévia renderizada aparecerá aqui em tempo real...</div>';
+    return;
+  }
+  // Reuse existing local markdown parser
+  previewPane.innerHTML = renderMarkdownLocal(theoryText);
 }
+
+function setupModulesEditorControls() {
+  // 1. Layout Toggles
+  const toggles = document.querySelectorAll('.btn-layout-toggle');
+  const splitContainer = document.getElementById('theory-split-container');
+  
+  // Ensure we add events only once by removing old listener placeholders if any, but since it's vanilla, we just assign onclick
+  toggles.forEach(toggle => {
+    toggle.onclick = () => {
+      toggles.forEach(t => t.classList.remove('active'));
+      toggle.classList.add('active');
+      const layout = toggle.dataset.layout;
+
+      // Remove classes
+      splitContainer.classList.remove('split-layout', 'editor-layout', 'preview-layout');
+      
+      if (layout === 'split') {
+        splitContainer.classList.add('split-layout');
+      } else if (layout === 'editor') {
+        splitContainer.classList.add('editor-layout');
+      } else if (layout === 'preview') {
+        splitContainer.classList.add('preview-layout');
+      }
+      
+      // Refresh CodeMirror because size changes
+      if (modTheoryEditor) {
+        modTheoryEditor.refresh();
+      }
+    };
+  });
+
+  // 2. Toolbar Actions
+  const toolbarButtons = document.querySelectorAll('#theory-md-toolbar .md-btn');
+  toolbarButtons.forEach(btn => {
+    btn.onclick = () => {
+      const tag = btn.dataset.tag;
+      insertMarkdownTag(tag);
+    };
+  });
+}
+
+function insertMarkdownTag(tag) {
+  if (!modTheoryEditor) return;
+  
+  const cm = modTheoryEditor;
+  const selection = cm.getSelection();
+  const cursor = cm.getCursor();
+  
+  let replacement = '';
+  let cursorOffset = 0; // offset to place cursor inside tags if selection is empty
+
+  switch (tag) {
+    case 'bold':
+      replacement = `**${selection || 'texto'}**`;
+      cursorOffset = 2;
+      break;
+    case 'italic':
+      replacement = `*${selection || 'texto'}*`;
+      cursorOffset = 1;
+      break;
+    case 'header':
+      const lineContent = cm.getLine(cursor.line);
+      cm.setSelection({ line: cursor.line, ch: 0 }, { line: cursor.line, ch: lineContent.length });
+      replacement = `### ${selection || lineContent || 'Título'}`;
+      break;
+    case 'code':
+      replacement = `\`${selection || 'codigo'}\``;
+      cursorOffset = 1;
+      break;
+    case 'codeblock':
+      replacement = `\`\`\`javascript\n${selection || '// código aqui'}\n\`\`\``;
+      cursorOffset = 14;
+      break;
+    case 'link':
+      replacement = `[${selection || 'Texto do Link'}](https://exemplo.com)`;
+      cursorOffset = 1;
+      break;
+    case 'list':
+      replacement = `\n- ${selection || 'Item'}`;
+      break;
+    case 'table':
+      replacement = `\n| Cabeçalho 1 | Cabeçalho 2 |\n| ----------- | ----------- |\n| Valor 1     | Valor 2     |\n`;
+      break;
+    case 'check':
+      replacement = ` ✅ `;
+      break;
+    case 'cross':
+      replacement = ` ❌ `;
+      break;
+  }
+
+  cm.replaceSelection(replacement, 'around');
+  cm.focus();
+
+  // If there was no selection, place cursor inside the tags for convenience
+  if (!selection && cursorOffset > 0) {
+    const newCursor = cm.getCursor('from');
+    if (tag === 'codeblock') {
+      cm.setCursor({ line: newCursor.line + 1, ch: 0 });
+    } else {
+      cm.setCursor({ line: newCursor.line, ch: newCursor.ch + cursorOffset });
+    }
+  }
+}
+
+// ── Banco de Questões (Professor CRUD e Importação) ──
+function renderQuestionsCrud() {
+  const modules = getModules();
+  const filterMod = document.getElementById('qb-filter-module');
+  const modalMod = document.getElementById('qb-modal-module');
+
+  if (filterMod && filterMod.options.length <= 1) {
+    filterMod.innerHTML = '<option value="">Todos os Módulos</option>';
+    modules.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.title;
+      filterMod.appendChild(opt);
+    });
+  }
+
+  if (modalMod) {
+    modalMod.innerHTML = '';
+    modules.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.title;
+      modalMod.appendChild(opt);
+    });
+  }
+
+  renderQuestionStats();
+  renderQuestionsTable();
+}
+
+function renderQuestionStats() {
+  const container = document.getElementById('qb-stats-container');
+  if (!container) return;
+
+  const modules = getModules();
+  container.innerHTML = '';
+
+  modules.forEach(m => {
+    const qCount = getBankQuestionsByModule(m.id).length;
+    const statItem = document.createElement('div');
+    statItem.className = 'overview-stat';
+    statItem.style.background = 'var(--bg-card)';
+    statItem.style.border = '1px solid var(--border)';
+    statItem.style.padding = '1.25rem';
+    statItem.style.display = 'flex';
+    statItem.style.flexDirection = 'column';
+    statItem.style.gap = '0.35rem';
+    statItem.style.borderRadius = 'var(--radius-md)';
+
+    let statusText = '';
+    if (qCount === 0) {
+      statusText = `<span style="font-size:0.75rem;color:var(--red-light);font-weight:700;">⚠️ Sem questões</span>`;
+    } else if (qCount < 10) {
+      statusText = `<span style="font-size:0.75rem;color:var(--yellow-light);font-weight:700;">⚠️ Poucas questões (${qCount}/10)</span>`;
+    } else {
+      statusText = `<span style="font-size:0.75rem;color:var(--green-light);font-weight:700;">✅ Suficiente (>= 10)</span>`;
+    }
+
+    statItem.innerHTML = `
+      <div style="font-size:0.85rem;color:var(--text-secondary);font-weight:600;">${escapeHtml(m.title)}</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--text-primary);line-height:1.1;">${qCount}</div>
+      <div style="margin-top:0.25rem;">${statusText}</div>
+    `;
+    container.appendChild(statItem);
+  });
+}
+
+function renderQuestionsTable() {
+  const tbody = document.getElementById('qb-questions-tbody');
+  if (!tbody) return;
+
+  const filterMod = document.getElementById('qb-filter-module').value;
+  const filterType = document.getElementById('qb-filter-type').value;
+  const keyword = document.getElementById('qb-search-keyword').value.toLowerCase().trim();
+
+  let questions = getBankQuestions();
+
+  // Filters
+  if (filterMod) {
+    questions = questions.filter(q => q.module_id === filterMod);
+  }
+  if (filterType) {
+    questions = questions.filter(q => q.type === filterType);
+  }
+  if (keyword) {
+    questions = questions.filter(q => q.statement.toLowerCase().includes(keyword));
+  }
+
+  document.getElementById('qb-questions-count-badge').textContent = `${questions.length} questões`;
+
+  tbody.innerHTML = '';
+  if (questions.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);font-style:italic;padding:2rem;">Nenhuma questão encontrada com os filtros selecionados.</td></tr>`;
+    return;
+  }
+
+  questions.forEach(q => {
+    const tr = document.createElement('tr');
+
+    const modName = getModuleById(q.module_id)?.title || q.module_id;
+    let typeLabel = '';
+    if (q.type === 'multiple') typeLabel = 'Múltipla Escolha';
+    else if (q.type === 'true_false') typeLabel = 'Verd./Falso';
+    else if (q.type === 'essay') typeLabel = 'Dissertativa';
+
+    // Formatar alternativas/gabarito
+    let ansDetails = '';
+    if (q.type === 'multiple') {
+      const correctIdx = parseInt(q.correct_answer);
+      const letter = ['A','B','C','D','E'][correctIdx] || '?';
+      const text = q.options[correctIdx] || '';
+      ansDetails = `<span style="font-size:0.8rem;color:var(--text-secondary);">${q.options.length} alt. | Gabarito: <strong>${letter}</strong> (${text.substring(0, 20)}...)</span>`;
+    } else if (q.type === 'true_false') {
+      const correctVal = q.correct_answer === '0' ? 'Verd.' : 'Falso';
+      ansDetails = `<span style="font-size:0.8rem;color:var(--text-secondary);">Gabarito: <strong>${correctVal}</strong></span>`;
+    } else if (q.type === 'essay') {
+      ansDetails = `<span style="font-size:0.8rem;color:var(--text-secondary);">Gabarito: <strong>"${q.correct_answer}"</strong></span>`;
+    }
+
+    const shortStatement = q.statement.length > 90 ? q.statement.substring(0, 87) + '...' : q.statement;
+
+    tr.innerHTML = `
+      <td><span style="font-weight:600;font-size:0.85rem;color:var(--text-primary);">${modName}</span></td>
+      <td><span class="badge badge-muted" style="font-size:0.75rem;">${typeLabel}</span></td>
+      <td><span style="font-size:0.85rem;" title="${escapeHtml(q.statement)}">${escapeHtml(shortStatement)}</span></td>
+      <td>${ansDetails}</td>
+      <td style="text-align:center;">
+        <div style="display:inline-flex;gap:0.5rem;">
+          <button class="btn btn-ghost btn-sm" style="padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border);" onclick="openQuestionModal('${q.id}')">✏️ Editar</button>
+          <button class="btn btn-ghost btn-sm" style="padding:0.25rem 0.6rem;font-size:0.75rem;color:var(--red-light);border:1px solid var(--border);" onclick="deleteQuestion('${q.id}')">🗑️ Excluir</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderDynamicModalOptions(type, data = null) {
+  const container = document.getElementById('qb-modal-dynamic-options-section');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (type === 'multiple') {
+    container.innerHTML = `
+      <label style="font-size:0.85rem; font-weight:600; color:var(--text-secondary); display:block; margin-bottom:0.5rem;">Alternativas (marque a correta):</label>
+      <div style="display:flex; flex-direction:column; gap:0.6rem;" id="qb-options-list">
+        <!-- 4 options -->
+      </div>
+    `;
+    const list = document.getElementById('qb-options-list');
+    const savedOpts = (data && data.options) ? data.options : ['', '', '', ''];
+    const correctIdx = (data && data.correct_answer) ? parseInt(data.correct_answer) : 0;
+
+    savedOpts.forEach((opt, oIdx) => {
+      const item = document.createElement('div');
+      item.style.display = 'flex';
+      item.style.alignItems = 'center';
+      item.style.gap = '0.5rem';
+      item.innerHTML = `
+        <input type="radio" name="qb-correct-radio" value="${oIdx}" ${oIdx === correctIdx ? 'checked' : ''} style="cursor:pointer;" />
+        <span style="font-size:0.8rem; font-weight:700; color:var(--text-muted); width:15px;">${['A','B','C','D','E'][oIdx]}</span>
+        <input type="text" class="form-input qb-opt-input" style="flex:1; padding:0.5rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:var(--text-primary); border-radius:var(--radius-sm);" placeholder="Texto da alternativa ${['A','B','C','D','E'][oIdx]}..." value="${escapeHtml(opt)}" required />
+      `;
+      list.appendChild(item);
+    });
+
+  } else if (type === 'true_false') {
+    const correctVal = (data && data.correct_answer) ? data.correct_answer : '0';
+    container.innerHTML = `
+      <label style="font-size:0.85rem; font-weight:600; color:var(--text-secondary); display:block; margin-bottom:0.5rem;">Gabarito Correto:</label>
+      <div style="display:flex; gap:1.5rem;">
+        <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; cursor:pointer;">
+          <input type="radio" name="qb-tf-radio" value="0" ${correctVal === '0' ? 'checked' : ''} /> Verdadeiro
+        </label>
+        <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; cursor:pointer;">
+          <input type="radio" name="qb-tf-radio" value="1" ${correctVal === '1' ? 'checked' : ''} /> Falso
+        </label>
+      </div>
+    `;
+  } else if (type === 'essay') {
+    const correctVal = (data && data.correct_answer) ? data.correct_answer : '';
+    container.innerHTML = `
+      <div class="form-group" style="display:flex; flex-direction:column; gap:0.35rem;">
+        <label style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">Resposta Esperada (Texto exato ou palavra-chave)</label>
+        <input type="text" id="qb-modal-essay-answer" class="form-input" style="padding:0.6rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:var(--text-primary); border-radius:var(--radius-sm);" placeholder="Escreva o gabarito..." value="${escapeHtml(correctVal)}" required />
+      </div>
+    `;
+  }
+}
+
+function openQuestionModal(questionId = null) {
+  const overlay = document.getElementById('qb-question-modal-overlay');
+  const titleEl = document.getElementById('qb-modal-title');
+  const form = document.getElementById('qb-question-form');
+
+  form.reset();
+
+  // Populate dynamic select list if it's first run
+  renderQuestionsCrud();
+
+  if (questionId) {
+    titleEl.textContent = 'Editar Questão';
+    document.getElementById('qb-edit-id').value = questionId;
+
+    const questions = getBankQuestions();
+    const q = questions.find(item => item.id === questionId);
+    if (q) {
+      document.getElementById('qb-modal-module').value = q.module_id;
+      document.getElementById('qb-modal-type').value = q.type;
+      document.getElementById('qb-modal-statement').value = q.statement;
+      renderDynamicModalOptions(q.type, q);
+    }
+  } else {
+    titleEl.textContent = 'Cadastrar Nova Questão';
+    document.getElementById('qb-edit-id').value = '';
+    renderDynamicModalOptions('multiple');
+  }
+
+  overlay.classList.add('open');
+}
+
+function closeQuestionModal() {
+  const overlay = document.getElementById('qb-question-modal-overlay');
+  overlay.classList.remove('open');
+}
+
+function saveQuestionFromForm(e) {
+  if (e) e.preventDefault();
+
+  const editId = document.getElementById('qb-edit-id').value;
+  const modId = document.getElementById('qb-modal-module').value;
+  const qType = document.getElementById('qb-modal-type').value;
+  const statement = document.getElementById('qb-modal-statement').value.trim();
+
+  if (!statement) {
+    showToast('⚠️ Por favor, escreva o enunciado da questão.', 'warning');
+    return;
+  }
+
+  let options = [];
+  let correct_answer = '';
+
+  if (qType === 'multiple') {
+    const inputs = document.querySelectorAll('.qb-opt-input');
+    let hasEmpty = false;
+    inputs.forEach(inp => {
+      const val = inp.value.trim();
+      if (!val) hasEmpty = true;
+      options.push(val);
+    });
+
+    if (hasEmpty) {
+      showToast('⚠️ Por favor, preencha todas as alternativas.', 'warning');
+      return;
+    }
+
+    const checkedRadio = document.querySelector('input[name="qb-correct-radio"]:checked');
+    if (!checkedRadio) {
+      showToast('⚠️ Selecione a alternativa correta.', 'warning');
+      return;
+    }
+    correct_answer = checkedRadio.value;
+
+  } else if (qType === 'true_false') {
+    const checkedRadio = document.querySelector('input[name="qb-tf-radio"]:checked');
+    correct_answer = checkedRadio ? checkedRadio.value : '0';
+    options = ['Verdadeiro', 'Falso'];
+  } else if (qType === 'essay') {
+    correct_answer = document.getElementById('qb-modal-essay-answer').value.trim();
+    if (!correct_answer) {
+      showToast('⚠️ Por favor, escreva a resposta esperada.', 'warning');
+      return;
+    }
+  }
+
+  const question = {
+    id: editId || ('q_bank_' + Date.now() + '_' + Math.floor(Math.random() * 9999)),
+    module_id: modId,
+    type: qType,
+    statement: statement,
+    options: options,
+    correct_answer: correct_answer
+  };
+
+  saveBankQuestion(question);
+  closeQuestionModal();
+  showToast(editId ? '✅ Questão atualizada com sucesso!' : '✅ Nova questão cadastrada com sucesso!', 'success');
+  renderQuestionsCrud();
+}
+
+function deleteQuestion(id) {
+  if (confirm('⚠️ Tem certeza que deseja excluir esta questão permanentemente?')) {
+    deleteBankQuestion(id);
+    showToast('🗑️ Questão excluída com sucesso.', 'info');
+    renderQuestionsCrud();
+  }
+}
+
+function openCSVImportModal() {
+  document.getElementById('qb-csv-modal-overlay').classList.add('open');
+  document.getElementById('qb-csv-text').value = '';
+  document.getElementById('qb-csv-file').value = '';
+  document.getElementById('qb-csv-import-result').innerHTML = '';
+}
+
+function closeCSVImportModal() {
+  document.getElementById('qb-csv-modal-overlay').classList.remove('open');
+}
+
+function importQuestionsFromCSV() {
+  const rawText = document.getElementById('qb-csv-text').value.trim();
+  if (!rawText) {
+    showToast('⚠️ Cole o CSV ou carregue um arquivo antes de importar.', 'warning');
+    return;
+  }
+
+  const lines = rawText.split('\n').filter(l => l.trim());
+  let importedCount = 0;
+  let errors = [];
+
+  // Helper para decodificar linha CSV respeitando aspas
+  function parseCSVLine(line, delimiter = ',') {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === delimiter && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result.map(val => {
+      if (val.startsWith('"') && val.endsWith('"')) {
+        return val.substring(1, val.length - 1);
+      }
+      return val;
+    });
+  }
+
+  lines.forEach((line, idx) => {
+    // Ignorar primeira linha se for cabeçalho
+    if (idx === 0 && line.toLowerCase().includes('modulo_id') && line.toLowerCase().includes('tipo')) {
+      return;
+    }
+
+    try {
+      const parts = parseCSVLine(line);
+      if (parts.length < 5) {
+        errors.push(`Linha ${idx + 1}: Colunas insuficientes (esperado 5 colunas)`);
+        return;
+      }
+
+      const [modId, type, statement, alternativesRaw, correctAns] = parts;
+      
+      if (!modId || !type || !statement || !correctAns) {
+        errors.push(`Linha ${idx + 1}: Módulo, Tipo, Enunciado ou Gabarito vazio`);
+        return;
+      }
+
+      // Validar tipo
+      if (!['multiple', 'true_false', 'essay'].includes(type)) {
+        errors.push(`Linha ${idx + 1}: Tipo de questão inválido ("${type}")`);
+        return;
+      }
+
+      // Obter alternativas
+      let options = [];
+      if (type === 'multiple') {
+        options = alternativesRaw.split('|').map(x => x.trim()).filter(Boolean);
+        if (options.length < 2) {
+          errors.push(`Linha ${idx + 1}: Questão múltipla escolha requer ao menos 2 alternativas divididas por "|"`);
+          return;
+        }
+      } else if (type === 'true_false') {
+        options = ['Verdadeiro', 'Falso'];
+      }
+
+      const question = {
+        id: 'q_bank_csv_' + Date.now() + '_' + Math.floor(Math.random() * 99999) + '_' + idx,
+        module_id: modId,
+        type: type,
+        statement: statement,
+        options: options,
+        correct_answer: correctAns
+      };
+
+      saveBankQuestion(question);
+      importedCount++;
+
+    } catch (err) {
+      errors.push(`Linha ${idx + 1}: Erro inesperado ao processar linha - ${err.message}`);
+    }
+  });
+
+  const resultEl = document.getElementById('qb-csv-import-result');
+  let html = '';
+  if (importedCount > 0) {
+    html += `<div style="color:var(--green);font-weight:600;margin-bottom:0.35rem;">✅ ${importedCount} questão(ões) importada(s) com sucesso!</div>`;
+  }
+  if (errors.length > 0) {
+    html += `<div style="color:var(--red);font-weight:600;margin-bottom:0.25rem;">❌ ${errors.length} erro(s):</div>`;
+    html += errors.slice(0, 10).map(e => `<div style="font-size:0.75rem;color:var(--text-muted);padding-left:0.75rem;">- ${e}</div>`).join('');
+    if (errors.length > 10) {
+      html += `<div style="font-size:0.75rem;color:var(--text-muted);padding-left:0.75rem;font-style:italic;">... e mais ${errors.length - 10} erro(s).</div>`;
+    }
+  }
+  resultEl.innerHTML = html;
+
+  if (importedCount > 0) {
+    showToast(`📚 ${importedCount} questões importadas com sucesso!`, 'success');
+    renderQuestionsCrud();
+  }
+}
+
+window.renderQuestionsCrud = renderQuestionsCrud;
+window.renderDynamicModalOptions = renderDynamicModalOptions;
+window.openQuestionModal = openQuestionModal;
+window.deleteQuestion = deleteQuestion;
+window.closeQuestionModal = closeQuestionModal;
+window.saveQuestionFromForm = saveQuestionFromForm;
+window.openCSVImportModal = openCSVImportModal;
+window.closeCSVImportModal = closeCSVImportModal;
+window.importQuestionsFromCSV = importQuestionsFromCSV;
+

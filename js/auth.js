@@ -72,33 +72,42 @@ function setupLoginUI() {
   });
 }
 
-function handleLogin(email, password, errorEl, btn) {
+async function handleLogin(email, password, errorEl, btn) {
   errorEl.textContent = '';
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Entrando...';
 
+  const fail = () => {
+    errorEl.textContent = '❌ E-mail ou senha incorretos.';
+    btn.disabled = false;
+    btn.innerHTML = 'Entrar na Plataforma';
+    shakeElement(document.getElementById('login-card'));
+  };
+
+  const proceed = (user, token, expiresAt) => {
+    setSession(user, token, expiresAt);
+    btn.innerHTML = '✓ Redirecionando...';
+    setTimeout(() => {
+      window.location.href = user.role === 'teacher' ? 'teacher.html' : 'student.html';
+    }, 400);
+  };
+
+  // Com Supabase configurado, o login (e a verificação da senha) é feito inteiramente
+  // no servidor pela Edge Function "login" — o client nunca vê a senha de ninguém.
+  if (isSupabaseConfigured()) {
+    const result = await callEdgeFunction('login', { email, password });
+    if (!result.ok) { fail(); return; }
+    proceed(result.data.user, result.data.token, result.data.expiresAt);
+    return;
+  }
+
+  // Modo local/offline: sem Supabase configurado, mantém o login de demonstração
+  // comparando contra os dados seed no localStorage (sem persistência real de conta).
   setTimeout(() => {
     const user = findUserByEmail(email);
-
-    if (!user || user.password !== password) {
-      errorEl.textContent = '❌ E-mail ou senha incorretos.';
-      btn.disabled = false;
-      btn.innerHTML = 'Entrar na Plataforma';
-      shakeElement(document.getElementById('login-card'));
-      return;
-    }
-
-    setSession(user);
-    btn.innerHTML = '✓ Redirecionando...';
-
-    setTimeout(() => {
-      if (user.role === 'teacher') {
-        window.location.href = 'teacher.html';
-      } else {
-        window.location.href = 'student.html';
-      }
-    }, 400);
-  }, 600);
+    if (!user || user.password !== password) { fail(); return; }
+    proceed(user);
+  }, 400);
 }
 
 function shakeElement(el) {

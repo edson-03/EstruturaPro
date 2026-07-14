@@ -2581,3 +2581,268 @@ input[type="date"].cfg-input::-webkit-calendar-picker-indicator { filter: invert
   animation: spin 0.6s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   Upgraded Module Text Editors & Markdown Preview Styles
+   ============================================================ */
+
+.mod-editor-block {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Layout Toggles */
+.editor-layout-toggles {
+  display: flex;
+  gap: 0.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 2px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.btn-layout-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all var(--tr-fast);
+}
+
+.btn-layout-toggle:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.btn-layout-toggle.active {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+/* Markdown Toolbar */
+.md-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  flex-wrap: wrap;
+}
+
+.md-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 24px;
+  transition: all var(--tr-fast);
+}
+
+.md-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.md-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 0.25rem;
+}
+
+/* Split Pane Layout */
+.editor-split-container {
+  display: grid;
+  height: 420px;
+  border: 1px solid var(--border);
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+  background: #090b15;
+}
+
+.editor-split-container.split-layout {
+  grid-template-columns: 1fr 1fr;
+}
+
+.editor-split-container.editor-layout {
+  grid-template-columns: 1fr;
+}
+
+.editor-split-container.preview-layout {
+  grid-template-columns: 1fr;
+}
+
+.split-pane {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.editor-pane {
+  border-right: 1px solid var(--border);
+}
+
+.editor-split-container.editor-layout .editor-pane {
+  border-right: none;
+}
+
+.editor-split-container.preview-layout .editor-pane {
+  display: none;
+}
+
+.editor-split-container.editor-layout .preview-pane {
+  display: none;
+}
+
+.editor-pane textarea {
+  display: none; /* hidden by CodeMirror */
+}
+
+/* CodeMirror layout fits */
+.editor-pane .CodeMirror {
+  height: 100% !important;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  background: #090b15 !important;
+}
+
+.code-editor-wrap {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  height: 300px;
+}
+
+.code-editor-wrap .CodeMirror {
+  height: 100% !important;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  background: #090b15 !important;
+}
+
+/* Preview Pane Styling */
+.preview-pane {
+  padding: 1.5rem;
+  background: #0b0e17;
+  color: var(--text-secondary);
+}
+
+.preview-placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.preview-pane h1, .preview-pane h2, .preview-pane h3 {
+  color: var(--text-primary);
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.preview-pane p {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+  font-size: 0.88rem;
+}
+
+.preview-pane strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.preview-pane code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  color: var(--accent-light);
+}
+
+.preview-pane pre {
+  background: #141724;
+  border: 1px solid var(--border);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.preview-pane pre code {
+  background: transparent;
+  padding: 0;
+  color: #a6adc8;
+  font-size: 0.8rem;
+}
+
+.preview-pane ul, .preview-pane ol {
+  margin-bottom: 1rem;
+  padding-left: 1.25rem;
+}
+
+.preview-pane li {
+  margin-bottom: 0.25rem;
+  font-size: 0.88rem;
+}
+
+.preview-pane table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+}
+
+.preview-pane th, .preview-pane td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.preview-pane th {
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Responsiveness for editors */
+@media (max-width: 900px) {
+  .editor-split-container.split-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .editor-split-container.split-layout .preview-pane {
+    display: none; /* fallback to editor only on small screens */
+  }
+  
+  #btn-layout-split {
+    display: none; /* hide split option on mobile */
+  }
+  
+  .editor-split-container.split-layout {
+    grid-template-columns: 1fr;
+  }
+}
+

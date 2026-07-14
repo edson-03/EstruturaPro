@@ -69,7 +69,7 @@ function renderSidebarNav() {
 
       item.innerHTML = `
         <div class="nav-dot ${completed ? 'completed' : unlocked ? 'unlocked' : 'locked'}"></div>
-        <span class="nav-text">${mod.title}</span>
+        <span class="nav-text">${escapeHtml(mod.title)}</span>
         ${completed ? '<span class="nav-check">✓</span>' : !unlocked ? '<span class="nav-lock">🔒</span>' : ''}
       `;
 
@@ -99,7 +99,7 @@ function renderSidebarNav() {
         
         item.innerHTML = `
           <div class="nav-dot ${isDone ? 'completed' : 'unlocked'}"></div>
-          <span class="nav-text">${act.title}</span>
+          <span class="nav-text">${escapeHtml(act.title)}</span>
           ${isDone ? '<span class="nav-check">✓</span>' : answeredQuestions > 0 ? `<span style="font-size:0.7rem;color:var(--text-muted);">${answeredQuestions}/${totalQuestions}</span>` : ''}
         `;
         
@@ -161,9 +161,9 @@ function renderModuleCards() {
           <span class="badge badge-muted">${mod.difficulty}</span>
         </div>
       </div>
-      <div class="module-title">${mod.title}</div>
-      <div class="module-subtitle">${mod.subtitle}</div>
-      <div class="module-desc">${mod.description}</div>
+      <div class="module-title">${escapeHtml(mod.title)}</div>
+      <div class="module-subtitle">${escapeHtml(mod.subtitle)}</div>
+      <div class="module-desc">${escapeHtml(mod.description)}</div>
       ${completed ? `
         <div class="progress-bar" style="margin-bottom:1rem;">
           <div class="progress-fill" style="width:100%;background:${mod.gradient}"></div>
@@ -227,6 +227,9 @@ function openModule(moduleId) {
   // Switch views
   document.getElementById('view-dashboard').style.display = 'none';
   document.getElementById('view-module').style.display = 'block';
+  if (document.getElementById('view-question-bank')) {
+    document.getElementById('view-question-bank').style.display = 'none';
+  }
 
   // Update header
   document.getElementById('header-title').textContent = mod.title;
@@ -263,6 +266,9 @@ function backToDashboard() {
   document.getElementById('view-module').style.display = 'none';
   if (document.getElementById('view-activity')) {
     document.getElementById('view-activity').style.display = 'none';
+  }
+  if (document.getElementById('view-question-bank')) {
+    document.getElementById('view-question-bank').style.display = 'none';
   }
   document.getElementById('header-title').textContent = 'Meus Módulos';
   document.getElementById('header-subtitle').textContent = 'Selecione um módulo para começar a aprender';
@@ -316,14 +322,6 @@ function renderMarkdown(text) {
     .replace(/$/, '</p>')
     .replace(/✅/g, '<span style="color:var(--green)">✅</span>')
     .replace(/❌/g, '<span style="color:var(--red)">❌</span>');
-}
-
-function escapeDangerousHtml(text) {
-  if (!text) return '';
-  return text
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]*)/gi, '')
-    .replace(/href\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*"|javascript:[^\s>]*)/gi, '');
 }
 
 // ── Code ─────────────────────────────────────────────────
@@ -627,8 +625,8 @@ function populateModuleActivities(mod) {
     card.innerHTML = `
       <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">✏️</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:0.95rem;font-weight:700;margin-bottom:0.2rem;">${act.title}</div>
-        ${act.description ? `<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.35rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${act.description}</div>` : ''}
+        <div style="font-size:0.95rem;font-weight:700;margin-bottom:0.2rem;">${escapeHtml(act.title)}</div>
+        ${act.description ? `<div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.35rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(act.description)}</div>` : ''}
         <div style="font-size:0.8rem;font-weight:600;color:${statusColor};">${statusText}</div>
       </div>
       <div style="flex-shrink:0;">
@@ -660,17 +658,17 @@ function renderQuestion(mod, idx, container) {
   container.innerHTML = `
     <div class="question-card">
       <div class="question-number">Questão ${idx + 1} de ${total}</div>
-      <div class="question-text">${q.question}</div>
+      <div class="question-text">${escapeHtml(q.question)}</div>
       <div class="quiz-options" id="quiz-options">
         ${q.options.map((opt, i) => `
           <button class="quiz-option" data-index="${i}">
             <span class="option-letter">${['A','B','C','D'][i]}</span>
-            <span>${opt}</span>
+            <span>${escapeHtml(opt)}</span>
           </button>
         `).join('')}
       </div>
       <div class="quiz-explanation" id="quiz-explanation">
-        💡 ${q.explanation}
+        💡 ${escapeHtml(q.explanation)}
       </div>
       <div class="quiz-nav">
         <span style="font-size:0.82rem;color:var(--text-muted);">
@@ -823,6 +821,28 @@ function setupEventListeners() {
     window.location.href = 'index.html';
   });
 
+  // Question Bank Navigation
+  const navQb = document.getElementById('nav-item-question-bank');
+  if (navQb) {
+    navQb.addEventListener('click', openQuestionBank);
+  }
+
+  // Question Bank Actions
+  const btnQbAbort = document.getElementById('btn-qb-abort');
+  if (btnQbAbort) btnQbAbort.addEventListener('click', openQuestionBank);
+
+  const btnQbConfirm = document.getElementById('btn-qb-confirm');
+  if (btnQbConfirm) btnQbConfirm.addEventListener('click', confirmBankAnswer);
+
+  const btnQbNext = document.getElementById('btn-qb-next');
+  if (btnQbNext) btnQbNext.addEventListener('click', nextBankQuestion);
+
+  const btnQbSummaryBack = document.getElementById('btn-qb-summary-back');
+  if (btnQbSummaryBack) btnQbSummaryBack.addEventListener('click', openQuestionBank);
+
+  const btnQbSummaryRetry = document.getElementById('btn-qb-summary-retry');
+  if (btnQbSummaryRetry) btnQbSummaryRetry.addEventListener('click', () => startQuestionBankSession(qbSessionState.moduleId));
+
   // Mobile sidebar
   const toggle   = document.getElementById('sidebar-toggle');
   const overlay  = document.getElementById('sidebar-overlay');
@@ -845,7 +865,7 @@ function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
-  toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-msg">${message}</span>`;
+  toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
     toast.classList.add('hiding');
@@ -868,6 +888,9 @@ function openActivity(activityId) {
   document.getElementById('view-dashboard').style.display = 'none';
   document.getElementById('view-module').style.display = 'none';
   document.getElementById('view-activity').style.display = 'block';
+  if (document.getElementById('view-question-bank')) {
+    document.getElementById('view-question-bank').style.display = 'none';
+  }
 
   // Header update
   document.getElementById('header-title').textContent = act.title;
@@ -900,7 +923,7 @@ function renderActivityStudentView(act) {
 
     let html = `
       <div class="cap-q-num" style="color:var(--text-muted);font-weight:700;font-size:0.75rem;margin-bottom:0.5rem;text-transform:uppercase;">Questão ${idx + 1} — ${q.type === 'theoretical' ? 'Teórica' : 'Prática'}</div>
-      <div class="cap-q-text" style="font-size:1.05rem;font-weight:700;margin-bottom:1.25rem;color:var(--text-primary);">${q.question}</div>
+      <div class="cap-q-text" style="font-size:1.05rem;font-weight:700;margin-bottom:1.25rem;color:var(--text-primary);">${escapeHtml(q.question)}</div>
     `;
 
     if (q.type === 'theoretical') {
@@ -911,7 +934,7 @@ function renderActivityStudentView(act) {
         html += `
           <button class="quiz-option q-stud-opt ${isSelected ? 'selected' : ''}" data-index="${oIdx}" onclick="selectStudentTheoreticalOption(this, '${q.id}', ${oIdx})">
             <span class="option-letter">${['A','B','C','D'][oIdx]}</span>
-            <span>${opt}</span>
+            <span>${escapeHtml(opt)}</span>
           </button>
         `;
       });
@@ -921,7 +944,7 @@ function renderActivityStudentView(act) {
       html += `
         <div class="cap-practical-label" style="font-size:0.8rem;color:var(--text-secondary);font-weight:600;margin-bottom:0.5rem;">Escreva seu código JavaScript no editor abaixo:</div>
         <div class="ca-codemirror-wrapper" style="border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;margin-bottom:1rem;">
-          <textarea id="stud_editor_${q.id}">${savedCode}</textarea>
+          <textarea id="stud_editor_${q.id}">${escapeHtml(savedCode)}</textarea>
         </div>
         <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;">
           <button class="btn btn-sm" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;font-weight:600;" onclick="testStudentCode('${q.id}')">&#9654; Executar e Testar</button>
@@ -1350,15 +1373,6 @@ function updateActivityStatusInfo() {
   if (el) el.textContent = `${answered} de ${total} questões respondidas.`;
 }
 
-function escapeHtml(str) {
-  if (str === null || str === undefined) return 'undefined';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 function submitActivityAnswers() {
   if (!currentActivity) return;
 
@@ -1446,3 +1460,421 @@ function stripHtmlTags(html) {
   tmp.innerHTML = html;
   return tmp.textContent || tmp.innerText || '';
 }
+
+// ── Banco de Questões (Fluxo do Aluno) ──
+let qbSessionState = {
+  moduleId: null,
+  questions: [],
+  currentIndex: 0,
+  answers: [],
+  correctAnswersCount: 0,
+  confirmed: false
+};
+
+function openQuestionBank() {
+  currentModule = null;
+  currentActivity = null;
+
+  // Header update
+  document.getElementById('header-title').textContent = 'Banco de Questões';
+  document.getElementById('header-subtitle').textContent = 'Pratique resolvendo questões aleatórias dos módulos liberados.';
+
+  // Hide other views, show question bank
+  document.getElementById('view-dashboard').style.display = 'none';
+  document.getElementById('view-module').style.display = 'none';
+  if (document.getElementById('view-activity')) {
+    document.getElementById('view-activity').style.display = 'none';
+  }
+  document.getElementById('view-question-bank').style.display = 'block';
+
+  // Toggle nav active state
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const navQb = document.getElementById('nav-item-question-bank');
+  if (navQb) navQb.classList.add('active');
+
+  // Show selection, hide other sections
+  document.getElementById('qb-module-selection').style.display = 'block';
+  document.getElementById('qb-session-play').style.display = 'none';
+  document.getElementById('qb-session-summary').style.display = 'none';
+
+  renderQBModulesGrid();
+  closeSidebar();
+}
+
+function renderQBModulesGrid() {
+  const grid = document.getElementById('qb-modules-grid');
+  if (!grid) return;
+
+  const modules = getModules();
+  const access = getStudentModuleAccess(currentUser.id);
+  const scores = getStudentBankScores(currentUser.id);
+
+  grid.innerHTML = '';
+  modules.forEach((mod, i) => {
+    const unlocked = access.includes(mod.id);
+    const modQuestions = getBankQuestionsByModule(mod.id);
+    const totalQuestions = modQuestions.length;
+
+    // Achar melhor score do histórico
+    const modScores = scores.filter(s => s.module_id === mod.id);
+    const bestScore = modScores.length > 0
+      ? Math.max(...modScores.map(s => s.score))
+      : null;
+
+    const card = document.createElement('div');
+    card.className = `module-card ${unlocked ? 'unlocked' : 'locked'}`;
+    card.style.animationDelay = `${i * 0.08}s`;
+    card.classList.add('animate-fade-up');
+
+    let badgeHtml = '';
+    if (!unlocked) {
+      badgeHtml = `<span class="badge badge-muted">🔒 Bloqueado</span>`;
+    } else if (totalQuestions === 0) {
+      badgeHtml = `<span class="badge badge-warning">Sem questões</span>`;
+    } else {
+      badgeHtml = `<span class="badge badge-success">Disponível</span>`;
+    }
+
+    card.innerHTML = `
+      <div class="card-accent-line" style="background:${mod.gradient || 'var(--primary)'}"></div>
+      <div class="card-top">
+        <div class="module-icon-big" style="background:${(mod.gradient || 'var(--primary)')}20;border:1px solid ${(mod.color || 'var(--accent)')}30;">
+          ${mod.emoji || '📦'}
+        </div>
+        <div class="card-badges">
+          ${badgeHtml}
+          <span class="badge badge-muted">${mod.difficulty || 'Básico'}</span>
+        </div>
+      </div>
+      <div class="module-title">${mod.title}</div>
+      <div class="module-subtitle">${mod.subtitle || ''}</div>
+      <div class="module-desc" style="margin-bottom:1rem;">Pratique resolvendo exercícios aleatórios acumulando experiência e testando seus limites.</div>
+      
+      ${bestScore !== null ? `
+        <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem;display:flex;align-items:center;gap:0.35rem;">
+          ⭐ Melhor Pontuação: <strong style="color:var(--green-light)">${bestScore}%</strong>
+        </div>
+      ` : unlocked && totalQuestions > 0 ? `
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;font-style:italic;">Nenhuma tentativa realizada ainda</div>
+      ` : ''}
+
+      <div class="module-footer">
+        <div class="module-meta">
+          <span>❓ ${totalQuestions} questões no banco</span>
+        </div>
+        ${unlocked && totalQuestions > 0 ? `
+          <button class="btn btn-sm btn-primary module-cta" style="background:${mod.gradient || 'var(--primary)'};" onclick="event.stopPropagation(); startQuestionBankSession('${mod.id}')">
+            ⚡ Praticar
+          </button>
+        ` : unlocked ? `
+          <span style="font-size:0.8rem;color:var(--text-muted);">Aguardando questões</span>
+        ` : '<span style="font-size:1.2rem;">🔒</span>'}
+      </div>
+      ${!unlocked ? `
+        <div class="locked-overlay">
+          <div class="locked-icon">🔒</div>
+          <div class="locked-text">Módulo bloqueado pelo professor</div>
+        </div>
+      ` : ''}
+    `;
+
+    if (unlocked && totalQuestions > 0) {
+      card.addEventListener('click', () => startQuestionBankSession(mod.id));
+    }
+    grid.appendChild(card);
+  });
+}
+
+function startQuestionBankSession(moduleId) {
+  const mod = getModuleById(moduleId);
+  if (!mod) return;
+
+  const rawQuestions = getBankQuestionsByModule(moduleId);
+  if (rawQuestions.length === 0) {
+    showToast('⚠️ Este módulo não possui questões cadastradas no Banco de Questões.', 'warning');
+    return;
+  }
+
+  // Embaralhar e pegar até 10 questões sem repetição
+  const shuffled = [...rawQuestions].sort(() => Math.random() - 0.5);
+  const selectedQuestions = shuffled.slice(0, Math.min(10, shuffled.length));
+
+  qbSessionState = {
+    moduleId: moduleId,
+    questions: selectedQuestions,
+    currentIndex: 0,
+    answers: Array(selectedQuestions.length).fill(null),
+    correctAnswersCount: 0,
+    confirmed: false
+  };
+
+  // UI switch
+  document.getElementById('qb-module-selection').style.display = 'none';
+  document.getElementById('qb-session-play').style.display = 'block';
+  document.getElementById('qb-session-summary').style.display = 'none';
+
+  // Set titles
+  document.getElementById('qb-module-emoji').textContent = mod.emoji || '📦';
+  document.getElementById('qb-module-title').textContent = `Prática: ${mod.title}`;
+
+  renderQBQuestion(0);
+}
+
+function renderQBQuestion(index) {
+  const q = qbSessionState.questions[index];
+  if (!q) return;
+
+  qbSessionState.confirmed = false;
+
+  // Update Progress
+  document.getElementById('qb-progress-text').textContent = `Questão ${index + 1} de ${qbSessionState.questions.length}`;
+  const pct = ((index + 1) / qbSessionState.questions.length) * 100;
+  document.getElementById('qb-progress-fill').style.width = pct + '%';
+
+  // Running Score
+  document.getElementById('qb-score-running').textContent = `Acertos: ${qbSessionState.correctAnswersCount}/${index}`;
+
+  // Reset actions
+  document.getElementById('btn-qb-confirm').style.display = 'inline-block';
+  document.getElementById('btn-qb-confirm').disabled = false;
+  document.getElementById('btn-qb-next').style.display = 'none';
+
+  // Hide feedback box
+  const feedbackBox = document.getElementById('qb-feedback-box');
+  feedbackBox.style.display = 'none';
+  feedbackBox.className = '';
+
+  // Statement
+  document.getElementById('qb-question-statement').textContent = q.statement;
+
+  // Options container
+  const optContainer = document.getElementById('qb-options-container');
+  optContainer.innerHTML = '';
+
+  if (q.type === 'multiple' || q.type === 'true_false') {
+    const opts = q.type === 'true_false' ? ['Verdadeiro', 'Falso'] : q.options;
+    
+    opts.forEach((opt, oIdx) => {
+      const btn = document.createElement('button');
+      btn.className = 'quiz-option';
+      btn.innerHTML = `
+        <span class="option-letter">${['A','B','C','D','E'][oIdx] || oIdx + 1}</span>
+        <span>${opt}</span>
+      `;
+      btn.addEventListener('click', () => {
+        if (qbSessionState.confirmed) return;
+        
+        // Remove selected from all
+        optContainer.querySelectorAll('.quiz-option').forEach(b => b.classList.remove('selected'));
+        // Add to current
+        btn.classList.add('selected');
+        qbSessionState.answers[index] = String(oIdx);
+      });
+      optContainer.appendChild(btn);
+    });
+  } else if (q.type === 'essay') {
+    const wrap = document.createElement('div');
+    wrap.style.display = 'flex';
+    wrap.style.flexDirection = 'column';
+    wrap.style.gap = '0.5rem';
+
+    wrap.innerHTML = `
+      <input type="text" id="qb-essay-input" class="form-input" 
+             placeholder="Digite sua resposta..." 
+             style="width:100%; background:rgba(255,255,255,0.03); border:1px solid var(--border); color:var(--text-primary); padding:0.75rem; border-radius:var(--radius-sm);" 
+             autocomplete="off" />
+    `;
+    optContainer.appendChild(wrap);
+
+    const input = wrap.querySelector('input');
+    input.addEventListener('input', () => {
+      qbSessionState.answers[index] = input.value.trim();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('btn-qb-confirm').click();
+      }
+    });
+  }
+}
+
+function confirmBankAnswer() {
+  const idx = qbSessionState.currentIndex;
+  const q = qbSessionState.questions[idx];
+  const ans = qbSessionState.answers[idx];
+
+  if (ans === null || ans === undefined || ans === '') {
+    showToast('⚠️ Por favor, responda à questão antes de confirmar.', 'warning');
+    return;
+  }
+
+  qbSessionState.confirmed = true;
+
+  const confirmBtn = document.getElementById('btn-qb-confirm');
+  const nextBtn = document.getElementById('btn-qb-next');
+  confirmBtn.style.display = 'none';
+  nextBtn.style.display = 'inline-block';
+
+  const feedbackBox = document.getElementById('qb-feedback-box');
+  const optContainer = document.getElementById('qb-options-container');
+
+  let isCorrect = false;
+
+  if (q.type === 'multiple' || q.type === 'true_false') {
+    // Desabilitar todas as opções
+    const buttons = optContainer.querySelectorAll('.quiz-option');
+    buttons.forEach(btn => btn.disabled = true);
+
+    const correctIdxStr = String(q.correct_answer);
+    isCorrect = (ans === correctIdxStr);
+
+    buttons.forEach((btn, oIdx) => {
+      const oIdxStr = String(oIdx);
+      if (oIdxStr === correctIdxStr) {
+        btn.classList.add('correct');
+      } else if (oIdxStr === ans && !isCorrect) {
+        btn.classList.add('incorrect');
+      }
+    });
+
+    if (isCorrect) {
+      qbSessionState.correctAnswersCount++;
+      feedbackBox.innerHTML = `<strong>✅ Resposta Correta!</strong>`;
+      feedbackBox.className = 'quiz-feedback correct';
+      feedbackBox.style.background = 'rgba(16, 185, 129, 0.15)';
+      feedbackBox.style.border = '1px solid var(--green)';
+      feedbackBox.style.color = 'var(--green-light)';
+    } else {
+      const opts = q.type === 'true_false' ? ['Verdadeiro', 'Falso'] : q.options;
+      const correctText = opts[parseInt(correctIdxStr)] || 'Desconhecida';
+      feedbackBox.innerHTML = `<strong>❌ Resposta Incorreta!</strong> A alternativa correta era a de letra ${['A','B','C','D','E'][parseInt(correctIdxStr)]} (<em>${correctText}</em>).`;
+      feedbackBox.className = 'quiz-feedback incorrect';
+      feedbackBox.style.background = 'rgba(239, 68, 68, 0.15)';
+      feedbackBox.style.border = '1px solid var(--red)';
+      feedbackBox.style.color = 'var(--red-light)';
+    }
+  } else if (q.type === 'essay') {
+    const input = document.getElementById('qb-essay-input');
+    if (input) input.disabled = true;
+
+    isCorrect = (ans.trim().toLowerCase() === q.correct_answer.trim().toLowerCase());
+
+    if (isCorrect) {
+      qbSessionState.correctAnswersCount++;
+      feedbackBox.innerHTML = `<strong>✅ Resposta Correta!</strong> Você digitou: "<em>${ans}</em>".`;
+      feedbackBox.className = 'quiz-feedback correct';
+      feedbackBox.style.background = 'rgba(16, 185, 129, 0.15)';
+      feedbackBox.style.border = '1px solid var(--green)';
+      feedbackBox.style.color = 'var(--green-light)';
+    } else {
+      feedbackBox.innerHTML = `<strong>❌ Resposta Incorreta!</strong> A resposta correta era: "<strong>${q.correct_answer}</strong>". Você escreveu: "<em>${ans}</em>".`;
+      feedbackBox.className = 'quiz-feedback incorrect';
+      feedbackBox.style.background = 'rgba(239, 68, 68, 0.15)';
+      feedbackBox.style.border = '1px solid var(--red)';
+      feedbackBox.style.color = 'var(--red-light)';
+    }
+  }
+
+  feedbackBox.style.display = 'block';
+  // Actualizar running score
+  document.getElementById('qb-score-running').textContent = `Acertos: ${qbSessionState.correctAnswersCount}/${idx + 1}`;
+}
+
+function nextBankQuestion() {
+  qbSessionState.currentIndex++;
+  if (qbSessionState.currentIndex < qbSessionState.questions.length) {
+    renderQBQuestion(qbSessionState.currentIndex);
+  } else {
+    finishBankSession();
+  }
+}
+
+function finishBankSession() {
+  const total = qbSessionState.questions.length;
+  const correct = qbSessionState.correctAnswersCount;
+  const pct = Math.round((correct / total) * 100);
+
+  // Registrar pontuação
+  const scoreData = {
+    id: "score_" + Date.now() + "_" + Math.floor(Math.random() * 9999),
+    student_id: currentUser.id,
+    module_id: qbSessionState.moduleId,
+    score: pct,
+    total_questions: total,
+    correct_answers: correct,
+    completed_at: new Date().toISOString()
+  };
+  saveStudentBankScore(scoreData);
+
+  // Switch UI
+  document.getElementById('qb-session-play').style.display = 'none';
+  document.getElementById('qb-session-summary').style.display = 'block';
+
+  // Emoji and titles
+  const emojiEl = document.getElementById('qb-summary-emoji');
+  const titleEl = document.getElementById('qb-summary-title');
+  const scoreEl = document.getElementById('qb-summary-score');
+  const detailsEl = document.getElementById('qb-summary-details');
+
+  scoreEl.textContent = `${pct}%`;
+  detailsEl.textContent = `${correct} de ${total} acertos`;
+
+  if (pct >= 80) {
+    emojiEl.textContent = '🏆';
+    titleEl.textContent = 'Desempenho Excelente!';
+    titleEl.style.color = 'var(--green-light)';
+  } else if (pct >= 60) {
+    emojiEl.textContent = '⚡';
+    titleEl.textContent = 'Bom Trabalho!';
+    titleEl.style.color = 'var(--accent-light)';
+  } else {
+    emojiEl.textContent = '📚';
+    titleEl.textContent = 'Continue Estudando!';
+    titleEl.style.color = 'var(--yellow)';
+  }
+
+  // Populate Review List
+  const reviewContainer = document.getElementById('qb-summary-review-list');
+  reviewContainer.innerHTML = '';
+
+  qbSessionState.questions.forEach((q, qIdx) => {
+    const userAns = qbSessionState.answers[qIdx];
+    let isCorrect = false;
+    let userAnsText = '';
+    let correctAnsText = '';
+
+    if (q.type === 'multiple' || q.type === 'true_false') {
+      const opts = q.type === 'true_false' ? ['Verdadeiro', 'Falso'] : q.options;
+      userAnsText = opts[parseInt(userAns)] || userAns || 'Não respondida';
+      correctAnsText = opts[parseInt(q.correct_answer)];
+      isCorrect = (userAns === String(q.correct_answer));
+    } else {
+      userAnsText = userAns || 'Não respondida';
+      correctAnsText = q.correct_answer;
+      isCorrect = (userAns && userAns.trim().toLowerCase() === q.correct_answer.trim().toLowerCase());
+    }
+
+    const item = document.createElement('div');
+    item.style.padding = '1rem';
+    item.style.border = '1px solid var(--border)';
+    item.style.borderRadius = 'var(--radius-md)';
+    item.style.background = isCorrect ? 'rgba(16,185,129,0.03)' : 'rgba(239,68,68,0.03)';
+    item.style.borderColor = isCorrect ? 'var(--green-glow)' : 'var(--red-glow)';
+
+    item.innerHTML = `
+      <div style="font-weight:600;margin-bottom:0.5rem;color:var(--text-primary);">Questão ${qIdx + 1}: ${q.statement}</div>
+      <div style="font-size:0.85rem;display:flex;flex-direction:column;gap:0.25rem;">
+        <span style="color:var(--text-secondary)">Sua Resposta: <strong style="color:${isCorrect ? 'var(--green-light)' : 'var(--red-light)'}">${userAnsText}</strong></span>
+        ${!isCorrect ? `<span style="color:var(--text-secondary)">Resposta Correta: <strong style="color:var(--green-light)">${correctAnsText}</strong></span>` : ''}
+      </div>
+    `;
+    reviewContainer.appendChild(item);
+  });
+
+  // Atualizar contagem do menu do aluno se aplicável
+  renderSidebarNav();
+}
+
+window.startQuestionBankSession = startQuestionBankSession;
+window.openQuestionBank = openQuestionBank;

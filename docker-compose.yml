@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  estruturapro:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: estruturapro-app
+    restart: unless-stopped
+    ports:
+      # Por padrão, expõe só em localhost — use um proxy reverso (Nginx do host + Certbot)
+      # na frente para expor à internet com TLS. Ver DEPLOY.md.
+      - "127.0.0.1:8080:80"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

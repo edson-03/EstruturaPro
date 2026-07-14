@@ -61,6 +61,12 @@
       
       <div class="nav-label" style="margin-top:1.5rem;">Atividades</div>
       <div id="nav-activities-list"></div>
+
+      <div class="nav-label" style="margin-top:1.5rem;">Prática</div>
+      <div class="nav-item unlocked" id="nav-item-question-bank">
+        <div class="nav-dot" style="background:var(--accent);"></div>
+        <span class="nav-text">❓ Banco de Questões</span>
+      </div>
     </nav>
 
     <!-- Footer -->
@@ -262,12 +268,94 @@
         <!-- populated dynamically by student.js -->
       </div>
 
-      <div class="ca-actions" style="margin-top:2rem; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border); padding-top:1rem;">
-        <span id="activity-status-info" style="font-size:0.85rem;color:var(--text-secondary);"></span>
-        <button class="btn btn-primary" id="btn-submit-activity-answers">💾 Enviar Respostas</button>
+    </div>
+
+    <!-- ─── QUESTION BANK VIEW ─── -->
+    <div id="view-question-bank" style="display:none; padding:2rem; animation:fadeSlideUp 0.3s ease;">
+      
+      <!-- Seção 1: Listagem de Módulos (Seleção) -->
+      <div id="qb-module-selection">
+        <div class="section-header" style="margin-bottom: 1.5rem;">
+          <h3 class="section-title">❓ Escolha um Módulo para Praticar</h3>
+          <p style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.3rem;">
+            Selecione um dos módulos liberados para responder 10 questões aleatórias de forma dinâmica.
+          </p>
+        </div>
+        <div class="modules-grid" id="qb-modules-grid">
+          <!-- Populated by JS -->
+        </div>
       </div>
 
-    </div>
+      <!-- Seção 2: Área de Resolução de Questão -->
+      <div id="qb-session-play" style="display:none;">
+        <div class="module-viewer-header" style="position:static; margin-bottom:1.5rem; padding: 0 0 1rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <button class="btn-back-module" id="btn-qb-abort" style="margin-right:1rem;">← Desistir</button>
+            <span style="font-size:1.3rem;" id="qb-module-emoji">❓</span>
+            <span id="qb-module-title" style="font-size:1.05rem;font-weight:700;">Nome do Módulo</span>
+          </div>
+          <div style="text-align:right;">
+            <span id="qb-progress-text" style="font-size:0.85rem;font-weight:600;color:var(--text-secondary);">Questão 1 de 10</span>
+          </div>
+        </div>
+
+        <div class="quiz-progress-bar progress-bar" style="margin-bottom:1.5rem;">
+          <div class="progress-fill" id="qb-progress-fill" style="width:10%;"></div>
+        </div>
+
+        <!-- Card da Questão -->
+        <div class="ca-card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:1.5rem;margin-bottom:1.5rem;">
+          <div id="qb-question-statement" style="font-size:1rem;font-weight:600;margin-bottom:1.5rem;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">
+            Enunciado da questão...
+          </div>
+          
+          <div id="qb-options-container" style="display:flex;flex-direction:column;gap:0.75rem;">
+            <!-- Opções renderizadas dinamicamente -->
+          </div>
+        </div>
+
+        <!-- Feedback imediato -->
+        <div id="qb-feedback-box" style="display:none;border-radius:var(--radius-md);padding:1rem;margin-bottom:1.5rem;font-size:0.9rem;line-height:1.4;animation:fadeSlideUp 0.2s ease;">
+          <!-- Texto de feedback certo/errado -->
+        </div>
+
+        <!-- Ações -->
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.85rem;color:var(--text-muted);" id="qb-score-running">Acertos: 0/0</span>
+          <div style="display:flex;gap:0.75rem;">
+            <button class="btn btn-primary" id="btn-qb-confirm">Confirmar Resposta</button>
+            <button class="btn btn-primary" id="btn-qb-next" style="display:none;background:var(--green);border-color:var(--green);">Avançar →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção 3: Tela de Resumo / Conclusão -->
+      <div id="qb-session-summary" style="display:none;text-align:center;padding:2rem 1rem;">
+        <div style="font-size:4rem;margin-bottom:1rem;animation:bounce 1s ease;" id="qb-summary-emoji">🏆</div>
+        <h2 style="font-size:1.8rem;font-weight:800;color:var(--text-primary);margin-bottom:0.5rem;" id="qb-summary-title">Parabéns!</h2>
+        <p style="color:var(--text-secondary);font-size:1rem;margin-bottom:2rem;" id="qb-summary-subtitle">Você concluiu o simulado de prática.</p>
+
+        <!-- Placa de Score -->
+        <div style="display:inline-flex;flex-direction:column;align-items:center;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem 3rem;margin-bottom:2.5rem;">
+          <span style="font-size:0.85rem;color:var(--text-muted);font-weight:600;letter-spacing:1px;text-transform:uppercase;">Pontuação Final</span>
+          <span style="font-size:3.5rem;font-weight:900;color:var(--accent);line-height:1.1;margin:0.25rem 0;" id="qb-summary-score">80%</span>
+          <span style="font-size:0.9rem;color:var(--text-secondary);" id="qb-summary-details">8 de 10 acertos</span>
+        </div>
+
+        <!-- Lista de Revisão de Questões -->
+        <div style="text-align:left;max-width:700px;margin:0 auto 2.5rem;display:flex;flex-direction:column;gap:1rem;">
+          <h4 style="font-size:1rem;color:var(--text-primary);border-bottom:1px solid var(--border);padding-bottom:0.5rem;margin-bottom:0.5rem;">Revisão das Questões</h4>
+          <div id="qb-summary-review-list" style="display:flex;flex-direction:column;gap:1rem;">
+            <!-- populated by JS -->
+          </div>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div style="display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;">
+          <button class="btn btn-ghost" id="btn-qb-summary-back">Voltar ao Banco</button>
+          <button class="btn btn-primary" id="btn-qb-summary-retry" style="background:var(--accent);">Gerar Novo Conjunto</button>
+        </div>
+      </div>
 
   </main>
 </div>

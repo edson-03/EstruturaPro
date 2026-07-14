@@ -10,7 +10,28 @@ const DB_KEYS = {
   ACTIVITY_LOG:    'ep_activity_log',
   ACTIVITIES:      'ep_activities',
   STUDENT_ANSWERS: 'ep_student_answers',
+  BANK_QUESTIONS:  'ep_bank_questions',
+  BANK_SCORES:     'ep_bank_scores',
 };
+
+// ── HTML Escaping (compartilhado entre student.js e teacher.js) ──
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function escapeDangerousHtml(text) {
+  if (!text) return '';
+  return text
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]*)/gi, '')
+    .replace(/href\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*"|javascript:[^\s>]*)/gi, '');
+}
 
 // ── Default Users ──────────────────────────────────────────
 const DEFAULT_USERS = [
@@ -69,6 +90,230 @@ const DEFAULT_PROGRESS = {
   student2: {},
   student3: {},
 };
+
+// ── Default Bank Questions ──────────────────────────────────
+const DEFAULT_BANK_QUESTIONS = [
+  // Módulo Arrays e Vetores
+  {
+    id: "q_arr_1",
+    module_id: "arrays",
+    type: "multiple",
+    statement: "Qual é a complexidade de tempo para ACESSAR um elemento por índice em um array comum?",
+    options: ["O(n)", "O(log n)", "O(1)", "O(n²)"],
+    correct_answer: "2"
+  },
+  {
+    id: "q_arr_2",
+    module_id: "arrays",
+    type: "multiple",
+    statement: "Qual é a complexidade de tempo (caso médio) para inserção no final de um array dinâmico (por exemplo, push em JS)?",
+    options: ["O(1) amortizado", "O(n)", "O(log n)", "O(n²)"],
+    correct_answer: "0"
+  },
+  {
+    id: "q_arr_3",
+    module_id: "arrays",
+    type: "multiple",
+    statement: "Por que o acesso por índice em um array é extremamente rápido e tem tempo O(1)?",
+    options: [
+      "Porque faz uma busca linear rápida",
+      "Porque calcula o endereço exato na memória usando: endereço_inicial + índice * tamanho_elemento",
+      "Porque os dados de um array são espalhados aleatoriamente na memória",
+      "Porque o navegador pré-carrega todos os elementos em cache"
+    ],
+    correct_answer: "1"
+  },
+  {
+    id: "q_arr_4",
+    module_id: "arrays",
+    type: "true_false",
+    statement: "Em um array de tamanho estático (fixo), é possível alterar dinamicamente a quantidade de memória alocada sem precisar criar um novo bloco na memória.",
+    options: ["Verdadeiro", "Falso"],
+    correct_answer: "1"
+  },
+  {
+    id: "q_arr_5",
+    module_id: "arrays",
+    type: "true_false",
+    statement: "A inserção de um elemento no início de um array comum de tamanho N requer o deslocamento de todos os outros N elementos uma posição para a direita.",
+    options: ["Verdadeiro", "Falso"],
+    correct_answer: "0"
+  },
+  {
+    id: "q_arr_6",
+    module_id: "arrays",
+    type: "multiple",
+    statement: "Qual das seguintes alternativas descreve uma desvantagem típica do uso de arrays de tamanho estático?",
+    options: [
+      "Acesso aleatório muito lento por índice",
+      "Desperdício de memória ou estouro de limite devido ao tamanho pré-definido e imutável",
+      "Alta sobrecarga de ponteiros adicionais para cada elemento",
+      "Não suporta dados heterogêneos em nenhuma linguagem"
+    ],
+    correct_answer: "1"
+  },
+  {
+    id: "q_arr_7",
+    module_id: "arrays",
+    type: "multiple",
+    statement: "Em JavaScript, qual método é utilizado para remover o último elemento de um array e retornar esse elemento?",
+    options: ["shift()", "unshift()", "pop()", "push()"],
+    correct_answer: "2"
+  },
+  {
+    id: "q_arr_8",
+    module_id: "arrays",
+    type: "multiple",
+    statement: "Em JavaScript, qual método é utilizado para inserir um ou mais elementos no início do array?",
+    options: ["push()", "unshift()", "pop()", "shift()"],
+    correct_answer: "1"
+  },
+  {
+    id: "q_arr_9",
+    module_id: "arrays",
+    type: "true_false",
+    statement: "A busca binária pode ser executada em tempo O(log n) sobre qualquer array, independente de os elementos estarem ordenados ou não.",
+    options: ["Verdadeiro", "Falso"],
+    correct_answer: "1"
+  },
+  {
+    id: "q_arr_10",
+    module_id: "arrays",
+    type: "essay",
+    statement: "Qual termo técnico em inglês define o endereço de memória onde um array inicia?",
+    options: [],
+    correct_answer: "base"
+  },
+  {
+    id: "q_arr_11",
+    module_id: "arrays",
+    type: "multiple",
+    statement: "Se você precisa de uma estrutura de dados linear onde as inserções no início sejam estritamente O(1) e não requerem redimensionar memória contígua, qual seria melhor que um array?",
+    options: ["Fila sequencial", "Lista ligada", "Pilha com array de tamanho fixo", "Matriz multidimensional"],
+    correct_answer: "1"
+  },
+  {
+    id: "q_arr_12",
+    module_id: "arrays",
+    type: "true_false",
+    statement: "A complexidade de espaço de um array contendo N elementos é de ordem O(N).",
+    options: ["Verdadeiro", "Falso"],
+    correct_answer: "0"
+  },
+  {
+    id: "q_arr_13",
+    module_id: "arrays",
+    type: "multiple",
+    statement: "Se tentarmos acessar um índice fora dos limites do array em uma linguagem como C (ex: index out of bounds), qual comportamento é esperado?",
+    options: [
+      "Retorna undefined",
+      "Lança uma exceção controlada do tipo IndexOutOfBoundsException",
+      "Ocorre comportamento indefinido (Undefined Behavior), podendo acessar sujeira de memória ou causar falha de segmentação",
+      "O array redimensiona automaticamente para acomodar o índice"
+    ],
+    correct_answer: "2"
+  },
+
+  // Módulo Lista Ligada
+  {
+    id: "q_list_1",
+    module_id: "linked-list",
+    type: "multiple",
+    statement: "Qual é a complexidade de tempo para buscar um valor específico em uma lista simplesmente ligada de N elementos?",
+    options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+    correct_answer: "2"
+  },
+  {
+    id: "q_list_2",
+    module_id: "linked-list",
+    type: "multiple",
+    statement: "Em uma lista simplesmente ligada, cada nó é composto basicamente por:",
+    options: [
+      "O nó anterior e o nó seguinte",
+      "O valor do dado e uma referência/ponteiro para o próximo nó",
+      "O valor do dado apenas",
+      "Ponteiros para a cabeça e para a cauda da lista"
+    ],
+    correct_answer: "1"
+  },
+  {
+    id: "q_list_3",
+    module_id: "linked-list",
+    type: "true_false",
+    statement: "A inserção de um novo elemento no início de uma lista ligada simples (head) é uma operação que roda em tempo constante O(1).",
+    options: ["Verdadeiro", "Falso"],
+    correct_answer: "0"
+  },
+  {
+    id: "q_list_4",
+    module_id: "linked-list",
+    type: "true_false",
+    statement: "Diferente de um array, os elementos de uma lista ligada não ocupam necessariamente posições adjacentes na memória física.",
+    options: ["Verdadeiro", "Falso"],
+    correct_answer: "0"
+  },
+  {
+    id: "q_list_5",
+    module_id: "linked-list",
+    type: "multiple",
+    statement: "Para remover o primeiro nó de uma lista simplesmente ligada com pelo menos dois nós, o ponteiro de início da lista (head) deve ser atualizado para apontar para:",
+    options: ["null", "O segundo nó (head.proximo)", "O último nó", "O nó anterior"],
+    correct_answer: "1"
+  },
+  {
+    id: "q_list_6",
+    module_id: "linked-list",
+    type: "multiple",
+    statement: "Qual é a principal vantagem de uma lista duplamente ligada em relação a uma simplesmente ligada?",
+    options: [
+      "Usa menos espaço de memória por nó",
+      "Permite percorrer e navegar na lista em ambas as direções (para frente e para trás)",
+      "Reduz a complexidade de busca por índice para O(1)",
+      "Dispensa o uso de ponteiros"
+    ],
+    correct_answer: "1"
+  },
+  {
+    id: "q_list_7",
+    module_id: "linked-list",
+    type: "true_false",
+    statement: "Em uma lista simplesmente ligada que seja circular, o ponteiro de próximo (next) do último nó aponta de volta para o primeiro nó da lista (head) em vez de ser null.",
+    options: ["Verdadeiro", "Falso"],
+    correct_answer: "0"
+  },
+  {
+    id: "q_list_8",
+    module_id: "linked-list",
+    type: "essay",
+    statement: "Qual é a palavra comumente usada em inglês para se referir ao primeiro nó de uma lista ligada?",
+    options: [],
+    correct_answer: "head"
+  },
+  {
+    id: "q_list_9",
+    module_id: "linked-list",
+    type: "essay",
+    statement: "Qual é a palavra comumente usada em inglês para se referir ao último nó de uma lista ligada?",
+    options: [],
+    correct_answer: "tail"
+  },
+  {
+    id: "q_list_10",
+    module_id: "linked-list",
+    type: "multiple",
+    statement: "Se tivermos uma lista duplamente ligada e tivermos uma referência direta ao nó intermediário que desejamos excluir, qual é a complexidade de tempo para removê-lo?",
+    options: ["O(1)", "O(n)", "O(log n)", "O(n²)"],
+    correct_answer: "0"
+  },
+  {
+    id: "q_list_11",
+    module_id: "linked-list",
+    type: "true_false",
+    statement: "Listas ligadas são mais propensas a causar fragmentação de memória na Heap em comparação com arrays devido à alocação e liberação individual de cada nó.",
+    options: ["Verdadeiro", "Falso"],
+    correct_answer: "0"
+  }
+];
 
 // ── Modules Definition ──────────────────────────────────────
 const MODULES = [
@@ -746,6 +991,12 @@ function initDB() {
   if (!localStorage.getItem(DB_KEYS.ACTIVITY_LOG)) {
     localStorage.setItem(DB_KEYS.ACTIVITY_LOG, JSON.stringify({}));
   }
+  if (!localStorage.getItem(DB_KEYS.BANK_QUESTIONS)) {
+    localStorage.setItem(DB_KEYS.BANK_QUESTIONS, JSON.stringify(DEFAULT_BANK_QUESTIONS));
+  }
+  if (!localStorage.getItem(DB_KEYS.BANK_SCORES)) {
+    localStorage.setItem(DB_KEYS.BANK_SCORES, JSON.stringify([]));
+  }
 
   // Se o Supabase estiver ativo, inicializa a sincronização em segundo plano
   if (isSupabaseConfigured()) {
@@ -758,72 +1009,31 @@ async function syncFromSupabase() {
   try {
     console.log('🔄 Sincronizando dados com o Supabase...');
     
-    // 1. Sincronização de Usuários
-    let { data: users, error: errUsers } = await supabaseClient.from('users').select('*');
+    // 1. Sincronização de Usuários — via view users_public (sem a coluna password;
+    // a tabela users em si só é acessível pela service_role, dentro das Edge Functions).
+    let { data: users, error: errUsers } = await supabaseClient.from('users_public').select('*');
     if (errUsers) throw errUsers;
 
-    // Se o banco remoto estiver vazio, fazer upload dos dados locais (Auto-migração)
     if (!users || users.length === 0) {
-      console.log('📤 Banco Supabase vazio detectado. Exportando dados locais para o banco remoto...');
-      const localUsers = getUsers();
-      const { error: errPushUsers } = await supabaseClient.from('users').insert(
-        localUsers.map(u => ({
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          password: u.password,
-          role: u.role,
-          avatar: u.avatar,
-          avatar_color: u.avatarColor,
-          created_at: u.createdAt || new Date().toISOString()
-        }))
-      );
-      if (errPushUsers) console.error('Erro ao inicializar usuários no Supabase:', errPushUsers);
-
-      const localAccess = getModuleAccess();
-      const accessArray = Object.keys(localAccess).map(studentId => ({
-        student_id: studentId,
-        module_ids: localAccess[studentId]
-      }));
-      if (accessArray.length > 0) {
-        await supabaseClient.from('module_access').insert(accessArray);
-      }
-
-      const localProgress = getAllProgress();
-      const progressArray = [];
-      Object.keys(localProgress).forEach(studentId => {
-        if (studentId === '_lastAccess') return;
-        Object.keys(localProgress[studentId]).forEach(moduleId => {
-          const m = localProgress[studentId][moduleId];
-          progressArray.push({
-            student_id: studentId,
-            module_id: moduleId,
-            started: m.started || false,
-            started_at: m.startedAt || null,
-            completed: m.completed || false,
-            completed_at: m.completedAt || null,
-            score: m.score || 0
-          });
-        });
-      });
-      if (progressArray.length > 0) {
-        await supabaseClient.from('progress').insert(progressArray);
-      }
-
-      const savedSettings = localStorage.getItem('ep_settings');
-      if (savedSettings) {
-        await supabaseClient.from('settings').upsert({
-          key: 'general',
-          value: JSON.parse(savedSettings)
-        });
-      }
-
-      console.log('✅ Banco Supabase inicializado com dados locais.');
+      // Não há mais auto-migração de usuários locais para o Supabase a partir do client:
+      // a tabela users só aceita escrita da service_role, e a senha precisa ser gerada como
+      // hash no servidor. Rode o script supabase_schema.sql (seção 9) para popular os
+      // usuários iniciais diretamente no banco.
+      console.warn('⚠️ Nenhum usuário encontrado no Supabase. Rode o seed de supabase_schema.sql no projeto.');
       return;
     }
 
-    // Se o banco remoto já tem dados, sobrescreve o cache local com os dados remotos
-    localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+    // Mapeia users_public (avatar_color) para o formato usado no client (avatarColor)
+    const mappedUsers = users.map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      avatar: u.avatar,
+      avatarColor: u.avatar_color,
+      createdAt: u.created_at,
+    }));
+    localStorage.setItem(DB_KEYS.USERS, JSON.stringify(mappedUsers));
     
     // 2. Acesso aos Módulos
     const { data: access, error: errAccess } = await supabaseClient.from('module_access').select('*');
@@ -906,6 +1116,22 @@ async function syncFromSupabase() {
       localStorage.setItem('ep_custom_modules', JSON.stringify(mappedModules));
     }
 
+    // 6.6. Banco de Questões
+    const { data: remoteQuestions, error: errRemoteQuestions } = await supabaseClient.from('bank_questions').select('*');
+    if (!errRemoteQuestions && remoteQuestions) {
+      localStorage.setItem(DB_KEYS.BANK_QUESTIONS, JSON.stringify(remoteQuestions));
+    } else if (errRemoteQuestions) {
+      console.error('Erro ao buscar bank_questions:', errRemoteQuestions);
+    }
+
+    // 6.7. Pontuações do Banco de Questões
+    const { data: remoteScores, error: errRemoteScores } = await supabaseClient.from('student_bank_scores').select('*');
+    if (!errRemoteScores && remoteScores) {
+      localStorage.setItem(DB_KEYS.BANK_SCORES, JSON.stringify(remoteScores));
+    } else if (errRemoteScores) {
+      console.error('Erro ao buscar student_bank_scores:', errRemoteScores);
+    }
+
     // 7. Configurações
     const { data: settings, error: errSettings } = await supabaseClient.from('settings').select('*');
     if (!errSettings && settings) {
@@ -939,11 +1165,30 @@ function getStudents() {
   return getUsers().filter(u => u.role === 'student');
 }
 
-function addStudent({ name, email, password, avatarColor }) {
+async function addStudent({ name, email, password, avatarColor }) {
   const users = getUsers();
   if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
     return { ok: false, error: 'E-mail já cadastrado.' };
   }
+
+  // Com Supabase configurado, a criação (e o hash da senha) é feita pela Edge Function
+  // "add-student", que valida que quem está chamando é de fato o professor autenticado.
+  if (isSupabaseConfigured()) {
+    const result = await callEdgeFunction('add-student', { name, email, password, avatarColor });
+    if (!result.ok) return { ok: false, error: result.error };
+    const newUser = result.data.user;
+    users.push(newUser);
+    localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+    const access = getModuleAccess();
+    access[newUser.id] = [];
+    localStorage.setItem(DB_KEYS.MODULE_ACCESS, JSON.stringify(access));
+    const progress = getAllProgress();
+    progress[newUser.id] = {};
+    localStorage.setItem(DB_KEYS.PROGRESS, JSON.stringify(progress));
+    return { ok: true, user: newUser };
+  }
+
+  // Modo local/offline: mantém o comportamento anterior (senha em texto puro só no localStorage).
   const initials = name.trim().split(' ').filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('');
   const newUser = {
     id: 'student_' + Date.now() + '_' + Math.floor(Math.random() * 9999),
@@ -957,7 +1202,6 @@ function addStudent({ name, email, password, avatarColor }) {
   };
   users.push(newUser);
   localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
-  // Init empty access & progress
   const access = getModuleAccess();
   access[newUser.id] = [];
   localStorage.setItem(DB_KEYS.MODULE_ACCESS, JSON.stringify(access));
@@ -965,32 +1209,18 @@ function addStudent({ name, email, password, avatarColor }) {
   progress[newUser.id] = {};
   localStorage.setItem(DB_KEYS.PROGRESS, JSON.stringify(progress));
 
-  // Sync para o Supabase
-  if (isSupabaseConfigured()) {
-    supabaseClient.from('users').insert({
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      password: newUser.password,
-      role: newUser.role,
-      avatar: newUser.avatar,
-      avatar_color: newUser.avatarColor,
-      created_at: newUser.createdAt
-    }).then(({ error }) => {
-      if (error) console.error('Erro ao sincronizar usuário no Supabase:', error);
-    });
-    supabaseClient.from('module_access').insert({
-      student_id: newUser.id,
-      module_ids: []
-    }).then(({ error }) => {
-      if (error) console.error('Erro ao sincronizar module_access no Supabase:', error);
-    });
-  }
-
   return { ok: true, user: newUser };
 }
 
-function removeStudent(studentId) {
+async function removeStudent(studentId) {
+  if (isSupabaseConfigured()) {
+    const result = await callEdgeFunction('remove-student', { studentId });
+    if (!result.ok) {
+      showToast(`❌ ${result.error}`, 'error');
+      return { ok: false, error: result.error };
+    }
+  }
+
   let users = getUsers();
   users = users.filter(u => u.id !== studentId);
   localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
@@ -1008,55 +1238,78 @@ function removeStudent(studentId) {
   delete answers[studentId];
   localStorage.setItem(DB_KEYS.STUDENT_ANSWERS, JSON.stringify(answers));
 
-  // Sync para o Supabase (ON DELETE CASCADE lidará com as tabelas filhas)
-  if (isSupabaseConfigured()) {
-    supabaseClient.from('users').delete().eq('id', studentId).then(({ error }) => {
-      if (error) console.error('Erro ao remover usuário no Supabase:', error);
-    });
-  }
+  return { ok: true };
 }
 
-function updateStudent(studentId, { name, email, password, avatarColor }) {
+async function updateStudent(studentId, { name, email, password, avatarColor }) {
   const users = getUsers();
   const idx = users.findIndex(u => u.id === studentId);
   if (idx === -1) return { ok: false, error: 'Aluno não encontrado.' };
   const duplicate = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.id !== studentId);
   if (duplicate) return { ok: false, error: 'E-mail já cadastrado por outro usuário.' };
+
+  if (isSupabaseConfigured()) {
+    const result = await callEdgeFunction('update-student', { studentId, name, email, password, avatarColor });
+    if (!result.ok) return { ok: false, error: result.error };
+  }
+
   const initials = name.trim().split(' ').filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('');
   users[idx] = {
     ...users[idx],
     name: name.trim(),
     email: email.trim().toLowerCase(),
-    password: password || users[idx].password,
+    password: isSupabaseConfigured() ? users[idx].password : (password || users[idx].password),
     avatar: initials || users[idx].avatar,
     avatarColor: avatarColor || users[idx].avatarColor,
   };
   localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
 
-  // Sync para o Supabase
-  if (isSupabaseConfigured()) {
-    supabaseClient.from('users').update({
-      name: users[idx].name,
-      email: users[idx].email,
-      password: users[idx].password,
-      avatar: users[idx].avatar,
-      avatar_color: users[idx].avatarColor
-    }).eq('id', studentId).then(({ error }) => {
-      if (error) console.error('Erro ao atualizar usuário no Supabase:', error);
-    });
-  }
-
   return { ok: true, user: users[idx] };
 }
 
+// ── Edge Functions (validação server-side quando o Supabase está configurado) ──
+// Retorna { ok, data } ou { ok:false, error }. O token de sessão (quando existir) é
+// injetado automaticamente no corpo da chamada.
+async function callEdgeFunction(name, body = {}) {
+  if (!isSupabaseConfigured()) return { ok: false, error: 'Supabase não configurado.' };
+  const session = getSession();
+  try {
+    const { data, error } = await supabaseClient.functions.invoke(name, {
+      body: { token: session?.token, ...body },
+    });
+    if (error) return { ok: false, error: error.message || 'Erro na chamada ao servidor.' };
+    if (data && data.error) return { ok: false, error: data.error };
+    return { ok: true, data };
+  } catch (e) {
+    return { ok: false, error: e.message || 'Erro de rede.' };
+  }
+}
+
 // ── Session ──
-function setSession(user) {
-  localStorage.setItem(DB_KEYS.SESSION, JSON.stringify({ userId: user.id, role: user.role, name: user.name }));
+// Quando o Supabase está configurado, a sessão inclui um "token" emitido pela
+// Edge Function "login" — é ele que as demais Edge Functions usam para identificar
+// o usuário no servidor (impede forjar sessão só editando o localStorage).
+// Sem Supabase configurado (modo local/offline), a sessão não tem token e as
+// operações sensíveis seguem validando apenas no client, como antes.
+function setSession(user, token, expiresAt) {
+  localStorage.setItem(DB_KEYS.SESSION, JSON.stringify({
+    userId: user.id,
+    role: user.role,
+    name: user.name,
+    token: token || null,
+    expiresAt: expiresAt || null,
+  }));
 }
 
 function getSession() {
   const s = localStorage.getItem(DB_KEYS.SESSION);
-  return s ? JSON.parse(s) : null;
+  if (!s) return null;
+  const session = JSON.parse(s);
+  if (session.expiresAt && new Date(session.expiresAt).getTime() < Date.now()) {
+    clearSession();
+    return null;
+  }
+  return session;
 }
 
 function clearSession() {
@@ -1073,19 +1326,20 @@ function getStudentModuleAccess(studentId) {
   return access[studentId] || [];
 }
 
-function setStudentModuleAccess(studentId, moduleIds) {
+async function setStudentModuleAccess(studentId, moduleIds) {
   const access = getModuleAccess();
   access[studentId] = moduleIds;
   localStorage.setItem(DB_KEYS.MODULE_ACCESS, JSON.stringify(access));
 
-  // Sync para o Supabase
+  // A escrita real (quando o Supabase está configurado) só é aceita pela Edge Function
+  // "set-module-access", que exige uma sessão de professor válida — a policy de RLS
+  // bloqueia escrita direta nessa tabela pela anon key.
   if (isSupabaseConfigured()) {
-    supabaseClient.from('module_access').upsert({
-      student_id: studentId,
-      module_ids: moduleIds
-    }).then(({ error }) => {
-      if (error) console.error('Erro ao salvar module_access no Supabase:', error);
-    });
+    const result = await callEdgeFunction('set-module-access', { studentId, moduleIds });
+    if (!result.ok) {
+      console.error('Erro ao salvar module_access no Supabase:', result.error);
+      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar o acesso: ${result.error}`, 'error');
+    }
   }
 }
 
@@ -1127,26 +1381,27 @@ function getStudentProgress(studentId) {
   return all[studentId] || {};
 }
 
-function setModuleProgress(studentId, moduleId, data) {
+async function setModuleProgress(studentId, moduleId, data) {
   const all = getAllProgress();
   if (!all[studentId]) all[studentId] = {};
   all[studentId][moduleId] = { ...all[studentId][moduleId], ...data };
   localStorage.setItem(DB_KEYS.PROGRESS, JSON.stringify(all));
 
-  // Sync para o Supabase
+  // A escrita real (quando o Supabase está configurado) só é aceita pela Edge Function
+  // "save-progress", que grava progresso apenas do aluno autenticado (identificado pelo
+  // token de sessão) — impede que um aluno grave/forje nota de outro aluno via console.
   if (isSupabaseConfigured()) {
     const currentModule = all[studentId][moduleId];
-    supabaseClient.from('progress').upsert({
-      student_id: studentId,
-      module_id: moduleId,
+    const result = await callEdgeFunction('save-progress', {
+      moduleId,
       started: currentModule.started || false,
-      started_at: currentModule.startedAt || null,
       completed: currentModule.completed || false,
-      completed_at: currentModule.completedAt || null,
-      score: currentModule.score || 0
-    }).then(({ error }) => {
-      if (error) console.error('Erro ao salvar progresso no Supabase:', error);
+      score: currentModule.score || 0,
     });
+    if (!result.ok) {
+      console.error('Erro ao salvar progresso no Supabase:', result.error);
+      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar o progresso: ${result.error}`, 'error');
+    }
   }
 }
 
@@ -1246,24 +1501,21 @@ function getStudentAnswers(studentId) {
   return all[studentId] || {};
 }
 
-function saveStudentAnswer(studentId, activityId, questionId, answerData) {
+async function saveStudentAnswer(studentId, activityId, questionId, answerData) {
   const all = JSON.parse(localStorage.getItem(DB_KEYS.STUDENT_ANSWERS) || '{}');
   if (!all[studentId]) all[studentId] = {};
   if (!all[studentId][activityId]) all[studentId][activityId] = {};
   all[studentId][activityId][questionId] = answerData;
   localStorage.setItem(DB_KEYS.STUDENT_ANSWERS, JSON.stringify(all));
 
-  // Sync para o Supabase
+  // A escrita real (quando o Supabase está configurado) só é aceita pela Edge Function
+  // "save-student-answer", que grava resposta apenas do aluno autenticado (via token).
   if (isSupabaseConfigured()) {
-    supabaseClient.from('student_answers').upsert({
-      student_id: studentId,
-      activity_id: activityId,
-      question_id: questionId,
-      answer_data: answerData,
-      updated_at: new Date().toISOString()
-    }).then(({ error }) => {
-      if (error) console.error('Erro ao salvar resposta no Supabase:', error);
-    });
+    const result = await callEdgeFunction('save-student-answer', { activityId, questionId, answerData });
+    if (!result.ok) {
+      console.error('Erro ao salvar resposta no Supabase:', result.error);
+      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar a resposta: ${result.error}`, 'error');
+    }
   }
 }
 
@@ -1379,4 +1631,80 @@ function getOverallStats() {
     ? Math.round((totalCompletions / (totalStudents * MODULES.length)) * 100)
     : 0;
   return { totalStudents, totalCompletions, avgCompletionRate, totalModules: MODULES.length };
+}
+
+// ── Banco de Questões (Helpers) ──
+function getBankQuestions() {
+  return JSON.parse(localStorage.getItem(DB_KEYS.BANK_QUESTIONS) || '[]');
+}
+
+function getBankQuestionsByModule(moduleId) {
+  return getBankQuestions().filter(q => q.module_id === moduleId);
+}
+
+function getBankScores() {
+  return JSON.parse(localStorage.getItem(DB_KEYS.BANK_SCORES) || '[]');
+}
+
+function getStudentBankScores(studentId) {
+  return getBankScores().filter(s => s.student_id === studentId);
+}
+
+function saveBankQuestion(question) {
+  const questions = getBankQuestions();
+  const idx = questions.findIndex(q => q.id === question.id);
+  if (idx !== -1) {
+    questions[idx] = question;
+  } else {
+    questions.push(question);
+  }
+  localStorage.setItem(DB_KEYS.BANK_QUESTIONS, JSON.stringify(questions));
+
+  // Sync to Supabase
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('bank_questions').upsert({
+      id: question.id,
+      module_id: question.module_id,
+      type: question.type,
+      statement: question.statement,
+      options: question.options,
+      correct_answer: question.correct_answer
+    }).then(({ error }) => {
+      if (error) console.error('Erro ao sincronizar questão no Supabase:', error);
+    });
+  }
+}
+
+function deleteBankQuestion(id) {
+  let questions = getBankQuestions();
+  questions = questions.filter(q => q.id !== id);
+  localStorage.setItem(DB_KEYS.BANK_QUESTIONS, JSON.stringify(questions));
+
+  // Sync to Supabase
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('bank_questions').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('Erro ao deletar questão no Supabase:', error);
+    });
+  }
+}
+
+function saveStudentBankScore(scoreData) {
+  const scores = getBankScores();
+  scores.push(scoreData);
+  localStorage.setItem(DB_KEYS.BANK_SCORES, JSON.stringify(scores));
+
+  // Sync to Supabase
+  if (isSupabaseConfigured()) {
+    supabaseClient.from('student_bank_scores').insert({
+      id: scoreData.id,
+      student_id: scoreData.student_id,
+      module_id: scoreData.module_id,
+      score: scoreData.score,
+      total_questions: scoreData.total_questions,
+      correct_answers: scoreData.correct_answers,
+      completed_at: scoreData.completed_at || new Date().toISOString()
+    }).then(({ error }) => {
+      if (error) console.error('Erro ao sincronizar score do aluno no Supabase:', error);
+    });
+  }
 }
