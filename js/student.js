@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!currentUser) { clearSession(); window.location.href = 'index.html'; return; }
 
   initStudentUI();
+  startModuleAccessPolling();
 });
 
 // ── Init UI ──────────────────────────────────────────────
@@ -30,6 +31,35 @@ function initStudentUI() {
   renderDashboard();
   setupEventListeners();
   updateGreeting();
+}
+
+// ── Polling: detecta liberação de módulo pelo professor sem precisar recarregar ──
+const MODULE_ACCESS_POLL_INTERVAL_MS = 25000;
+
+function startModuleAccessPolling() {
+  if (!isSupabaseConfigured()) return;
+  setInterval(checkModuleAccessUpdates, MODULE_ACCESS_POLL_INTERVAL_MS);
+}
+
+async function checkModuleAccessUpdates() {
+  const { data, error } = await supabaseClient
+    .from('module_access')
+    .select('module_ids')
+    .eq('student_id', currentUser.id)
+    .maybeSingle();
+  if (error || !data) return;
+
+  const moduleIds = data.module_ids || [];
+  const access = getModuleAccess();
+  const previouslyUnlocked = access[currentUser.id] || [];
+  const newlyUnlocked = moduleIds.filter(id => !previouslyUnlocked.includes(id));
+  if (newlyUnlocked.length === 0) return;
+
+  access[currentUser.id] = moduleIds;
+  localStorage.setItem(DB_KEYS.MODULE_ACCESS, JSON.stringify(access));
+  showToast('🎉 Um novo módulo foi liberado para você!', 'success');
+  renderSidebarNav();
+  renderDashboard();
 }
 
 function populateUserInfo() {
