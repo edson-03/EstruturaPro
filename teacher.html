@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https:; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https:; frame-src https://www.youtube.com https://youtube.com; frame-ancestors 'none';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EstruturaPRO — Painel do Professor</title>
   <meta name="description" content="Painel do professor na plataforma EstruturaPRO para acompanhamento e gerenciamento de alunos." />
@@ -294,6 +294,24 @@
             </div>
           </div>
 
+          <!-- Seção 2.5: Vídeo Aula (YouTube) -->
+          <div class="ca-section">
+            <div class="ca-section-title">🎥 Vídeo Aula (YouTube)</div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin:-0.5rem 0 1rem 0;">Opcional. Se preenchido, uma aba "Vídeo" aparece para o aluno neste módulo.</p>
+            <div class="ca-fields-grid">
+              <div class="ca-field" style="grid-column:1/-1;">
+                <label class="ca-label" for="mod-video-url">Link do vídeo no YouTube</label>
+                <input type="text" id="mod-video-url" class="ca-input" placeholder="Ex: https://www.youtube.com/watch?v=..." />
+              </div>
+              <div class="ca-field">
+                <label class="ca-label" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                  <input type="checkbox" id="mod-video-autoplay" style="width:auto;" />
+                  Reproduzir automaticamente ao abrir a aba (mudo)
+                </label>
+              </div>
+            </div>
+          </div>
+
           <!-- Seção 3: Teoria e Código -->
           <div class="ca-section">
             <div class="ca-section-title">📖 Teoria e Código de Exemplo</div>
@@ -330,7 +348,7 @@
               <!-- Split Container -->
               <div class="editor-split-container split-layout" id="theory-split-container">
                 <div class="split-pane editor-pane">
-                  <textarea id="mod-theory" required placeholder="Escreva a teoria usando Markdown. Ex:&#10;### Título do Conteúdo&#10;Aqui você descreve o funcionamento da estrutura..."></textarea>
+                  <textarea id="mod-theory" placeholder="Escreva a teoria usando Markdown. Ex:&#10;### Título do Conteúdo&#10;Aqui você descreve o funcionamento da estrutura..."></textarea>
                 </div>
                 <div class="split-pane preview-pane" id="theory-preview-pane">
                   <div class="preview-placeholder">// A prévia renderizada aparecerá aqui em tempo real...</div>
@@ -342,7 +360,7 @@
             <div class="mod-editor-block">
               <label class="ca-label" style="margin-bottom:0.75rem; font-weight:600;">Código de Exemplo (JavaScript) <span class="ca-required">*</span></label>
               <div class="code-editor-wrap">
-                <textarea id="mod-code" required placeholder="Cole o código de demonstração aqui..."></textarea>
+                <textarea id="mod-code" placeholder="Cole o código de demonstração aqui..."></textarea>
               </div>
             </div>
           </div>

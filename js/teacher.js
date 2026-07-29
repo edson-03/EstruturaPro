@@ -3542,6 +3542,10 @@ function renderModulesCrudForm(moduleId) {
   document.getElementById('mod-difficulty').value = m.difficulty || 'Intermediário';
   document.getElementById('mod-duration').value = m.duration || '45 min';
 
+  // Fill video
+  document.getElementById('mod-video-url').value = m.video?.url || '';
+  document.getElementById('mod-video-autoplay').checked = !!m.video?.autoplay;
+
   // Fill complexities
   document.getElementById('mod-c-access').value = m.complexity?.access || '';
   document.getElementById('mod-c-search').value = m.complexity?.search || '';
@@ -3649,6 +3653,16 @@ function saveModuleCrudForm() {
     return;
   }
 
+  // Video (opcional)
+  const videoUrl = document.getElementById('mod-video-url').value.trim();
+  if (videoUrl && !extractYouTubeId(videoUrl)) {
+    showToast('❌ Link de vídeo do YouTube inválido. Cole a URL completa do vídeo.', 'warning');
+    return;
+  }
+  const video = videoUrl
+    ? { url: videoUrl, autoplay: document.getElementById('mod-video-autoplay').checked }
+    : { url: '', autoplay: false };
+
   // Colors and Gradients
   const color = document.getElementById('mod-color').value;
   const gradient = `linear-gradient(135deg, ${color} 0%, #111827 100%)`;
@@ -3667,7 +3681,8 @@ function saveModuleCrudForm() {
     complexity: complexity,
     theory: theoryVal,
     codeExample: codeVal,
-    quiz: quiz
+    quiz: quiz,
+    video: video
   };
 
   // Save
@@ -3720,6 +3735,14 @@ function previewModuleCrud(m) {
   // Convert theory markdown using basic local renderer matching the student.js one
   const theoryHtml = renderMarkdownLocal(m.theory);
 
+  const videoEmbedUrl = buildYouTubeEmbedUrl(m.video);
+  const videoHtml = videoEmbedUrl ? `
+    <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary); border-left:3px solid ${m.color || '#6366f1'}; padding-left:0.5rem;">🎥 Vídeo Aula</h3>
+    <div style="position:relative; width:100%; padding-top:56.25%; border-radius:10px; overflow:hidden; background:#000; margin-bottom:2rem;">
+      <iframe src="${videoEmbedUrl}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+  ` : '';
+
   body.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:start; border-bottom:1px solid var(--border); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
       <div style="display:flex; align-items:center; gap:0.75rem;">
@@ -3744,6 +3767,9 @@ function previewModuleCrud(m) {
       <div style="text-align:center; padding:0.75rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:rgba(0,0,0,0.15);"><div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">Remoção</div><div style="font-weight:700; font-size:0.95rem; color:${m.color || '#6366f1'};">${m.complexity?.delete || 'O(n)'}</div></div>
       <div style="text-align:center; padding:0.75rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:rgba(0,0,0,0.15);"><div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">Espaço</div><div style="font-weight:700; font-size:0.95rem; color:${m.color || '#6366f1'};">${m.complexity?.space || 'O(n)'}</div></div>
     </div>
+
+    <!-- Video -->
+    ${videoHtml}
 
     <!-- Theory -->
     <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary); border-left:3px solid ${m.color || '#6366f1'}; padding-left:0.5rem;">📖 Explicação Teórica</h3>

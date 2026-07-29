@@ -25,6 +25,27 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
+// ── Vídeo do YouTube (compartilhado entre teacher.js e student.js) ──
+function extractYouTubeId(url) {
+  if (!url) return null;
+  const trimmed = url.trim();
+  const match = trimmed.match(/(?:[?&]v=|\/embed\/|\/shorts\/|\/live\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (match) return match[1];
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  return null;
+}
+
+function buildYouTubeEmbedUrl(video) {
+  const id = extractYouTubeId(video?.url);
+  if (!id) return null;
+  const params = new URLSearchParams({ rel: '0' });
+  if (video?.autoplay) {
+    params.set('autoplay', '1');
+    params.set('mute', '1');
+  }
+  return `https://www.youtube.com/embed/${id}?${params.toString()}`;
+}
+
 function escapeDangerousHtml(text) {
   if (!text) return '';
   return text
@@ -1111,7 +1132,8 @@ async function syncFromSupabase() {
         complexity: rm.complexity,
         theory: rm.theory,
         codeExample: rm.code_example,
-        quiz: rm.quiz
+        quiz: rm.quiz,
+        video: rm.video || {}
       }));
       localStorage.setItem('ep_custom_modules', JSON.stringify(mappedModules));
     }
@@ -1584,7 +1606,8 @@ function saveCustomModule(module) {
       complexity: module.complexity || {},
       theory: module.theory || '',
       code_example: module.codeExample || '',
-      quiz: module.quiz || []
+      quiz: module.quiz || [],
+      video: module.video || {}
     }).then(({ error }) => {
       if (error) console.error('Erro ao sincronizar módulo no Supabase:', error);
     });

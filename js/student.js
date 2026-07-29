@@ -240,6 +240,7 @@ function openModule(moduleId) {
   // Populate tabs
   switchViewerTab('theory');
   populateTheory(mod);
+  populateVideoTab(mod);
   populateCode(mod);
   populateModuleActivities(mod);
 
@@ -260,6 +261,7 @@ function openModule(moduleId) {
 }
 
 function backToDashboard() {
+  stopModuleVideo();
   currentModule = null;
   currentActivity = null;
   document.getElementById('view-dashboard').style.display = 'block';
@@ -299,6 +301,19 @@ function populateTheory(mod) {
   // Theory text
   const content = document.getElementById('theory-content');
   content.innerHTML = renderMarkdown(mod.theory);
+}
+
+// ── Video ────────────────────────────────────────────────
+function populateVideoTab(mod) {
+  const tabBtn = document.getElementById('tab-video');
+  const hasVideo = !!buildYouTubeEmbedUrl(mod.video);
+  tabBtn.style.display = hasVideo ? '' : 'none';
+  stopModuleVideo();
+}
+
+function stopModuleVideo() {
+  const iframe = document.getElementById('video-embed-iframe');
+  if (iframe) iframe.src = '';
 }
 
 function renderMarkdown(text) {
@@ -560,6 +575,16 @@ function switchViewerTab(tabId) {
   // Refresh module activities list when switching to that tab
   if (tabId === 'module-activities' && currentModule) {
     populateModuleActivities(currentModule);
+  }
+
+  // Load the video only while its tab is open; stop it (clear src) otherwise
+  // so it doesn't keep playing audio in the background after switching tabs.
+  if (tabId === 'video' && currentModule) {
+    const src = buildYouTubeEmbedUrl(currentModule.video);
+    const iframe = document.getElementById('video-embed-iframe');
+    if (iframe && src) iframe.src = src;
+  } else {
+    stopModuleVideo();
   }
 }
 

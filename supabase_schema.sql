@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS modules (
     theory TEXT,
     code_example TEXT,
     quiz JSONB NOT NULL DEFAULT '[]'::jsonb,
+    video JSONB NOT NULL DEFAULT '{}'::jsonb, -- { url, autoplay }
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

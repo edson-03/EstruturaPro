@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https:; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https:; frame-src https://www.youtube.com https://youtube.com; frame-ancestors 'none';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EstruturaPRO — Painel do Aluno</title>
   <meta name="description" content="Painel do aluno na plataforma EstruturaPRO de ensino de estrutura de dados." />
@@ -156,6 +156,7 @@
         </div>
         <div class="module-viewer-tabs" id="viewer-tabs">
           <button class="viewer-tab active" data-tab="theory">📖 Teoria</button>
+          <button class="viewer-tab" data-tab="video" id="tab-video" style="display:none;">🎥 Vídeo</button>
           <button class="viewer-tab" data-tab="code">💻 Código</button>
           <button class="viewer-tab" data-tab="visualizer">🎞️ Visualizador</button>
           <button class="viewer-tab" data-tab="quiz">📝 Quiz</button>
@@ -173,6 +174,17 @@
         <div class="divider"></div>
         <!-- Theory text (rendered as markdown-ish HTML) -->
         <div class="theory-content" id="theory-content"></div>
+      </div>
+
+      <!-- ── VIDEO Panel ── -->
+      <div class="viewer-panel" id="panel-video">
+        <div style="margin-bottom:1.25rem;">
+          <h3 style="margin-bottom:0.25rem;">🎥 Vídeo Aula</h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);">Assista à explicação em vídeo deste módulo.</p>
+        </div>
+        <div id="video-embed-wrapper" style="position:relative;width:100%;padding-top:56.25%;border-radius:var(--radius-lg);overflow:hidden;background:#000;">
+          <iframe id="video-embed-iframe" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
       </div>
 
       <!-- ── CODE Panel ── -->
