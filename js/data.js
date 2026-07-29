@@ -25,6 +25,29 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
+// ── Toast (compartilhado entre student.js e teacher.js) ──
+function showToast(message, type = 'info') {
+  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('hiding');
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+// ── Debounce (compartilhado entre student.js e teacher.js) ──
+function debounce(fn, delay = 250) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
 // ── Vídeo do YouTube (compartilhado entre teacher.js e student.js) ──
 function extractYouTubeId(url) {
   if (!url) return null;
@@ -1360,7 +1383,7 @@ async function setStudentModuleAccess(studentId, moduleIds) {
     const result = await callEdgeFunction('set-module-access', { studentId, moduleIds });
     if (!result.ok) {
       console.error('Erro ao salvar module_access no Supabase:', result.error);
-      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar o acesso: ${result.error}`, 'error');
+      showToast(`⚠️ Não foi possível sincronizar o acesso: ${result.error}`, 'error');
     }
   }
 }
@@ -1370,7 +1393,7 @@ async function syncSettingsToSupabase(settings) {
     const result = await callEdgeFunction('save-settings', { settings });
     if (!result.ok) {
       console.error('Erro ao salvar configurações no Supabase:', result.error);
-      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar as configurações: ${result.error}`, 'error');
+      showToast(`⚠️ Não foi possível sincronizar as configurações: ${result.error}`, 'error');
     }
   }
 }
@@ -1421,7 +1444,7 @@ async function setModuleProgress(studentId, moduleId, data) {
     });
     if (!result.ok) {
       console.error('Erro ao salvar progresso no Supabase:', result.error);
-      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar o progresso: ${result.error}`, 'error');
+      showToast(`⚠️ Não foi possível sincronizar o progresso: ${result.error}`, 'error');
     }
   }
 }
@@ -1473,6 +1496,7 @@ async function logActivity(studentId, message) {
     const result = await callEdgeFunction('log-activity', { studentId, message });
     if (!result.ok) {
       console.error('Erro ao registrar log no Supabase:', result.error);
+      showToast('Erro ao sincronizar log de atividade.', 'error');
     }
   }
 }
@@ -1491,7 +1515,7 @@ async function saveActivity(activity) {
     const result = await callEdgeFunction('save-activity', { activity });
     if (!result.ok) {
       console.error('Erro ao salvar atividade no Supabase:', result.error);
-      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar a atividade: ${result.error}`, 'error');
+      showToast(`⚠️ Não foi possível sincronizar a atividade: ${result.error}`, 'error');
     }
   }
 }
@@ -1505,7 +1529,7 @@ async function deleteActivity(id) {
     const result = await callEdgeFunction('delete-activity', { activityId: id });
     if (!result.ok) {
       console.error('Erro ao deletar atividade no Supabase:', result.error);
-      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar a exclusão: ${result.error}`, 'error');
+      showToast(`⚠️ Não foi possível sincronizar a exclusão: ${result.error}`, 'error');
     }
   }
 }
@@ -1528,7 +1552,7 @@ async function saveStudentAnswer(studentId, activityId, questionId, answerData) 
     const result = await callEdgeFunction('save-student-answer', { activityId, questionId, answerData });
     if (!result.ok) {
       console.error('Erro ao salvar resposta no Supabase:', result.error);
-      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar a resposta: ${result.error}`, 'error');
+      showToast(`⚠️ Não foi possível sincronizar a resposta: ${result.error}`, 'error');
     }
   }
 }
@@ -1586,7 +1610,7 @@ async function saveCustomModule(module) {
     const result = await callEdgeFunction('save-module', { module });
     if (!result.ok) {
       console.error('Erro ao sincronizar módulo no Supabase:', result.error);
-      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar o módulo: ${result.error}`, 'error');
+      showToast(`⚠️ Não foi possível sincronizar o módulo: ${result.error}`, 'error');
     }
   }
 }
@@ -1600,7 +1624,7 @@ async function deleteCustomModule(id) {
     const result = await callEdgeFunction('delete-module', { moduleId: id });
     if (!result.ok) {
       console.error('Erro ao deletar módulo no Supabase:', result.error);
-      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar a exclusão: ${result.error}`, 'error');
+      showToast(`⚠️ Não foi possível sincronizar a exclusão: ${result.error}`, 'error');
     }
   }
 }
@@ -1665,7 +1689,7 @@ async function saveBankQuestion(question) {
     const result = await callEdgeFunction('save-bank-question', { question });
     if (!result.ok) {
       console.error('Erro ao sincronizar questão no Supabase:', result.error);
-      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar a questão: ${result.error}`, 'error');
+      showToast(`⚠️ Não foi possível sincronizar a questão: ${result.error}`, 'error');
     }
   }
 }
@@ -1679,7 +1703,7 @@ async function deleteBankQuestion(id) {
     const result = await callEdgeFunction('delete-bank-question', { questionId: id });
     if (!result.ok) {
       console.error('Erro ao deletar questão no Supabase:', result.error);
-      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar a exclusão: ${result.error}`, 'error');
+      showToast(`⚠️ Não foi possível sincronizar a exclusão: ${result.error}`, 'error');
     }
   }
 }
@@ -1701,6 +1725,7 @@ async function saveStudentBankScore(scoreData) {
     });
     if (!result.ok) {
       console.error('Erro ao sincronizar score do aluno no Supabase:', result.error);
+      showToast('Erro ao sincronizar pontuação do simulado.', 'error');
     }
   }
 }

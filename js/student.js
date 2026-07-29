@@ -884,20 +884,6 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('visible');
 }
 
-// ── Toast ────────────────────────────────────────────────
-function showToast(message, type = 'info') {
-  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
-  container.appendChild(toast);
-  setTimeout(() => {
-    toast.classList.add('hiding');
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
-}
-
 // ============================================================
 //  ✏️ Student Activity Answering & Evaluation
 // ============================================================

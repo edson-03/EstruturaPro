@@ -659,7 +659,7 @@ function setupEventListeners() {
   const filterTypeSelect = document.getElementById('qb-filter-type');
   if (filterTypeSelect) filterTypeSelect.addEventListener('change', renderQuestionsTable);
   const searchKeywordInput = document.getElementById('qb-search-keyword');
-  if (searchKeywordInput) searchKeywordInput.addEventListener('input', renderQuestionsTable);
+  if (searchKeywordInput) searchKeywordInput.addEventListener('input', debounce(renderQuestionsTable));
 
   // CSV Import Modals
   const btnOpenCSV = document.getElementById('btn-qb-open-csv-modal');
@@ -1193,19 +1193,6 @@ function formatRelativeTime(isoString) {
   if (hours < 24) return `há ${hours}h`;
   if (days === 1) return 'ontem';
   return `há ${days} dias`;
-}
-
-function showToast(message, type = 'info') {
-  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
-  container.appendChild(toast);
-  setTimeout(() => {
-    toast.classList.add('hiding');
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
 }
 
 // ============================================================
@@ -3305,9 +3292,9 @@ let currentEditModuleId = null;
 
 function setupModulesCrudEvents() {
   // Search bar
-  document.getElementById('modules-crud-search').addEventListener('input', () => {
+  document.getElementById('modules-crud-search').addEventListener('input', debounce(() => {
     renderModulesCrudList();
-  });
+  }));
 
   // New Module button
   document.getElementById('btn-new-module').addEventListener('click', () => {
