@@ -1,0 +1,10 @@
+supabase/
+Dockerfile
+docker-compose.yml
+nginx.conf
+deploy.sh
+.dockerignore
+DEPLOY.md
+ANALISE.md
+PLANO_MELHORIAS.md
+CONTEXTO.md

@@ -1,0 +1,9 @@
+{
+  "name": "estruturapro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EstruturaPRO — plataforma de ensino de estrutura de dados (frontend estático).",
+  "scripts": {
+    "build": "node scripts/generate-config.js"
+  }
+}

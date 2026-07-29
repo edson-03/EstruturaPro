@@ -169,3 +169,38 @@ Se preferir não usar Docker e servir os arquivos diretamente por um Nginx rodan
    }
    ```
 4. Ative e reinicie o Nginx, em seguida rode o comando do Certbot (`sudo certbot --nginx -d seu-dominio.com`) conforme explicado anteriormente.
+
+---
+
+## ☁️ Passo 6: Deploy na Vercel (Alternativa sem VPS)
+
+Se preferir não gerenciar um servidor (sem Docker, sem Nginx manual, HTTPS automático), a Vercel é a forma mais simples de colocar o EstruturaPRO no ar.
+
+O projeto já vem preparado com `vercel.json` e um script de build (`scripts/generate-config.js`) que gera o `js/config.js` automaticamente a partir de variáveis de ambiente — assim a `anon key` do Supabase nunca precisa ser commitada no Git.
+
+### 1. Criar o projeto na Vercel
+
+1. Suba o código para um repositório no GitHub/GitLab/Bitbucket (o `js/config.js` real não vai junto, pois está no `.gitignore` — isso é o esperado).
+2. No [dashboard da Vercel](https://vercel.com/new), importe o repositório.
+3. A Vercel detecta automaticamente o `vercel.json` (Build Command: `npm run build`, Output Directory: `.`). Não é necessário alterar nada no assistente de importação.
+
+### 2. Configurar as variáveis de ambiente
+
+Antes do primeiro deploy, vá em **Project Settings → Environment Variables** e adicione:
+
+| Nome | Valor |
+|---|---|
+| `SUPABASE_URL` | URL do seu projeto Supabase (ex: `https://xxxxx.supabase.co`) |
+| `SUPABASE_ANON_KEY` | A `anon public key` do projeto (Project Settings → API no Supabase) |
+
+Sem essas duas variáveis, o build falha de propósito (`scripts/generate-config.js` aborta com erro) para evitar subir a aplicação sem conexão ao banco.
+
+### 3. Deploy
+
+Clique em **Deploy**. A cada novo commit na branch principal, a Vercel builda e publica automaticamente.
+
+### 4. Rodar o schema do Supabase
+
+Igual ao deploy em VPS: execute `supabase_schema.sql` no **SQL Editor** do seu projeto Supabase antes de usar a plataforma (ver Passo 1 deste guia), e faça o deploy das Edge Functions em `supabase/functions/` via Supabase CLI (`supabase functions deploy <nome>`) ou pelo painel do Supabase — a Vercel só hospeda o frontend estático, não as Edge Functions.
+
+> **Nota:** a Vercel não substitui o Supabase — ela hospeda apenas os arquivos estáticos (HTML/CSS/JS). O banco de dados e as Edge Functions continuam rodando no Supabase, como em qualquer outra forma de deploy.
