@@ -1365,14 +1365,13 @@ async function setStudentModuleAccess(studentId, moduleIds) {
   }
 }
 
-function syncSettingsToSupabase(settings) {
+async function syncSettingsToSupabase(settings) {
   if (isSupabaseConfigured()) {
-    supabaseClient.from('settings').upsert({
-      key: 'general',
-      value: settings
-    }).then(({ error }) => {
-      if (error) console.error('Erro ao salvar configurações no Supabase:', error);
-    });
+    const result = await callEdgeFunction('save-settings', { settings });
+    if (!result.ok) {
+      console.error('Erro ao salvar configurações no Supabase:', result.error);
+      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar as configurações: ${result.error}`, 'error');
+    }
   }
 }
 
@@ -1456,7 +1455,7 @@ function getActivityLog() {
   return JSON.parse(localStorage.getItem(DB_KEYS.ACTIVITY_LOG) || '{}');
 }
 
-function logActivity(studentId, message) {
+async function logActivity(studentId, message) {
   const timestamp = new Date().toISOString();
   const log = getActivityLog();
   if (!log[studentId]) log[studentId] = [];
@@ -1468,15 +1467,13 @@ function logActivity(studentId, message) {
   if (log[studentId].length > 50) log[studentId] = log[studentId].slice(0, 50);
   localStorage.setItem(DB_KEYS.ACTIVITY_LOG, JSON.stringify(log));
 
-  // Sync para o Supabase
+  // A escrita real (quando o Supabase está configurado) só é aceita pela Edge Function
+  // "log-activity" — alunos só logam pra si mesmos, professores podem logar pra qualquer aluno.
   if (isSupabaseConfigured()) {
-    supabaseClient.from('activity_log').insert({
-      student_id: studentId,
-      message,
-      timestamp
-    }).then(({ error }) => {
-      if (error) console.error('Erro ao registrar log no Supabase:', error);
-    });
+    const result = await callEdgeFunction('log-activity', { studentId, message });
+    if (!result.ok) {
+      console.error('Erro ao registrar log no Supabase:', result.error);
+    }
   }
 }
 
@@ -1485,36 +1482,31 @@ function getActivities() {
   return JSON.parse(localStorage.getItem(DB_KEYS.ACTIVITIES) || '[]');
 }
 
-function saveActivity(activity) {
+async function saveActivity(activity) {
   const activities = getActivities();
   activities.push(activity);
   localStorage.setItem(DB_KEYS.ACTIVITIES, JSON.stringify(activities));
 
-  // Sync para o Supabase
   if (isSupabaseConfigured()) {
-    supabaseClient.from('activities').insert({
-      id: activity.id,
-      title: activity.title,
-      description: activity.description || '',
-      created_by: activity.createdBy || 'teacher1',
-      questions: activity.questions,
-      created_at: activity.createdAt || new Date().toISOString()
-    }).then(({ error }) => {
-      if (error) console.error('Erro ao salvar atividade no Supabase:', error);
-    });
+    const result = await callEdgeFunction('save-activity', { activity });
+    if (!result.ok) {
+      console.error('Erro ao salvar atividade no Supabase:', result.error);
+      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar a atividade: ${result.error}`, 'error');
+    }
   }
 }
 
-function deleteActivity(id) {
+async function deleteActivity(id) {
   let activities = getActivities();
   activities = activities.filter(act => act.id !== id);
   localStorage.setItem(DB_KEYS.ACTIVITIES, JSON.stringify(activities));
 
-  // Sync para o Supabase
   if (isSupabaseConfigured()) {
-    supabaseClient.from('activities').delete().eq('id', id).then(({ error }) => {
-      if (error) console.error('Erro ao deletar atividade no Supabase:', error);
-    });
+    const result = await callEdgeFunction('delete-activity', { activityId: id });
+    if (!result.ok) {
+      console.error('Erro ao deletar atividade no Supabase:', result.error);
+      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar a exclusão: ${result.error}`, 'error');
+    }
   }
 }
 
@@ -1580,7 +1572,7 @@ function getModuleById(id) {
   return getModules().find(m => m.id === id) || null;
 }
 
-function saveCustomModule(module) {
+async function saveCustomModule(module) {
   const custom = getCustomModules();
   const idx = custom.findIndex(m => m.id === module.id);
   if (idx !== -1) {
@@ -1590,40 +1582,26 @@ function saveCustomModule(module) {
   }
   localStorage.setItem('ep_custom_modules', JSON.stringify(custom));
 
-  // Sync to Supabase
   if (isSupabaseConfigured()) {
-    supabaseClient.from('modules').upsert({
-      id: module.id,
-      title: module.title,
-      subtitle: module.subtitle || '',
-      icon: module.icon || '',
-      emoji: module.emoji || '',
-      color: module.color || '',
-      gradient: module.gradient || '',
-      description: module.description || '',
-      duration: module.duration || '',
-      difficulty: module.difficulty || '',
-      complexity: module.complexity || {},
-      theory: module.theory || '',
-      code_example: module.codeExample || '',
-      quiz: module.quiz || [],
-      video: module.video || {}
-    }).then(({ error }) => {
-      if (error) console.error('Erro ao sincronizar módulo no Supabase:', error);
-    });
+    const result = await callEdgeFunction('save-module', { module });
+    if (!result.ok) {
+      console.error('Erro ao sincronizar módulo no Supabase:', result.error);
+      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar o módulo: ${result.error}`, 'error');
+    }
   }
 }
 
-function deleteCustomModule(id) {
+async function deleteCustomModule(id) {
   let custom = getCustomModules();
   custom = custom.filter(m => m.id !== id);
   localStorage.setItem('ep_custom_modules', JSON.stringify(custom));
 
-  // Sync to Supabase
   if (isSupabaseConfigured()) {
-    supabaseClient.from('modules').delete().eq('id', id).then(({ error }) => {
-      if (error) console.error('Erro ao deletar módulo no Supabase:', error);
-    });
+    const result = await callEdgeFunction('delete-module', { moduleId: id });
+    if (!result.ok) {
+      console.error('Erro ao deletar módulo no Supabase:', result.error);
+      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar a exclusão: ${result.error}`, 'error');
+    }
   }
 }
 
@@ -1673,7 +1651,7 @@ function getStudentBankScores(studentId) {
   return getBankScores().filter(s => s.student_id === studentId);
 }
 
-function saveBankQuestion(question) {
+async function saveBankQuestion(question) {
   const questions = getBankQuestions();
   const idx = questions.findIndex(q => q.id === question.id);
   if (idx !== -1) {
@@ -1683,51 +1661,46 @@ function saveBankQuestion(question) {
   }
   localStorage.setItem(DB_KEYS.BANK_QUESTIONS, JSON.stringify(questions));
 
-  // Sync to Supabase
   if (isSupabaseConfigured()) {
-    supabaseClient.from('bank_questions').upsert({
-      id: question.id,
-      module_id: question.module_id,
-      type: question.type,
-      statement: question.statement,
-      options: question.options,
-      correct_answer: question.correct_answer
-    }).then(({ error }) => {
-      if (error) console.error('Erro ao sincronizar questão no Supabase:', error);
-    });
+    const result = await callEdgeFunction('save-bank-question', { question });
+    if (!result.ok) {
+      console.error('Erro ao sincronizar questão no Supabase:', result.error);
+      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar a questão: ${result.error}`, 'error');
+    }
   }
 }
 
-function deleteBankQuestion(id) {
+async function deleteBankQuestion(id) {
   let questions = getBankQuestions();
   questions = questions.filter(q => q.id !== id);
   localStorage.setItem(DB_KEYS.BANK_QUESTIONS, JSON.stringify(questions));
 
-  // Sync to Supabase
   if (isSupabaseConfigured()) {
-    supabaseClient.from('bank_questions').delete().eq('id', id).then(({ error }) => {
-      if (error) console.error('Erro ao deletar questão no Supabase:', error);
-    });
+    const result = await callEdgeFunction('delete-bank-question', { questionId: id });
+    if (!result.ok) {
+      console.error('Erro ao deletar questão no Supabase:', result.error);
+      if (typeof showToast === 'function') showToast(`⚠️ Não foi possível sincronizar a exclusão: ${result.error}`, 'error');
+    }
   }
 }
 
-function saveStudentBankScore(scoreData) {
+async function saveStudentBankScore(scoreData) {
   const scores = getBankScores();
   scores.push(scoreData);
   localStorage.setItem(DB_KEYS.BANK_SCORES, JSON.stringify(scores));
 
-  // Sync to Supabase
+  // A escrita real (quando o Supabase está configurado) só é aceita pela Edge Function
+  // "save-bank-score", que grava a pontuação apenas do aluno autenticado (via token).
   if (isSupabaseConfigured()) {
-    supabaseClient.from('student_bank_scores').insert({
+    const result = await callEdgeFunction('save-bank-score', {
       id: scoreData.id,
-      student_id: scoreData.student_id,
-      module_id: scoreData.module_id,
+      moduleId: scoreData.module_id,
       score: scoreData.score,
-      total_questions: scoreData.total_questions,
-      correct_answers: scoreData.correct_answers,
-      completed_at: scoreData.completed_at || new Date().toISOString()
-    }).then(({ error }) => {
-      if (error) console.error('Erro ao sincronizar score do aluno no Supabase:', error);
+      totalQuestions: scoreData.total_questions,
+      correctAnswers: scoreData.correct_answers,
     });
+    if (!result.ok) {
+      console.error('Erro ao sincronizar score do aluno no Supabase:', result.error);
+    }
   }
 }

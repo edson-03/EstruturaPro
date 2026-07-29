@@ -216,13 +216,11 @@ ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bank_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE student_bank_scores ENABLE ROW LEVEL SECURITY;
 
--- Políticas de acesso público (permitem que a aplicação leia e grave usando a chave anônima).
--- Nota: tabelas que guardam dado sensível ou sujeito a fraude (users, progress, student_answers,
--- module_access, sessions) NÃO têm policy pública de escrita — toda escrita nelas passa
--- obrigatoriamente pelas Edge Functions (supabase/functions/), que usam a service_role key
--- (nunca exposta ao client) e por isso não são afetadas pelo RLS. As demais tabelas
--- (modules, activities, bank_questions, activity_log, settings, student_bank_scores) continuam
--- com "USING (true)" — ainda são um ponto em aberto, ver PLANO_MELHORIAS.md.
+-- Políticas de acesso público (permitem que a aplicação leia usando a chave anônima).
+-- Nenhuma tabela tem mais policy pública de ESCRITA — toda escrita passa obrigatoriamente
+-- pelas Edge Functions (supabase/functions/), que usam a service_role key (nunca exposta
+-- ao client) e por isso não são afetadas pelo RLS. Leitura continua pública nas tabelas
+-- sem dado sensível (conteúdo educacional, logs, configurações, scores).
 
 -- users: nenhuma policy para anon/authenticated. Leitura pública passa pela view users_public
 -- (sem a coluna password, ver seção 14); escrita só via Edge Functions (login, add-student,
@@ -232,8 +230,9 @@ REVOKE ALL ON users FROM anon, authenticated;
 -- sessions: nenhuma policy pública. Só a service_role (Edge Functions) cria/lê/apaga sessões.
 REVOKE ALL ON sessions FROM anon, authenticated;
 
+-- modules: leitura pública, escrita só via Edge Functions "save-module"/"delete-module" (professor).
 CREATE POLICY "Permitir leitura pública de módulos" ON modules FOR SELECT USING (true);
-CREATE POLICY "Permitir gravação pública de módulos" ON modules FOR ALL USING (true);
+REVOKE INSERT, UPDATE, DELETE ON modules FROM anon, authenticated;
 
 -- module_access: leitura pública (não é dado sensível), escrita só via Edge Function "set-module-access".
 CREATE POLICY "Permitir leitura pública de acessos" ON module_access FOR SELECT USING (true);
@@ -243,24 +242,29 @@ REVOKE INSERT, UPDATE, DELETE ON module_access FROM anon, authenticated;
 CREATE POLICY "Permitir leitura pública de progresso" ON progress FOR SELECT USING (true);
 REVOKE INSERT, UPDATE, DELETE ON progress FROM anon, authenticated;
 
+-- activity_log: leitura pública, escrita só via Edge Function "log-activity".
 CREATE POLICY "Permitir leitura pública de logs" ON activity_log FOR SELECT USING (true);
-CREATE POLICY "Permitir gravação pública de logs" ON activity_log FOR ALL USING (true);
+REVOKE INSERT, UPDATE, DELETE ON activity_log FROM anon, authenticated;
 
+-- activities: leitura pública, escrita só via Edge Functions "save-activity"/"delete-activity" (professor).
 CREATE POLICY "Permitir leitura pública de atividades" ON activities FOR SELECT USING (true);
-CREATE POLICY "Permitir gravação pública de atividades" ON activities FOR ALL USING (true);
+REVOKE INSERT, UPDATE, DELETE ON activities FROM anon, authenticated;
 
 -- student_answers: leitura pública, escrita só via Edge Function "save-student-answer".
 CREATE POLICY "Permitir leitura pública de respostas" ON student_answers FOR SELECT USING (true);
 REVOKE INSERT, UPDATE, DELETE ON student_answers FROM anon, authenticated;
 
+-- settings: leitura pública, escrita só via Edge Function "save-settings" (professor).
 CREATE POLICY "Permitir leitura pública de configurações" ON settings FOR SELECT USING (true);
-CREATE POLICY "Permitir gravação pública de configurações" ON settings FOR ALL USING (true);
+REVOKE INSERT, UPDATE, DELETE ON settings FROM anon, authenticated;
 
+-- bank_questions: leitura pública, escrita só via Edge Functions "save-bank-question"/"delete-bank-question" (professor).
 CREATE POLICY "Permitir leitura pública de bank_questions" ON bank_questions FOR SELECT USING (true);
-CREATE POLICY "Permitir gravação pública de bank_questions" ON bank_questions FOR ALL USING (true);
+REVOKE INSERT, UPDATE, DELETE ON bank_questions FROM anon, authenticated;
 
+-- student_bank_scores: leitura pública, escrita só via Edge Function "save-bank-score" (aluno, só o próprio).
 CREATE POLICY "Permitir leitura pública de student_bank_scores" ON student_bank_scores FOR SELECT USING (true);
-CREATE POLICY "Permitir gravação pública de student_bank_scores" ON student_bank_scores FOR ALL USING (true);
+REVOKE INSERT, UPDATE, DELETE ON student_bank_scores FROM anon, authenticated;
 
 -- ── 14. VIEW PÚBLICA DE USUÁRIOS (sem a coluna password) ──
 CREATE OR REPLACE VIEW users_public AS
