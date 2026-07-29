@@ -1249,7 +1249,7 @@ function addQuestion(type) {
   document.getElementById('ca-empty-state').style.display = 'none';
 
   const qId = 'q_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-  const qNum = document.querySelectorAll('.ca-question-card').length + 1;
+  const qNum = document.querySelectorAll('#questions-container .ca-question-card').length + 1;
 
   const card = document.createElement('div');
   card.className = 'ca-question-card';
@@ -1260,7 +1260,7 @@ function addQuestion(type) {
 
   if (type === 'theoretical') {
     content = `
-      <button type="button" class="ca-q-remove" onclick="removeQuestionCard('${qId}')" title="Remover Pergunta">✕</button>
+      <button type="button" class="ca-q-remove" title="Remover Pergunta">✕</button>
       <div class="ca-q-title-row">
         <span class="ca-q-number">${qNum}</span>
         <span class="ca-q-type-icon">📖</span>
@@ -1295,7 +1295,7 @@ function addQuestion(type) {
     `;
   } else if (type === 'practical') {
     content = `
-      <button type="button" class="ca-q-remove" onclick="removeQuestionCard('${qId}')" title="Remover Pergunta">✕</button>
+      <button type="button" class="ca-q-remove" title="Remover Pergunta">✕</button>
       <div class="ca-q-title-row">
         <span class="ca-q-number">${qNum}</span>
         <span class="ca-q-type-icon">💻</span>
@@ -1319,7 +1319,7 @@ function addQuestion(type) {
           </div>
           <span class="ide-filename">solucao_${qNum}.js</span>
           <span class="ide-lang-badge">JS</span>
-          <button type="button" class="ide-run-btn" id="run_${qId}" onclick="runPracticalQuestion('${qId}')">
+          <button type="button" class="ide-run-btn" id="run_${qId}">
             <span class="ide-run-icon">▶</span> Executar
           </button>
         </div>
@@ -1332,8 +1332,8 @@ function addQuestion(type) {
         <!-- Output panel -->
         <div class="ide-output-panel">
           <div class="ide-output-tabs">
-            <div class="ide-tab active" id="tab-console-${qId}" onclick="switchIDETab('${qId}','console')">Console</div>
-            <div class="ide-tab" id="tab-tests-${qId}"  onclick="switchIDETab('${qId}','tests')">Testes</div>
+            <div class="ide-tab active" id="tab-console-${qId}">Console</div>
+            <div class="ide-tab" id="tab-tests-${qId}">Testes</div>
           </div>
 
           <!-- Console pane -->
@@ -1351,7 +1351,7 @@ function addQuestion(type) {
         <div class="ide-testcase-input-section">
           <div class="ide-testcase-input-header">
             <span class="ide-testcase-input-title">📋 Casos de Teste (mínimo 1)</span>
-            <button type="button" class="btn btn-sm btn-ghost" style="padding:0.25rem 0.65rem;font-size:0.7rem;" onclick="addTestCaseRow('${qId}')">+ Adicionar</button>
+            <button type="button" class="btn btn-sm btn-ghost btn-add-testcase" style="padding:0.25rem 0.65rem;font-size:0.7rem;">+ Adicionar</button>
           </div>
           <div class="q-test-cases-list" id="testcases_${qId}">
             <!-- injected by addTestCaseRow -->
@@ -1364,6 +1364,8 @@ function addQuestion(type) {
 
   card.innerHTML = content;
   document.getElementById('questions-container').appendChild(card);
+
+  card.querySelector('.ca-q-remove').addEventListener('click', () => removeQuestionCard(qId));
 
   // Initialize CodeMirror if practical
   if (type === 'practical') {
@@ -1395,6 +1397,11 @@ function addQuestion(type) {
     });
     editorInstances[qId] = editor;
 
+    card.querySelector(`#run_${qId}`).addEventListener('click', () => runPracticalQuestion(qId));
+    card.querySelector(`#tab-console-${qId}`).addEventListener('click', () => switchIDETab(qId, 'console'));
+    card.querySelector(`#tab-tests-${qId}`).addEventListener('click', () => switchIDETab(qId, 'tests'));
+    card.querySelector('.btn-add-testcase').addEventListener('click', () => addTestCaseRow(qId));
+
     // Add first test case row automatically
     addTestCaseRow(qId);
   }
@@ -1414,8 +1421,9 @@ function addTestCaseRow(qId, expression = '', expected = '') {
     <input type="text" class="ca-input tc-expression" placeholder="Ex: minhaFuncao(2, 3)" value="${expression}" required />
     <span style="color:var(--text-muted);font-size:0.85rem;">===</span>
     <input type="text" class="ca-input tc-expected" placeholder="Resultado esperado. Ex: 5" value="${expected}" required />
-    <button type="button" class="ca-test-case-remove" onclick="removeTestCaseRow('${rowId}')" title="Excluir caso de teste">✕</button>
+    <button type="button" class="ca-test-case-remove" title="Excluir caso de teste">✕</button>
   `;
+  div.querySelector('.ca-test-case-remove').addEventListener('click', () => removeTestCaseRow(rowId));
   container.appendChild(div);
 }
 
@@ -1436,7 +1444,7 @@ function removeQuestionCard(qId) {
 }
 
 function recalculateQuestionNumbers() {
-  const cards = document.querySelectorAll('.ca-question-card');
+  const cards = document.querySelectorAll('#questions-container .ca-question-card');
   if (cards.length === 0) {
     document.getElementById('ca-empty-state').style.display = 'block';
   } else {
@@ -1453,7 +1461,7 @@ function readActivityForm() {
   const description = document.getElementById('act-description').value;
 
   const questions = [];
-  const cards = document.querySelectorAll('.ca-question-card');
+  const cards = document.querySelectorAll('#questions-container .ca-question-card');
   cards.forEach((card) => {
     const qId = card.id;
     const type = card.dataset.type;
@@ -1580,7 +1588,7 @@ function closePreviewModal() {
 function saveActivitySubmit(e) {
   e.preventDefault();
   
-  const cards = document.querySelectorAll('.ca-question-card');
+  const cards = document.querySelectorAll('#questions-container .ca-question-card');
   if (cards.length === 0) {
     showToast('⚠️ Adicione pelo menos uma pergunta à atividade!', 'warning');
     return;
@@ -1606,8 +1614,8 @@ function saveActivitySubmit(e) {
 
 function resetCreateActivityForm() {
   document.getElementById('activity-form').reset();
-  
-  const cards = document.querySelectorAll('.ca-question-card');
+
+  const cards = document.querySelectorAll('#questions-container .ca-question-card');
   cards.forEach(card => {
     const qId = card.id;
     if (editorInstances[qId]) {
@@ -4107,28 +4115,30 @@ function renderQuestionsTable() {
       const correctIdx = parseInt(q.correct_answer);
       const letter = ['A','B','C','D','E'][correctIdx] || '?';
       const text = q.options[correctIdx] || '';
-      ansDetails = `<span style="font-size:0.8rem;color:var(--text-secondary);">${q.options.length} alt. | Gabarito: <strong>${letter}</strong> (${text.substring(0, 20)}...)</span>`;
+      ansDetails = `<span style="font-size:0.8rem;color:var(--text-secondary);">${q.options.length} alt. | Gabarito: <strong>${letter}</strong> (${escapeHtml(text.substring(0, 20))}...)</span>`;
     } else if (q.type === 'true_false') {
       const correctVal = q.correct_answer === '0' ? 'Verd.' : 'Falso';
       ansDetails = `<span style="font-size:0.8rem;color:var(--text-secondary);">Gabarito: <strong>${correctVal}</strong></span>`;
     } else if (q.type === 'essay') {
-      ansDetails = `<span style="font-size:0.8rem;color:var(--text-secondary);">Gabarito: <strong>"${q.correct_answer}"</strong></span>`;
+      ansDetails = `<span style="font-size:0.8rem;color:var(--text-secondary);">Gabarito: <strong>"${escapeHtml(q.correct_answer)}"</strong></span>`;
     }
 
     const shortStatement = q.statement.length > 90 ? q.statement.substring(0, 87) + '...' : q.statement;
 
     tr.innerHTML = `
-      <td><span style="font-weight:600;font-size:0.85rem;color:var(--text-primary);">${modName}</span></td>
+      <td><span style="font-weight:600;font-size:0.85rem;color:var(--text-primary);">${escapeHtml(modName)}</span></td>
       <td><span class="badge badge-muted" style="font-size:0.75rem;">${typeLabel}</span></td>
       <td><span style="font-size:0.85rem;" title="${escapeHtml(q.statement)}">${escapeHtml(shortStatement)}</span></td>
       <td>${ansDetails}</td>
       <td style="text-align:center;">
         <div style="display:inline-flex;gap:0.5rem;">
-          <button class="btn btn-ghost btn-sm" style="padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border);" onclick="openQuestionModal('${q.id}')">✏️ Editar</button>
-          <button class="btn btn-ghost btn-sm" style="padding:0.25rem 0.6rem;font-size:0.75rem;color:var(--red-light);border:1px solid var(--border);" onclick="deleteQuestion('${q.id}')">🗑️ Excluir</button>
+          <button class="btn btn-ghost btn-sm btn-qb-edit" style="padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--border);">✏️ Editar</button>
+          <button class="btn btn-ghost btn-sm btn-qb-delete" style="padding:0.25rem 0.6rem;font-size:0.75rem;color:var(--red-light);border:1px solid var(--border);">🗑️ Excluir</button>
         </div>
       </td>
     `;
+    tr.querySelector('.btn-qb-edit').addEventListener('click', () => openQuestionModal(q.id));
+    tr.querySelector('.btn-qb-delete').addEventListener('click', () => deleteQuestion(q.id));
     tbody.appendChild(tr);
   });
 }

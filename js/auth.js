@@ -12,7 +12,28 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   setupLoginUI();
+  setupParticles();
 });
+
+function setupParticles() {
+  const container = document.getElementById('particles');
+  if (!container) return;
+  const colors = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#ec4899'];
+  for (let i = 0; i < 25; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 4 + 2;
+    p.style.cssText = `
+      width: ${size}px;
+      height: ${size}px;
+      left: ${Math.random() * 100}%;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      animation-duration: ${Math.random() * 8 + 6}s;
+      animation-delay: ${Math.random() * 8}s;
+    `;
+    container.appendChild(p);
+  }
+}
 
 function setupLoginUI() {
   const form = document.getElementById('login-form');

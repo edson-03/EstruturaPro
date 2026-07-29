@@ -957,7 +957,7 @@ function renderActivityStudentView(act) {
       q.options.forEach((opt, oIdx) => {
         const isSelected = savedChoice !== undefined && parseInt(savedChoice) === oIdx;
         html += `
-          <button class="quiz-option q-stud-opt ${isSelected ? 'selected' : ''}" data-index="${oIdx}" onclick="selectStudentTheoreticalOption(this, '${q.id}', ${oIdx})">
+          <button class="quiz-option q-stud-opt ${isSelected ? 'selected' : ''}" data-index="${oIdx}" data-question-id="${q.id}">
             <span class="option-letter">${['A','B','C','D'][oIdx]}</span>
             <span>${escapeHtml(opt)}</span>
           </button>
@@ -972,7 +972,7 @@ function renderActivityStudentView(act) {
           <textarea id="stud_editor_${q.id}">${escapeHtml(savedCode)}</textarea>
         </div>
         <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;">
-          <button class="btn btn-sm" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;font-weight:600;" onclick="testStudentCode('${q.id}')">&#9654; Executar e Testar</button>
+          <button class="btn btn-sm btn-run-test-code" data-question-id="${q.id}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;font-weight:600;">&#9654; Executar e Testar</button>
           <span id="stud_test_status_${q.id}" style="font-size:0.82rem;font-weight:600;"></span>
         </div>
 
@@ -983,7 +983,7 @@ function renderActivityStudentView(act) {
             <span style="width:10px;height:10px;border-radius:50%;background:#ffbd2e;display:inline-block;"></span>
             <span style="width:10px;height:10px;border-radius:50%;background:#27c93f;display:inline-block;"></span>
             <span style="font-size:0.72rem;color:#7d8590;margin-left:0.25rem;font-family:var(--font-mono);flex:1;">Output &mdash; console</span>
-            <button onclick="clearOutputPanel('${q.id}')" title="Limpar saída" style="background:none;border:none;color:#586069;cursor:pointer;font-size:0.72rem;padding:0 0.25rem;font-family:var(--font-mono);» transition:color 0.15s;" onmouseenter="this.style.color='#e2e8f0'" onmouseleave="this.style.color='#586069'">&#x1F5D1; limpar</button>
+            <button class="btn-clear-output" data-question-id="${q.id}" title="Limpar saída" style="background:none;border:none;color:#586069;cursor:pointer;font-size:0.72rem;padding:0 0.25rem;font-family:var(--font-mono);transition:color 0.15s;">&#x1F5D1; limpar</button>
           </div>
           <div id="stud_output_body_${q.id}" style="background:#0d1117;border:1px solid #30363d;border-radius:0 0 8px 8px;padding:0;font-family:var(--font-mono);font-size:0.82rem;min-height:56px;max-height:260px;overflow-y:auto;line-height:1.6;"></div>
         </div>
@@ -996,6 +996,14 @@ function renderActivityStudentView(act) {
     qDiv.innerHTML = html;
     container.appendChild(qDiv);
 
+    if (q.type === 'theoretical') {
+      qDiv.querySelectorAll('.q-stud-opt').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectStudentTheoreticalOption(btn, btn.dataset.questionId, parseInt(btn.dataset.index));
+        });
+      });
+    }
+
     // If practical, instantiate CodeMirror
     if (q.type === 'practical') {
       const textarea = document.getElementById(`stud_editor_${q.id}`);
@@ -1007,6 +1015,12 @@ function renderActivityStudentView(act) {
         lineWrapping: true
       });
       studentEditorInstances[q.id] = editor;
+
+      qDiv.querySelector('.btn-run-test-code').addEventListener('click', () => testStudentCode(q.id));
+      const clearBtn = qDiv.querySelector('.btn-clear-output');
+      clearBtn.addEventListener('click', () => clearOutputPanel(q.id));
+      clearBtn.addEventListener('mouseenter', () => { clearBtn.style.color = '#e2e8f0'; });
+      clearBtn.addEventListener('mouseleave', () => { clearBtn.style.color = '#586069'; });
     }
   });
 
@@ -1029,11 +1043,7 @@ function selectStudentTheoreticalOption(button, qId, oIdx) {
   if (currentActivity) {
     const answerData = { chosen: oIdx };
     saveStudentAnswer(currentUser.id, currentActivity.id, qId, answerData);
-    
-    const answers = getStudentAnswers(currentUser.id)[currentActivity.id] || {};
-    const total = currentActivity.questions.length;
-    const answered = Object.keys(answers).length;
-    document.getElementById('activity-status-info').textContent = `${answered} de ${total} questões respondidas.`;
+    updateActivityStatusInfo();
     renderSidebarNav();
   }
 }
@@ -1571,10 +1581,10 @@ function renderQBModulesGrid() {
           <span class="badge badge-muted">${mod.difficulty || 'Básico'}</span>
         </div>
       </div>
-      <div class="module-title">${mod.title}</div>
-      <div class="module-subtitle">${mod.subtitle || ''}</div>
+      <div class="module-title">${escapeHtml(mod.title)}</div>
+      <div class="module-subtitle">${escapeHtml(mod.subtitle)}</div>
       <div class="module-desc" style="margin-bottom:1rem;">Pratique resolvendo exercícios aleatórios acumulando experiência e testando seus limites.</div>
-      
+
       ${bestScore !== null ? `
         <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem;display:flex;align-items:center;gap:0.35rem;">
           ⭐ Melhor Pontuação: <strong style="color:var(--green-light)">${bestScore}%</strong>
@@ -1588,7 +1598,7 @@ function renderQBModulesGrid() {
           <span>❓ ${totalQuestions} questões no banco</span>
         </div>
         ${unlocked && totalQuestions > 0 ? `
-          <button class="btn btn-sm btn-primary module-cta" style="background:${mod.gradient || 'var(--primary)'};" onclick="event.stopPropagation(); startQuestionBankSession('${mod.id}')">
+          <button class="btn btn-sm btn-primary module-cta" style="background:${mod.gradient || 'var(--primary)'};">
             ⚡ Praticar
           </button>
         ` : unlocked ? `
@@ -1605,6 +1615,10 @@ function renderQBModulesGrid() {
 
     if (unlocked && totalQuestions > 0) {
       card.addEventListener('click', () => startQuestionBankSession(mod.id));
+      card.querySelector('.module-cta').addEventListener('click', (e) => {
+        e.stopPropagation();
+        startQuestionBankSession(mod.id);
+      });
     }
     grid.appendChild(card);
   });
