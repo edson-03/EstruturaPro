@@ -5,6 +5,12 @@
 # Ignorar arquivo de credenciais sensíveis do banco de dados (Supabase)
 js/config.js
 
+# Documentos internos de auditoria/planejamento — não devem ficar públicos
+# (descrevem falhas de segurança, inclusive algumas ainda não corrigidas)
+ANALISE.md
+PLANO_MELHORIAS.md
+CONTEXTO.md
+
 # Arquivos de Sistema e IDEs
 .vscode/
 .idea/
