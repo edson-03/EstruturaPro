@@ -6,6 +6,11 @@
 
 /* ── CSS Variables ── */
 :root {
+  /* Site é sempre tema escuro (sem alternância) — sem isso, o navegador renderiza
+     controles nativos (dropdown de <select>, scrollbar) no esquema claro do SO,
+     destoando do resto da UI. */
+  color-scheme: dark;
+
   /* Backgrounds */
   --bg-primary:   #0a0c17;
   --bg-secondary: #0f1221;
