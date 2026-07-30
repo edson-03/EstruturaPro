@@ -887,6 +887,8 @@ function setupEventListeners() {
   if (btnIdeStop) btnIdeStop.addEventListener('click', stopIDECode);
   const btnIdeClear = document.getElementById('btn-ide-clear');
   if (btnIdeClear) btnIdeClear.addEventListener('click', clearIDECode);
+  const btnIdeSaveFile = document.getElementById('btn-ide-save-file');
+  if (btnIdeSaveFile) btnIdeSaveFile.addEventListener('click', saveIDEFileAs);
   const btnIdeFullscreen = document.getElementById('btn-ide-fullscreen');
   if (btnIdeFullscreen) btnIdeFullscreen.addEventListener('click', toggleIdeFullscreen);
   document.addEventListener('keydown', (e) => {
@@ -1611,6 +1613,58 @@ function updateIdeLineCount() {
   const code = ideEditorInstance.getValue();
   const lines = ideEditorInstance.lineCount();
   el.textContent = code.length > 0 ? `${lines} linha${lines !== 1 ? 's' : ''} · ${code.length} caracteres` : '';
+}
+
+// ── Salvar código como arquivo (.js/.txt/.json ou PDF via impressão) ──
+function downloadIDETextFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function printIDECodeAsPdf(code) {
+  const win = window.open('', '_blank');
+  if (!win) {
+    showToast('❌ O navegador bloqueou a janela de impressão. Permita pop-ups pra exportar em PDF.', 'warning');
+    return;
+  }
+  win.document.write(
+    '<!DOCTYPE html><html><head><title>Código JavaScript</title>' +
+    '<style>body{font-family:"Courier New",monospace;white-space:pre-wrap;word-break:break-word;padding:2rem;font-size:13px;line-height:1.5;color:#000;}</style>' +
+    '</head><body>' + escapeHtml(code) + '</body></html>'
+  );
+  win.document.close();
+  win.onload = () => { win.focus(); win.print(); };
+}
+
+function saveIDEFileAs() {
+  if (!ideEditorInstance) return;
+  const code = ideEditorInstance.getValue();
+  if (!code.trim()) {
+    showToast('⚠️ Não há código pra salvar.', 'warning');
+    return;
+  }
+  const format = document.getElementById('ide-save-format').value;
+
+  if (format === 'pdf') {
+    printIDECodeAsPdf(code);
+    return;
+  }
+  if (format === 'json') {
+    downloadIDETextFile('codigo.json', JSON.stringify({ code, savedAt: new Date().toISOString() }, null, 2), 'application/json');
+    return;
+  }
+  if (format === 'txt') {
+    downloadIDETextFile('codigo.txt', code, 'text/plain');
+    return;
+  }
+  downloadIDETextFile('codigo.js', code, 'text/javascript');
 }
 
 function clearIDECode() {

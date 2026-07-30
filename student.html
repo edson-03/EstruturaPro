@@ -390,6 +390,13 @@
           <span id="ide-line-count" class="ide-line-count"></span>
           <input type="file" id="ide-file-input" accept=".js,text/javascript" style="display:none;">
           <button class="btn btn-sm btn-ghost" id="btn-ide-import" title="Importar um arquivo .js do computador ou celular">📂 Importar Arquivo</button>
+          <select id="ide-save-format" class="input-field" style="padding:0.4rem 0.6rem; font-size:0.82rem; width:auto;" title="Formato do arquivo a salvar">
+            <option value="js">.js</option>
+            <option value="txt">.txt</option>
+            <option value="json">.json</option>
+            <option value="pdf">PDF</option>
+          </select>
+          <button class="btn btn-sm btn-ghost" id="btn-ide-save-file" title="Salvar o código como arquivo">💾 Salvar Arquivo</button>
           <button class="btn btn-sm btn-ghost" id="btn-ide-clear" title="Limpar o editor">🗑️ Limpar</button>
           <button class="btn btn-sm btn-ghost" id="btn-ide-fullscreen" title="Tela Cheia (Esc para sair)">⛶ Tela Cheia</button>
           <button class="btn btn-sm btn-ghost" id="btn-ide-stop" title="Interromper a execução" disabled>⏹️ Parar</button>

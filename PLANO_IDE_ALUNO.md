@@ -89,3 +89,18 @@ Este plano ainda não foi implementado — é só o levantamento/desenho, confor
 ## Ordem sugerida
 
 **A → B → C → D**, nessa ordem: sem a Fase A (backend) não há o que salvar; sem a Fase B (editor) não há onde escrever; a Fase C (execução segura) é o "compilar" pedido e depende do editor existir; a Fase D é polimento puro, fica pra quando sobrar tempo — igual foi feito no plano do editor de módulo.
+
+---
+
+## Fase E — Exportar código como arquivo (pedido depois das Fases A-D)
+
+**Status: concluída em 2026-07-30.**
+
+Pedido adicional: um botão pra salvar/baixar o código do editor como arquivo, com escolha de formato (`.js`, `.txt`, `.json` ou PDF).
+
+1. ✅ `<select id="ide-save-format">` (js/txt/json/pdf, mesmo padrão do dropdown "Usar modelo..." do editor de módulo) + botão "💾 Salvar Arquivo" na toolbar da IDE, ao lado de "Importar Arquivo".
+2. ✅ `.js`/`.txt`: baixa o código cru (`Blob` + link `<a download>` temporário), só muda a extensão/MIME.
+3. ✅ `.json`: empacota como `{ code, savedAt }` (ISO date), não é só o código cru — dá pra saber quando foi exportado.
+4. ✅ PDF: **decisão tomada com o usuário** — em vez de adicionar uma biblioteca de geração de PDF (mais uma dependência no projeto), usa o diálogo de impressão nativo do navegador: abre uma janela nova só com o código formatado (`white-space:pre-wrap`, fonte monoespaçada) e chama `window.print()`; o aluno escolhe "Salvar como PDF" ali. Sem mudança de CSP (a janela nova só tem `<style>` inline, que já é permitido; nenhum `<script>` inline é usado).
+
+**Testado com Playwright real** (offline): os 4 formatos exportados de verdade (`page.waitForEvent('download')`, não simulado) — nome de arquivo e conteúdo conferidos para `.js`/`.txt`/`.json`; para PDF, confirmado que abre a janela com título e conteúdo corretos e que `window.print()` é chamado (stubado no teste pra não depender do diálogo real do SO).
