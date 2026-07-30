@@ -7,6 +7,7 @@ let currentDetailStudentId = null;
 let modTheoryEditor = null;
 let modCodeEditor = null;
 let theoryFullscreenActive = false;
+let focusModeActive = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   initDB();
@@ -19,12 +20,22 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!currentTeacher) { clearSession(); window.location.href = 'index.html'; return; }
 
   initTeacherUI();
-  
+
   setTimeout(() => {
     if (typeof initModulesCrud === 'function') {
       initModulesCrud();
     }
   }, 200);
+
+  // Ctrl+S / Cmd+S salva o módulo direto, sem precisar rolar até o botão —
+  // só quando o formulário de criar/editar módulo está aberto.
+  document.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 's') return;
+    const formSec = document.getElementById('modules-crud-form-sec');
+    if (!formSec || formSec.style.display === 'none') return;
+    e.preventDefault();
+    saveModuleCrudForm();
+  });
 });
 
 // ── Init ──────────────────────────────────────────────────
@@ -3815,6 +3826,11 @@ function initModulesCodeMirrorEditors() {
   theoryFullscreenActive = false;
   theoryFullscreenAnchor = null;
 
+  document.querySelectorAll('.mod-form-section-hideable').forEach(sec => sec.classList.remove('focus-hidden'));
+  const focusBtn = document.getElementById('btn-theory-focus-mode');
+  if (focusBtn) focusBtn.classList.remove('active');
+  focusModeActive = false;
+
   if (modTheoryEditor && modCodeEditor) {
     // Already initialized, refresh sizes
     modTheoryEditor.refresh();
@@ -4108,6 +4124,10 @@ function setupModulesEditorControls() {
   const fullscreenBtn = document.getElementById('btn-theory-fullscreen');
   if (fullscreenBtn) fullscreenBtn.onclick = () => toggleTheoryFullscreen();
 
+  // 1.6 Focus Mode Toggle
+  const focusModeBtn = document.getElementById('btn-theory-focus-mode');
+  if (focusModeBtn) focusModeBtn.onclick = () => toggleFocusMode();
+
   // 2. Toolbar Actions
   const toolbarButtons = document.querySelectorAll('#theory-md-toolbar .md-btn');
   toolbarButtons.forEach(btn => {
@@ -4165,6 +4185,20 @@ function toggleTheoryFullscreen() {
   block.classList.toggle('fullscreen-mode', theoryFullscreenActive);
   if (btn) btn.classList.toggle('active', theoryFullscreenActive);
 
+  if (modTheoryEditor) {
+    setTimeout(() => modTheoryEditor.refresh(), 50);
+  }
+}
+
+// Modo Foco: esconde as seções do form que não são teoria/código (Informações Básicas,
+// Big-O, Vídeo, Quiz), pra escrever sem distração sem precisar ir pra tela cheia.
+function toggleFocusMode() {
+  const btn = document.getElementById('btn-theory-focus-mode');
+  focusModeActive = !focusModeActive;
+  document.querySelectorAll('.mod-form-section-hideable').forEach(sec => {
+    sec.classList.toggle('focus-hidden', focusModeActive);
+  });
+  if (btn) btn.classList.toggle('active', focusModeActive);
   if (modTheoryEditor) {
     setTimeout(() => modTheoryEditor.refresh(), 50);
   }

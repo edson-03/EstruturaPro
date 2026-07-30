@@ -232,7 +232,7 @@
 
         <form id="modules-crud-form" autocomplete="off">
           <!-- Seção 1: Informações Básicas -->
-          <div class="ca-section">
+          <div class="ca-section mod-form-section-hideable">
             <div class="ca-section-title">📋 Informações Básicas</div>
             <div class="ca-fields-grid">
               <div class="ca-field">
@@ -272,7 +272,7 @@
           </div>
 
           <!-- Seção 2: Complexidade Assintótica (Big O) -->
-          <div class="ca-section">
+          <div class="ca-section mod-form-section-hideable">
             <div class="ca-section-title">⏱️ Complexidade Temporal/Espacial (Big-O Notation)</div>
             <div class="ca-fields-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
               <div class="ca-field">
@@ -304,7 +304,7 @@
           </div>
 
           <!-- Seção 2.5: Vídeo Aula (YouTube) -->
-          <div class="ca-section">
+          <div class="ca-section mod-form-section-hideable">
             <div class="ca-section-title">🎥 Vídeo Aula (YouTube)</div>
             <p style="font-size:0.8rem;color:var(--text-muted);margin:-0.5rem 0 1rem 0;">Opcional. Se preenchido, uma aba "Vídeo" aparece para o aluno neste módulo.</p>
             <div class="ca-fields-grid">
@@ -343,6 +343,7 @@
                   <button type="button" class="btn-layout-toggle" data-layout="editor" id="btn-layout-editor" title="Apenas Editor">✍️ Editor</button>
                   <button type="button" class="btn-layout-toggle" data-layout="preview" id="btn-layout-preview" title="Apenas Prévia">👁️ Prévia</button>
                   <button type="button" class="btn-fullscreen-toggle" id="btn-theory-fullscreen" title="Tela Cheia (Esc para sair)">⛶ Tela Cheia</button>
+                  <button type="button" class="btn-fullscreen-toggle" id="btn-theory-focus-mode" title="Esconde as outras seções do formulário enquanto você escreve">🎯 Modo Foco</button>
                 </div>
               </div>
 
@@ -391,7 +392,7 @@
           </div>
 
           <!-- Seção 4: Quiz de Avaliação -->
-          <div class="ca-section">
+          <div class="ca-section mod-form-section-hideable">
             <div class="ca-section-header">
               <div class="ca-section-title">❓ Quiz do Módulo</div>
               <button type="button" class="btn btn-sm" id="btn-mod-add-quiz-q" style="background:var(--primary); color:#fff;">+ Adicionar Pergunta</button>

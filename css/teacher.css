@@ -2956,6 +2956,11 @@ input[type="date"].cfg-input::-webkit-calendar-picker-indicator { filter: invert
   gap: 0.5rem;
 }
 
+/* Modo Foco: esconde as seções do form que não são a teoria/código, pra escrever sem distração */
+.mod-form-section-hideable.focus-hidden {
+  display: none;
+}
+
 /* Responsiveness for editors */
 @media (max-width: 900px) {
   .editor-split-container.split-layout {
