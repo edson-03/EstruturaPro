@@ -3309,11 +3309,6 @@ function setupModulesCrudEvents() {
     document.getElementById('mod-color').value = '#6366f1';
     document.getElementById('mod-difficulty').value = 'Intermediário';
     document.getElementById('mod-duration').value = '45 min';
-    document.getElementById('mod-c-access').value = 'O(n)';
-    document.getElementById('mod-c-search').value = 'O(n)';
-    document.getElementById('mod-c-insert').value = 'O(1)';
-    document.getElementById('mod-c-delete').value = 'O(1)';
-    document.getElementById('mod-c-space').value = 'O(n)';
 
     // Switch views
     document.getElementById('modules-crud-list-sec').style.display = 'none';
@@ -3329,7 +3324,15 @@ function setupModulesCrudEvents() {
       modCodeEditor.setValue('');
       modCodeEditor.refresh();
     }
+    setComplexityField('mod-c-access', 'O(n)');
+    setComplexityField('mod-c-search', 'O(n)');
+    setComplexityField('mod-c-insert', 'O(1)');
+    setComplexityField('mod-c-delete', 'O(1)');
+    setComplexityField('mod-c-space', 'O(n)');
     updateModulesTheoryPreview();
+    updateMissingFieldsIndicator();
+
+    checkForModuleDraftRecovery();
   });
 
   // Back to list button
@@ -3487,17 +3490,22 @@ function renderModulesCrudList() {
           <span>⏱️ ${escapeHtml(m.duration)}</span>
           <span>📝 ${m.quiz ? m.quiz.length : 0} perguntas</span>
         </div>
-        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+        <div style="display:flex; gap:0.5rem; justify-content:flex-end; flex-wrap:wrap;">
           <button class="btn btn-ghost btn-sm btn-mod-preview" data-id="${m.id}" title="Visualizar prévia do aluno">👁️ Prévia</button>
+          <button class="btn btn-ghost btn-sm btn-mod-duplicate" data-id="${m.id}" title="Duplicar este módulo como ponto de partida">📋 Duplicar</button>
           <button class="btn btn-ghost btn-sm btn-mod-edit" data-id="${m.id}" title="Editar módulo">✏️ Editar</button>
           ${isDefault ? '' : `<button class="btn btn-ghost btn-sm btn-mod-delete" data-id="${m.id}" style="color:var(--red-light);" title="Excluir módulo">🗑️ Excluir</button>`}
         </div>
       </div>
     `;
 
-    // Bind edit/delete/preview actions
+    // Bind edit/delete/preview/duplicate actions
     card.querySelector('.btn-mod-preview').addEventListener('click', () => {
       previewModuleCrud(m);
+    });
+
+    card.querySelector('.btn-mod-duplicate').addEventListener('click', () => {
+      duplicateModule(m);
     });
 
     card.querySelector('.btn-mod-edit').addEventListener('click', () => {
@@ -3525,32 +3533,32 @@ function renderModulesCrudForm(moduleId) {
   currentEditModuleId = moduleId;
   document.getElementById('modules-form-title').textContent = `✏️ Editar Módulo: ${m.title}`;
 
-  // Fill basics
-  document.getElementById('mod-id').value = m.id;
-  // If it's a system default module, lock ID to prevent renaming which would break visualizer triggers
+  // Se é um módulo padrão do sistema, trava o ID pra não quebrar os gatilhos do visualizador
   const isDefault = ['arrays', 'linked-list', 'stack', 'queue', 'tree', 'graph'].includes(m.id);
-  document.getElementById('mod-id').disabled = isDefault;
+  fillModuleFormFields(m, { lockId: isDefault });
+}
 
-  document.getElementById('mod-title').value = m.title;
+// Preenche o formulário de criar/editar módulo a partir de um objeto no formato de módulo —
+// usado ao editar (módulo real), duplicar (cópia com ID vazio) e recuperar rascunho.
+function fillModuleFormFields(m, { lockId = false } = {}) {
+  document.getElementById('mod-id').value = m.id || '';
+  document.getElementById('mod-id').disabled = lockId;
+
+  document.getElementById('mod-title').value = m.title || '';
   document.getElementById('mod-subtitle').value = m.subtitle || '';
   document.getElementById('mod-emoji').value = m.emoji || '';
   document.getElementById('mod-color').value = m.color || '#6366f1';
   document.getElementById('mod-difficulty').value = m.difficulty || 'Intermediário';
   document.getElementById('mod-duration').value = m.duration || '45 min';
 
-  // Fill video
   document.getElementById('mod-video-url').value = m.video?.url || '';
   document.getElementById('mod-video-autoplay').checked = !!m.video?.autoplay;
 
-  // Fill complexities
-  document.getElementById('mod-c-access').value = m.complexity?.access || '';
-  document.getElementById('mod-c-search').value = m.complexity?.search || '';
-  document.getElementById('mod-c-insert').value = m.complexity?.insert || '';
-  document.getElementById('mod-c-delete').value = m.complexity?.delete || '';
-  document.getElementById('mod-c-space').value = m.complexity?.space || '';
-
-  // Fill theory and code
-  // We'll set these values on CodeMirror after showing the form and initializing the editors
+  setComplexityField('mod-c-access', m.complexity?.access || 'O(n)');
+  setComplexityField('mod-c-search', m.complexity?.search || 'O(n)');
+  setComplexityField('mod-c-insert', m.complexity?.insert || 'O(1)');
+  setComplexityField('mod-c-delete', m.complexity?.delete || 'O(1)');
+  setComplexityField('mod-c-space', m.complexity?.space || 'O(n)');
 
   // Populate quiz questions
   const container = document.getElementById('mod-quiz-questions-container');
@@ -3576,6 +3584,14 @@ function renderModulesCrudForm(moduleId) {
     modCodeEditor.refresh();
   }
   updateModulesTheoryPreview();
+  updateMissingFieldsIndicator();
+}
+
+function duplicateModule(m) {
+  const copy = { ...m, id: '', title: `${m.title} (cópia)` };
+  currentEditModuleId = null;
+  document.getElementById('modules-form-title').textContent = `➕ Duplicar Módulo: ${m.title}`;
+  fillModuleFormFields(copy, { lockId: false });
 }
 
 function saveModuleCrudForm() {
@@ -3683,9 +3699,10 @@ function saveModuleCrudForm() {
 
   // Save
   saveCustomModule(newModule);
+  clearModuleDraft();
 
   showToast('✓ Módulo salvo com sucesso!');
-  
+
   // Return to list view
   document.getElementById('modules-crud-form-sec').style.display = 'none';
   document.getElementById('modules-crud-list-sec').style.display = 'block';
@@ -3840,6 +3857,8 @@ function initModulesCodeMirrorEditors() {
 
     modTheoryEditor.on('change', () => {
       updateModulesTheoryPreview();
+      updateMissingFieldsIndicator();
+      saveModuleDraft();
     });
   }
 
@@ -3863,13 +3882,21 @@ function initModulesCodeMirrorEditors() {
         'Shift-Tab': (cm) => cm.indentSelection('subtract')
       }
     });
+
+    modCodeEditor.on('change', () => {
+      updateMissingFieldsIndicator();
+      saveModuleDraft();
+    });
   }
+
+  populateComplexitySelects();
 
   // Setup toolbar events and layout toggles
   setupModulesEditorControls();
 
   // Force first preview build
   updateModulesTheoryPreview();
+  updateMissingFieldsIndicator();
 }
 
 function updateModulesTheoryPreview() {
@@ -3892,6 +3919,159 @@ function updateTheoryWordCount(theoryText) {
   const words = theoryText.trim() ? theoryText.trim().split(/\s+/).length : 0;
   const minutes = Math.max(1, Math.round(words / 200));
   el.textContent = words > 0 ? `${words} palavras · ~${minutes} min de leitura` : '';
+}
+
+// ── Complexidade (Big-O): select com opções comuns + "Outro..." pra texto livre ──
+const COMPLEXITY_OPTIONS = ['O(1)', 'O(log n)', 'O(n)', 'O(n log n)', 'O(n²)'];
+
+function populateComplexitySelects() {
+  document.querySelectorAll('#modules-crud-form select[data-target]').forEach(select => {
+    select.innerHTML = COMPLEXITY_OPTIONS.map(opt => `<option value="${opt}">${opt}</option>`).join('')
+      + '<option value="outro">Outro...</option>';
+    select.onchange = () => {
+      const targetInput = document.getElementById(select.dataset.target);
+      if (select.value === 'outro') {
+        targetInput.style.display = '';
+        targetInput.focus();
+      } else {
+        targetInput.style.display = 'none';
+        targetInput.value = select.value;
+      }
+      updateMissingFieldsIndicator();
+      saveModuleDraft();
+    };
+  });
+}
+
+// Define o valor de um campo de complexidade, escolhendo a opção do select correspondente
+// (ou "Outro..." + mostra o campo de texto, se o valor não bater com nenhuma opção conhecida).
+function setComplexityField(inputId, value) {
+  const input = document.getElementById(inputId);
+  const select = document.getElementById(`${inputId}-select`);
+  input.value = value;
+  if (!select) return;
+  if (COMPLEXITY_OPTIONS.includes(value)) {
+    select.value = value;
+    input.style.display = 'none';
+  } else {
+    select.value = 'outro';
+    input.style.display = '';
+  }
+}
+
+// ── Indicador de campos obrigatórios pendentes ──
+function updateMissingFieldsIndicator() {
+  const el = document.getElementById('mod-missing-fields');
+  if (!el) return;
+
+  const missing = [];
+  if (!document.getElementById('mod-id').value.trim()) missing.push('ID Único');
+  if (!document.getElementById('mod-title').value.trim()) missing.push('Título');
+  if (!modTheoryEditor || !modTheoryEditor.getValue().trim()) missing.push('Conteúdo Teórico');
+  if (!modCodeEditor || !modCodeEditor.getValue().trim()) missing.push('Código de Exemplo');
+
+  if (missing.length === 0) {
+    el.style.display = 'none';
+    el.textContent = '';
+  } else {
+    el.style.display = 'flex';
+    el.textContent = `⚠️ Faltam preencher: ${missing.join(', ')}.`;
+  }
+}
+
+// ── Modelos prontos de teoria ──
+const THEORY_TEMPLATES = {
+  linear: `### Como funciona
+
+Descreva aqui o funcionamento básico da estrutura.
+
+### Operações principais
+
+- **Inserção**: explique como um elemento é adicionado.
+- **Remoção**: explique como um elemento é removido.
+- **Busca**: explique como um elemento é encontrado.
+
+### Quando usar
+
+Descreva cenários práticos onde essa estrutura é a escolha certa.
+
+### Exemplo do dia a dia
+
+Dê uma analogia simples pra fixar o conceito.
+`,
+  tree: `### Como funciona
+
+Descreva a estrutura hierárquica (nós, raiz, folhas, arestas).
+
+### Percursos / Travessias
+
+Explique as formas de percorrer a estrutura (ex.: em profundidade, em largura).
+
+### Operações principais
+
+- **Inserção**: como um novo nó é posicionado.
+- **Remoção**: como um nó é removido sem quebrar a estrutura.
+- **Busca**: como localizar um nó específico.
+
+### Complexidade e quando usar
+
+Explique o ganho de desempenho e cenários práticos de uso.
+`
+};
+
+// ── Rascunho automático (só no fluxo de criar módulo novo, não ao editar um existente) ──
+const MODULE_DRAFT_KEY = 'ep_module_draft';
+
+function serializeModuleDraft() {
+  return {
+    id: document.getElementById('mod-id').value,
+    title: document.getElementById('mod-title').value,
+    subtitle: document.getElementById('mod-subtitle').value,
+    emoji: document.getElementById('mod-emoji').value,
+    color: document.getElementById('mod-color').value,
+    difficulty: document.getElementById('mod-difficulty').value,
+    duration: document.getElementById('mod-duration').value,
+    complexity: {
+      access: document.getElementById('mod-c-access').value,
+      search: document.getElementById('mod-c-search').value,
+      insert: document.getElementById('mod-c-insert').value,
+      delete: document.getElementById('mod-c-delete').value,
+      space: document.getElementById('mod-c-space').value,
+    },
+    video: {
+      url: document.getElementById('mod-video-url').value,
+      autoplay: document.getElementById('mod-video-autoplay').checked,
+    },
+    theory: modTheoryEditor ? modTheoryEditor.getValue() : '',
+    codeExample: modCodeEditor ? modCodeEditor.getValue() : '',
+  };
+}
+
+const saveModuleDraft = debounce(() => {
+  if (currentEditModuleId !== null) return; // só salva rascunho ao criar módulo novo
+  const draft = serializeModuleDraft();
+  const hasContent = draft.title.trim() || draft.theory.trim() || draft.codeExample.trim();
+  if (!hasContent) return;
+  localStorage.setItem(MODULE_DRAFT_KEY, JSON.stringify(draft));
+}, 800);
+
+function clearModuleDraft() {
+  localStorage.removeItem(MODULE_DRAFT_KEY);
+}
+
+function checkForModuleDraftRecovery() {
+  const raw = localStorage.getItem(MODULE_DRAFT_KEY);
+  if (!raw) return;
+  let draft;
+  try { draft = JSON.parse(raw); } catch { clearModuleDraft(); return; }
+  const hasContent = (draft.title || '').trim() || (draft.theory || '').trim() || (draft.codeExample || '').trim();
+  if (!hasContent) { clearModuleDraft(); return; }
+
+  if (confirm(`Encontramos um rascunho não salvo de um módulo (${draft.title || 'sem título'}). Deseja recuperá-lo?`)) {
+    fillModuleFormFields(draft, { lockId: false });
+  } else {
+    clearModuleDraft();
+  }
 }
 
 function setupModulesEditorControls() {
@@ -3936,6 +4116,29 @@ function setupModulesEditorControls() {
       insertMarkdownTag(tag);
     };
   });
+
+  // 3. Modelo de teoria pronto
+  const templateSelect = document.getElementById('mod-theory-template');
+  if (templateSelect) {
+    templateSelect.onchange = () => {
+      const key = templateSelect.value;
+      templateSelect.value = '';
+      if (!key || !THEORY_TEMPLATES[key] || !modTheoryEditor) return;
+      const hasContent = modTheoryEditor.getValue().trim().length > 0;
+      if (hasContent && !confirm('Isso substitui o conteúdo teórico atual pelo modelo escolhido. Continuar?')) return;
+      modTheoryEditor.setValue(THEORY_TEMPLATES[key]);
+      modTheoryEditor.focus();
+    };
+  }
+
+  // 4. Campos gerais do formulário (fora dos editores CodeMirror): rascunho + indicador de pendentes
+  const form = document.getElementById('modules-crud-form');
+  if (form) {
+    form.oninput = () => {
+      updateMissingFieldsIndicator();
+      saveModuleDraft();
+    };
+  }
 }
 
 // Ao entrar em tela cheia, o bloco é movido para document.body: alguns ancestrais do form
