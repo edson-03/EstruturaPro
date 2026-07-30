@@ -893,3 +893,27 @@
   .stats-row { grid-template-columns: 1fr; }
   .modules-grid { grid-template-columns: 1fr; }
 }
+
+/* ── IDE JavaScript (aluno) ── */
+.ide-editor-block.fullscreen-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: var(--bg-primary);
+  padding: 1.5rem;
+  margin: 0 !important;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.ide-editor-block.fullscreen-mode > div {
+  flex: 1;
+  min-height: 0;
+}
+
+.ide-line-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}

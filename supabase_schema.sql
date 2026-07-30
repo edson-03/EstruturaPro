@@ -192,6 +192,18 @@ CREATE TABLE IF NOT EXISTS student_bank_scores (
     completed_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- ── 7.8. TABELA DE CÓDIGO SALVO DA IDE DO ALUNO (student_code_snippets) ──
+-- Um único espaço de código por aluno (autosave), sem vínculo a módulo/atividade.
+-- Sem policy pública (nem de leitura) — é conteúdo pessoal do aluno, diferente das
+-- demais tabelas de conteúdo educacional; só acessível via Edge Functions
+-- "get-code-snippet"/"save-code-snippet" (service_role), que resolvem o student_id
+-- pelo token de sessão, nunca pelo body da requisição.
+CREATE TABLE IF NOT EXISTS student_code_snippets (
+    student_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    code TEXT NOT NULL DEFAULT '',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- Índices recomendados para otimização de consultas
 CREATE INDEX IF NOT EXISTS idx_progress_student_id ON progress(student_id);
 CREATE INDEX IF NOT EXISTS idx_activity_log_student_id ON activity_log(student_id);
@@ -215,6 +227,7 @@ ALTER TABLE student_answers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bank_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE student_bank_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE student_code_snippets ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de acesso público (permitem que a aplicação leia usando a chave anônima).
 -- Nenhuma tabela tem mais policy pública de ESCRITA — toda escrita passa obrigatoriamente
@@ -265,6 +278,10 @@ REVOKE INSERT, UPDATE, DELETE ON bank_questions FROM anon, authenticated;
 -- student_bank_scores: leitura pública, escrita só via Edge Function "save-bank-score" (aluno, só o próprio).
 CREATE POLICY "Permitir leitura pública de student_bank_scores" ON student_bank_scores FOR SELECT USING (true);
 REVOKE INSERT, UPDATE, DELETE ON student_bank_scores FROM anon, authenticated;
+
+-- student_code_snippets: nenhuma policy pública (é conteúdo pessoal do aluno, não conteúdo
+-- educacional). Leitura e escrita só via Edge Functions "get-code-snippet"/"save-code-snippet".
+REVOKE ALL ON student_code_snippets FROM anon, authenticated;
 
 -- ── 14. VIEW PÚBLICA DE USUÁRIOS (sem a coluna password) ──
 CREATE OR REPLACE VIEW users_public AS

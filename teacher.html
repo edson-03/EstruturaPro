@@ -428,6 +428,19 @@
         </div>
       </div>
 
+      <!-- Histórico de Versões do Módulo -->
+      <div class="ca-modal-overlay" id="mod-history-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center;">
+        <div class="ca-modal" style="max-width:600px; width:90%; max-height:80vh; display:flex; flex-direction:column; background:var(--card-bg); border-radius:12px; border:1px solid var(--border); box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+          <div class="ca-modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:1.25rem; border-bottom:1px solid var(--border);">
+            <h3 id="mod-history-title" style="margin:0; font-size:1.2rem;">Histórico de Versões</h3>
+            <button class="ca-modal-close" id="btn-mod-close-history" style="background:none; border:none; color:var(--text-secondary); font-size:1.2rem; cursor:pointer;">✕</button>
+          </div>
+          <div class="ca-modal-body" id="mod-history-list" style="flex:1; overflow-y:auto; padding:1.5rem;">
+            <!-- Populado dinamicamente pelo JS -->
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ─── QUESTIONS CRUD VIEW ─── -->

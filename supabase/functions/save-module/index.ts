@@ -14,6 +14,22 @@ Deno.serve(async (req) => {
     const teacher = await requireRole(admin, token, "teacher");
     if (!teacher) return jsonResponse({ error: "Apenas o professor pode criar/editar módulos." }, 403);
 
+    // Guarda a versão anterior (se existir) no histórico antes de sobrescrever.
+    const { data: previous } = await admin.from("modules").select("*").eq("id", module.id).maybeSingle();
+    if (previous) {
+      await admin.from("module_history").insert({ module_id: module.id, snapshot: previous });
+
+      const { data: history } = await admin
+        .from("module_history")
+        .select("id")
+        .eq("module_id", module.id)
+        .order("created_at", { ascending: false });
+      const excess = (history || []).slice(5).map((h) => h.id as number);
+      if (excess.length > 0) {
+        await admin.from("module_history").delete().in("id", excess);
+      }
+    }
+
     const { error } = await admin.from("modules").upsert({
       id: module.id,
       title: module.title,

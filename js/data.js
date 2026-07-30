@@ -12,6 +12,7 @@ const DB_KEYS = {
   STUDENT_ANSWERS: 'ep_student_answers',
   BANK_QUESTIONS:  'ep_bank_questions',
   BANK_SCORES:     'ep_bank_scores',
+  CODE_SNIPPETS:   'ep_code_snippets',
 };
 
 // ── HTML Escaping (compartilhado entre student.js e teacher.js) ──
@@ -1517,6 +1518,46 @@ async function logActivity(studentId, message) {
   }
 }
 
+// ── Code Snippets (IDE do aluno) ──
+// Um único espaço de código por aluno (autosave), sem vínculo a módulo/atividade.
+function getAllCodeSnippets() {
+  return JSON.parse(localStorage.getItem(DB_KEYS.CODE_SNIPPETS) || '{}');
+}
+
+function getCodeSnippet(studentId) {
+  return getAllCodeSnippets()[studentId] || '';
+}
+
+async function saveCodeSnippet(studentId, code) {
+  const snippets = getAllCodeSnippets();
+  snippets[studentId] = code;
+  localStorage.setItem(DB_KEYS.CODE_SNIPPETS, JSON.stringify(snippets));
+
+  // A escrita real (quando o Supabase está configurado) só é aceita pela Edge Function
+  // "save-code-snippet", que grava o código apenas do aluno autenticado (identificado pelo
+  // token de sessão) — impede que um aluno grave/leia o código de outro via console.
+  if (isSupabaseConfigured()) {
+    const result = await callEdgeFunction('save-code-snippet', { code });
+    if (!result.ok) {
+      console.error('Erro ao sincronizar código no Supabase:', result.error);
+      showToast('Erro ao sincronizar código da IDE.', 'error');
+    }
+  }
+}
+
+async function syncCodeSnippetFromSupabase(studentId) {
+  if (!isSupabaseConfigured()) return getCodeSnippet(studentId);
+  const result = await callEdgeFunction('get-code-snippet', {});
+  if (!result.ok) {
+    console.error('Erro ao buscar código no Supabase:', result.error);
+    return getCodeSnippet(studentId);
+  }
+  const snippets = getAllCodeSnippets();
+  snippets[studentId] = result.data.code;
+  localStorage.setItem(DB_KEYS.CODE_SNIPPETS, JSON.stringify(snippets));
+  return result.data.code;
+}
+
 // ── Activities ──
 function getActivities() {
   return JSON.parse(localStorage.getItem(DB_KEYS.ACTIVITIES) || '[]');
@@ -1629,6 +1670,44 @@ async function saveCustomModule(module) {
       showToast(`⚠️ Não foi possível sincronizar o módulo: ${result.error}`, 'error');
     }
   }
+}
+
+async function getModuleHistory(moduleId) {
+  if (!isSupabaseConfigured()) return { ok: false, error: 'Histórico de versões requer conexão com o Supabase.' };
+  const result = await callEdgeFunction('get-module-history', { moduleId });
+  if (!result.ok) return result;
+  return { ok: true, history: result.data.history };
+}
+
+async function restoreModuleHistory(historyId) {
+  const result = await callEdgeFunction('restore-module-history', { historyId });
+  if (!result.ok) return result;
+
+  // Reflete a versão restaurada também no cache local (custom modules).
+  const restored = result.data.module;
+  const custom = getCustomModules();
+  const idx = custom.findIndex(m => m.id === restored.id);
+  const asModule = {
+    id: restored.id,
+    title: restored.title,
+    subtitle: restored.subtitle,
+    icon: restored.icon,
+    emoji: restored.emoji,
+    color: restored.color,
+    gradient: restored.gradient,
+    description: restored.description,
+    duration: restored.duration,
+    difficulty: restored.difficulty,
+    complexity: restored.complexity,
+    theory: restored.theory,
+    codeExample: restored.code_example,
+    quiz: restored.quiz,
+    video: restored.video
+  };
+  if (idx !== -1) custom[idx] = asModule; else custom.push(asModule);
+  localStorage.setItem('ep_custom_modules', JSON.stringify(custom));
+
+  return { ok: true, module: asModule };
 }
 
 async function deleteCustomModule(id) {

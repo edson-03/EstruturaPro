@@ -3376,6 +3376,11 @@ function setupModulesCrudEvents() {
   document.getElementById('btn-mod-close-preview-2').addEventListener('click', () => {
     document.getElementById('mod-preview-modal').style.display = 'none';
   });
+
+  // Histórico de versões
+  document.getElementById('btn-mod-close-history').addEventListener('click', () => {
+    document.getElementById('mod-history-modal').style.display = 'none';
+  });
 }
 
 function addQuizQuestionEditor(q = null) {
@@ -3504,6 +3509,7 @@ function renderModulesCrudList() {
         <div style="display:flex; gap:0.5rem; justify-content:flex-end; flex-wrap:wrap;">
           <button class="btn btn-ghost btn-sm btn-mod-preview" data-id="${m.id}" title="Visualizar prévia do aluno">👁️ Prévia</button>
           <button class="btn btn-ghost btn-sm btn-mod-duplicate" data-id="${m.id}" title="Duplicar este módulo como ponto de partida">📋 Duplicar</button>
+          <button class="btn btn-ghost btn-sm btn-mod-history" data-id="${m.id}" title="Ver histórico de versões salvas">🕐 Histórico</button>
           <button class="btn btn-ghost btn-sm btn-mod-edit" data-id="${m.id}" title="Editar módulo">✏️ Editar</button>
           ${isDefault ? '' : `<button class="btn btn-ghost btn-sm btn-mod-delete" data-id="${m.id}" style="color:var(--red-light);" title="Excluir módulo">🗑️ Excluir</button>`}
         </div>
@@ -3517,6 +3523,10 @@ function renderModulesCrudList() {
 
     card.querySelector('.btn-mod-duplicate').addEventListener('click', () => {
       duplicateModule(m);
+    });
+
+    card.querySelector('.btn-mod-history').addEventListener('click', () => {
+      openModuleHistoryModal(m);
     });
 
     card.querySelector('.btn-mod-edit').addEventListener('click', () => {
@@ -3603,6 +3613,57 @@ function duplicateModule(m) {
   currentEditModuleId = null;
   document.getElementById('modules-form-title').textContent = `➕ Duplicar Módulo: ${m.title}`;
   fillModuleFormFields(copy, { lockId: false });
+}
+
+async function openModuleHistoryModal(m) {
+  const modal = document.getElementById('mod-history-modal');
+  const list = document.getElementById('mod-history-list');
+  document.getElementById('mod-history-title').textContent = `🕐 Histórico de Versões: ${m.title}`;
+  modal.style.display = 'flex';
+  list.innerHTML = '<p style="color:var(--text-secondary); padding:1rem;">Carregando...</p>';
+
+  const result = await getModuleHistory(m.id);
+  if (!result.ok) {
+    list.innerHTML = `<p style="color:var(--red-light); padding:1rem;">❌ ${escapeHtml(result.error)}</p>`;
+    return;
+  }
+
+  if (!result.history || result.history.length === 0) {
+    list.innerHTML = `
+      <div class="ca-empty-questions" style="padding:2rem;">
+        <div class="ca-empty-icon">🕐</div>
+        <p>Nenhuma versão anterior salva ainda.</p>
+        <p class="ca-empty-hint">Toda vez que este módulo for salvo novamente, a versão atual entra pro histórico.</p>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = '';
+  result.history.forEach(entry => {
+    const date = new Date(entry.created_at).toLocaleString('pt-BR');
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:0.85rem 1rem; border:1px solid var(--border); border-radius:8px; margin-bottom:0.6rem; background:var(--card-bg);';
+    row.innerHTML = `
+      <div>
+        <div style="font-weight:600; color:var(--text-primary);">${escapeHtml(entry.snapshot.title || '(sem título)')}</div>
+        <div style="font-size:0.8rem; color:var(--text-secondary);">Salvo em ${date}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm btn-mod-history-restore">↩️ Restaurar</button>
+    `;
+    row.querySelector('.btn-mod-history-restore').addEventListener('click', async () => {
+      if (!confirm(`Restaurar o módulo "${m.title}" para a versão salva em ${date}? A versão atual será guardada no histórico antes.`)) return;
+      const restoreResult = await restoreModuleHistory(entry.id);
+      if (!restoreResult.ok) {
+        showToast(`❌ ${restoreResult.error}`, 'error');
+        return;
+      }
+      showToast('✓ Módulo restaurado com sucesso!');
+      modal.style.display = 'none';
+      renderModulesCrudList();
+    });
+    list.appendChild(row);
+  });
 }
 
 function saveModuleCrudForm() {
