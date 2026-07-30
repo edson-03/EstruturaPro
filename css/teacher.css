@@ -2773,6 +2773,19 @@ input[type="date"].cfg-input::-webkit-calendar-picker-indicator { filter: invert
   font-weight: 600;
 }
 
+.preview-pane a {
+  color: var(--accent-light);
+  text-decoration: underline;
+}
+
+.preview-pane blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 0.85rem;
+  margin: 0.75rem 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .preview-pane code {
   font-family: var(--font-mono);
   font-size: 0.78rem;

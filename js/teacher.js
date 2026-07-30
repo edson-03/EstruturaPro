@@ -3727,8 +3727,7 @@ function previewModuleCrud(m) {
     `;
   }
 
-  // Convert theory markdown using basic local renderer matching the student.js one
-  const theoryHtml = renderMarkdownLocal(m.theory);
+  const theoryHtml = renderMarkdown(m.theory);
 
   const videoEmbedUrl = buildYouTubeEmbedUrl(m.video);
   const videoHtml = videoEmbedUrl ? `
@@ -3782,32 +3781,6 @@ function previewModuleCrud(m) {
 
   modal.style.display = 'flex';
 }
-
-function renderMarkdownLocal(text) {
-  if (!text) return '';
-  const sanitized = escapeDangerousHtml(text);
-  return sanitized
-    .trim()
-    .replace(/### (.+)/g, '<h3 style="font-size:1.05rem; font-weight:600; color:var(--text-primary); margin:1.25rem 0 0.5rem 0;">$1</h3>')
-    .replace(/## (.+)/g, '<h2 style="font-size:1.2rem; font-weight:700; color:var(--text-primary); margin:1.5rem 0 0.75rem 0;">$1</h2>')
-    .replace(/# (.+)/g, '<h1 style="font-size:1.4rem; font-weight:800; color:var(--text-primary); margin:2rem 0 1rem 0;">$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text-primary); font-weight:600;">$1</strong>')
-    .replace(/\`\`\`[\s\S]*?\`\`\`/g, '')
-    .replace(/\| (.+) \|/g, (match) => {
-      const cells = match.split('|').filter(c => c.trim());
-      const isHeader = cells.some(c => /^[-\s]+$/.test(c.trim()));
-      if (isHeader) return '';
-      const tag = cells[0] && cells[0].includes('**') ? 'th' : 'td';
-      return `<tr>${cells.map(c => `<${tag} style="padding:0.5rem 0.75rem; border:1px solid var(--border);">${c.trim().replace(/\*\*\"/g,'')}</${tag}>`).join('')}</tr>`;
-    })
-    .replace(/(<tr>.*<\/tr>)/gs, (m) => `<table style="width:100%; border-collapse:collapse; margin:1rem 0; font-size:0.82rem;">${m}</table>`)
-    .replace(/\n\n/g, '</p><p style="margin-bottom:0.75rem;">')
-    .replace(/^/, '<p style="margin-bottom:0.75rem;">')
-    .replace(/$/, '</p>')
-    .replace(/✅/g, '<span style="color:var(--green-light)">✅</span>')
-    .replace(/❌/g, '<span style="color:var(--red-light)">❌</span>');
-}
-
 
 // ── Upgraded Module Editors & Live Preview Helpers ────────────────
 
@@ -3883,8 +3856,7 @@ function updateModulesTheoryPreview() {
     previewPane.innerHTML = '<div class="preview-placeholder">// A prévia renderizada aparecerá aqui em tempo real...</div>';
     return;
   }
-  // Reuse existing local markdown parser
-  previewPane.innerHTML = renderMarkdownLocal(theoryText);
+  previewPane.innerHTML = renderMarkdown(theoryText);
 }
 
 function setupModulesEditorControls() {

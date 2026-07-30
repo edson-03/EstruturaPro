@@ -69,12 +69,28 @@ function buildYouTubeEmbedUrl(video) {
   return `https://www.youtube.com/embed/${id}?${params.toString()}`;
 }
 
-function escapeDangerousHtml(text) {
+// ── Markdown (teoria dos módulos) — compartilhado entre teacher.js e student.js ──
+// marked converte Markdown → HTML; DOMPurify sanitiza o HTML resultante (proteção contra
+// XSS); highlight.js colore a sintaxe dos blocos de código. Se as libs não estiverem
+// carregadas na página (ex.: index.html, que não precisa disso), cai num fallback simples.
+if (typeof marked !== 'undefined') {
+  marked.setOptions({
+    breaks: true,
+    highlight: (code, lang) => {
+      if (typeof hljs === 'undefined') return code;
+      const language = hljs.getLanguage(lang) ? lang : 'javascript';
+      return hljs.highlight(code, { language }).value;
+    },
+  });
+}
+
+function renderMarkdown(text) {
   if (!text) return '';
-  return text
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]*)/gi, '')
-    .replace(/href\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*"|javascript:[^\s>]*)/gi, '');
+  if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+    return `<p>${escapeHtml(text)}</p>`;
+  }
+  const html = marked.parse(text);
+  return DOMPurify.sanitize(html);
 }
 
 // ── Default Users ──────────────────────────────────────────

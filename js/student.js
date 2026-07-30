@@ -346,28 +346,6 @@ function stopModuleVideo() {
   if (iframe) iframe.src = '';
 }
 
-function renderMarkdown(text) {
-  if (!text) return '';
-  const sanitized = escapeDangerousHtml(text);
-  return sanitized
-    .trim()
-    .replace(/### (.+)/g, '<h3>$1</h3>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\`\`\`[\s\S]*?\`\`\`/g, '')
-    .replace(/\| (.+) \|/g, (match) => {
-      const cells = match.split('|').filter(c => c.trim());
-      const isHeader = cells.some(c => /^[-\s]+$/.test(c.trim()));
-      if (isHeader) return '';
-      const tag = cells[0] && cells[0].includes('**') ? 'th' : 'td';
-      return `<tr>${cells.map(c => `<${tag}>${c.trim().replace(/\*\*/g,'')}</${tag}>`).join('')}</tr>`;
-    })
-    .replace(/(<tr>.*<\/tr>)/gs, (m) => `<table>${m}</table>`)
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/^/, '<p>')
-    .replace(/$/, '</p>')
-    .replace(/✅/g, '<span style="color:var(--green)">✅</span>')
-    .replace(/❌/g, '<span style="color:var(--red)">❌</span>');
-}
 
 // ── Code ─────────────────────────────────────────────────
 function populateCode(mod) {
