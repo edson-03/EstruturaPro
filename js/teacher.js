@@ -6,6 +6,7 @@ let currentTeacher = null;
 let currentDetailStudentId = null;
 let modTheoryEditor = null;
 let modCodeEditor = null;
+let theoryFullscreenActive = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   initDB();
@@ -3785,6 +3786,18 @@ function previewModuleCrud(m) {
 // ── Upgraded Module Editors & Live Preview Helpers ────────────────
 
 function initModulesCodeMirrorEditors() {
+  const theoryBlock = document.getElementById('theory-editor-block');
+  if (theoryBlock) {
+    theoryBlock.classList.remove('fullscreen-mode');
+    if (theoryFullscreenAnchor) {
+      theoryFullscreenAnchor.parent.insertBefore(theoryBlock, theoryFullscreenAnchor.nextSibling);
+    }
+  }
+  const fullscreenBtn = document.getElementById('btn-theory-fullscreen');
+  if (fullscreenBtn) fullscreenBtn.classList.remove('active');
+  theoryFullscreenActive = false;
+  theoryFullscreenAnchor = null;
+
   if (modTheoryEditor && modCodeEditor) {
     // Already initialized, refresh sizes
     modTheoryEditor.refresh();
@@ -3805,12 +3818,23 @@ function initModulesCodeMirrorEditors() {
       autoCloseBrackets: true,
       matchBrackets: true,
       styleActiveLine: true,
+      spellcheck: true,
+      inputStyle: 'contenteditable',
       extraKeys: {
         Tab: (cm) => {
           if (cm.somethingSelected()) cm.indentSelection('add');
           else cm.replaceSelection('  ', 'end');
         },
-        'Shift-Tab': (cm) => cm.indentSelection('subtract')
+        'Shift-Tab': (cm) => cm.indentSelection('subtract'),
+        'Ctrl-B': () => insertMarkdownTag('bold'),
+        'Cmd-B': () => insertMarkdownTag('bold'),
+        'Ctrl-I': () => insertMarkdownTag('italic'),
+        'Cmd-I': () => insertMarkdownTag('italic'),
+        'Ctrl-K': () => insertMarkdownTag('link'),
+        'Cmd-K': () => insertMarkdownTag('link'),
+        'Ctrl-Shift-K': () => insertMarkdownTag('codeblock'),
+        'Cmd-Shift-K': () => insertMarkdownTag('codeblock'),
+        Esc: () => { if (theoryFullscreenActive) toggleTheoryFullscreen(); }
       }
     });
 
@@ -3850,13 +3874,24 @@ function initModulesCodeMirrorEditors() {
 
 function updateModulesTheoryPreview() {
   const previewPane = document.getElementById('theory-preview-pane');
-  if (!previewPane) return;
   const theoryText = modTheoryEditor ? modTheoryEditor.getValue() : '';
+
+  updateTheoryWordCount(theoryText);
+
+  if (!previewPane) return;
   if (!theoryText.trim()) {
     previewPane.innerHTML = '<div class="preview-placeholder">// A prévia renderizada aparecerá aqui em tempo real...</div>';
     return;
   }
   previewPane.innerHTML = renderMarkdown(theoryText);
+}
+
+function updateTheoryWordCount(theoryText) {
+  const el = document.getElementById('theory-word-count');
+  if (!el) return;
+  const words = theoryText.trim() ? theoryText.trim().split(/\s+/).length : 0;
+  const minutes = Math.max(1, Math.round(words / 200));
+  el.textContent = words > 0 ? `${words} palavras · ~${minutes} min de leitura` : '';
 }
 
 function setupModulesEditorControls() {
@@ -3889,6 +3924,10 @@ function setupModulesEditorControls() {
     };
   });
 
+  // 1.5 Fullscreen Toggle
+  const fullscreenBtn = document.getElementById('btn-theory-fullscreen');
+  if (fullscreenBtn) fullscreenBtn.onclick = () => toggleTheoryFullscreen();
+
   // 2. Toolbar Actions
   const toolbarButtons = document.querySelectorAll('#theory-md-toolbar .md-btn');
   toolbarButtons.forEach(btn => {
@@ -3899,13 +3938,59 @@ function setupModulesEditorControls() {
   });
 }
 
+// Ao entrar em tela cheia, o bloco é movido para document.body: alguns ancestrais do form
+// usam backdrop-filter (efeito de vidro fosco), que cria um "containing block" novo pra
+// elementos position:fixed — sem isso, a tela cheia ficaria presa dentro do layout normal
+// em vez de cobrir a viewport inteira.
+let theoryFullscreenAnchor = null; // { parent, nextSibling } para restaurar a posição original
+
+function toggleTheoryFullscreen() {
+  const block = document.getElementById('theory-editor-block');
+  const btn = document.getElementById('btn-theory-fullscreen');
+  if (!block) return;
+
+  theoryFullscreenActive = !theoryFullscreenActive;
+
+  if (theoryFullscreenActive) {
+    theoryFullscreenAnchor = { parent: block.parentElement, nextSibling: block.nextElementSibling };
+    document.body.appendChild(block);
+  } else if (theoryFullscreenAnchor) {
+    theoryFullscreenAnchor.parent.insertBefore(block, theoryFullscreenAnchor.nextSibling);
+    theoryFullscreenAnchor = null;
+  }
+
+  block.classList.toggle('fullscreen-mode', theoryFullscreenActive);
+  if (btn) btn.classList.toggle('active', theoryFullscreenActive);
+
+  if (modTheoryEditor) {
+    setTimeout(() => modTheoryEditor.refresh(), 50);
+  }
+}
+
 function insertMarkdownTag(tag) {
   if (!modTheoryEditor) return;
-  
+
   const cm = modTheoryEditor;
   const selection = cm.getSelection();
   const cursor = cm.getCursor();
-  
+
+  if (tag === 'clear') {
+    if (selection) {
+      const plain = selection
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/\*(.+?)\*/g, '$1')
+        .replace(/`(.+?)`/g, '$1')
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/^>\s?/gm, '')
+        .replace(/^[-*]\s+/gm, '')
+        .replace(/^\d+\.\s+/gm, '')
+        .replace(/\[(.+?)\]\(.+?\)/g, '$1');
+      cm.replaceSelection(plain, 'around');
+    }
+    cm.focus();
+    return;
+  }
+
   let replacement = '';
   let cursorOffset = 0; // offset to place cursor inside tags if selection is empty
 
@@ -3935,8 +4020,24 @@ function insertMarkdownTag(tag) {
       replacement = `[${selection || 'Texto do Link'}](https://exemplo.com)`;
       cursorOffset = 1;
       break;
+    case 'image':
+      replacement = `![${selection || 'descrição da imagem'}](https://exemplo.com/imagem.png)`;
+      cursorOffset = 2;
+      break;
     case 'list':
       replacement = `\n- ${selection || 'Item'}`;
+      break;
+    case 'orderedlist':
+      replacement = `\n1. ${selection || 'Item'}`;
+      break;
+    case 'quote': {
+      const quoteLine = cm.getLine(cursor.line);
+      cm.setSelection({ line: cursor.line, ch: 0 }, { line: cursor.line, ch: quoteLine.length });
+      replacement = `> ${selection || quoteLine || 'Citação'}`;
+      break;
+    }
+    case 'hr':
+      replacement = `\n\n---\n\n`;
       break;
     case 'table':
       replacement = `\n| Cabeçalho 1 | Cabeçalho 2 |\n| ----------- | ----------- |\n| Valor 1     | Valor 2     |\n`;

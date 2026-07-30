@@ -2627,6 +2627,55 @@ input[type="date"].cfg-input::-webkit-calendar-picker-indicator { filter: invert
   box-shadow: 0 2px 8px var(--accent-glow);
 }
 
+.btn-fullscreen-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-left: 0.35rem;
+  transition: all var(--tr-fast);
+}
+
+.btn-fullscreen-toggle:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.btn-fullscreen-toggle.active {
+  background: var(--accent);
+  color: white;
+}
+
+/* Tela cheia do editor de teoria */
+.mod-editor-block.fullscreen-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: var(--bg-primary);
+  padding: 1.5rem;
+  margin: 0 !important;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.mod-editor-block.fullscreen-mode .editor-split-container {
+  flex: 1;
+  height: auto;
+}
+
+.theory-word-count {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding-left: 0.5rem;
+}
+
 /* Markdown Toolbar */
 .md-toolbar {
   display: flex;

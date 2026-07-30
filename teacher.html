@@ -319,7 +319,7 @@
             <div class="ca-section-title">📖 Teoria e Código de Exemplo</div>
             
             <!-- Editor Layout for Theory (Markdown) -->
-            <div class="mod-editor-block" style="margin-bottom: 2rem;">
+            <div class="mod-editor-block" id="theory-editor-block" style="margin-bottom: 2rem;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
                 <label class="ca-label" style="margin-bottom:0; font-weight:600;">Conteúdo Teórico (Markdown) <span class="ca-required">*</span></label>
                 
@@ -328,6 +328,7 @@
                   <button type="button" class="btn-layout-toggle active" data-layout="split" id="btn-layout-split" title="Lado a lado">⚖️ Split</button>
                   <button type="button" class="btn-layout-toggle" data-layout="editor" id="btn-layout-editor" title="Apenas Editor">✍️ Editor</button>
                   <button type="button" class="btn-layout-toggle" data-layout="preview" id="btn-layout-preview" title="Apenas Prévia">👁️ Prévia</button>
+                  <button type="button" class="btn-fullscreen-toggle" id="btn-theory-fullscreen" title="Tela Cheia (Esc para sair)">⛶ Tela Cheia</button>
                 </div>
               </div>
 
@@ -338,13 +339,21 @@
                 <button type="button" class="md-btn" data-tag="header" title="Título H3 (###)">H3</button>
                 <span class="md-divider"></span>
                 <button type="button" class="md-btn" data-tag="code" title="Código Inline (`code`)"><code>&lt;/&gt;</code></button>
-                <button type="button" class="md-btn" data-tag="codeblock" title="Bloco de Código (```js)">pre</button>
-                <button type="button" class="md-btn" data-tag="link" title="Inserir Link ([link](url))">🔗</button>
+                <button type="button" class="md-btn" data-tag="codeblock" title="Bloco de Código (Ctrl+Shift+K)">pre</button>
+                <button type="button" class="md-btn" data-tag="link" title="Inserir Link (Ctrl+K)">🔗</button>
+                <button type="button" class="md-btn" data-tag="image" title="Inserir Imagem (![alt](url))">🖼️</button>
+                <span class="md-divider"></span>
                 <button type="button" class="md-btn" data-tag="list" title="Lista de Marcadores (- )">• List</button>
+                <button type="button" class="md-btn" data-tag="orderedlist" title="Lista Numerada (1. )">1. List</button>
+                <button type="button" class="md-btn" data-tag="quote" title="Citação (&gt; )">❝</button>
+                <button type="button" class="md-btn" data-tag="hr" title="Linha Horizontal (---)">―</button>
                 <button type="button" class="md-btn" data-tag="table" title="Tabela Markdown">📊 Tab</button>
                 <span class="md-divider"></span>
                 <button type="button" class="md-btn" data-tag="check" title="Sinal de Sucesso (✅)">✅</button>
                 <button type="button" class="md-btn" data-tag="cross" title="Sinal de Erro (❌)">❌</button>
+                <span class="md-divider"></span>
+                <button type="button" class="md-btn" data-tag="clear" title="Remover Formatação da Seleção">🧹</button>
+                <span id="theory-word-count" class="theory-word-count"></span>
               </div>
 
               <!-- Split Container -->
