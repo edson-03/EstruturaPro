@@ -1758,7 +1758,11 @@ let ideIOData = null;
 
 function ensureIdeWorker() {
   if (ideWorker) return ideWorker;
-  const worker = new Worker('js/ide-worker.js');
+  // "?v=" força o navegador e a CDN a tratar como URL nova a cada mudança neste arquivo —
+  // ide-worker.js é immutable/cacheado por 30 dias (vercel.json), e um cache de borda da
+  // CDN pode ficar preso numa cópia sem os headers COOP/COEP corretos mesmo depois de um
+  // deploy novo. Incrementar este número sempre que ide-worker.js mudar.
+  const worker = new Worker('js/ide-worker.js?v=2');
   ideWorker = worker;
   worker.onmessage = handleIdeWorkerMessage;
 
