@@ -1578,15 +1578,20 @@ function openIDE() {
     ideEditorInstance.on('change', updateIdeLineCount);
   }
 
-  ideEditorInstance.setValue(getCodeSnippet(currentUser.id) || IDE_DEFAULT_CODE);
+  const localCode = getCodeSnippet(currentUser.id) || IDE_DEFAULT_CODE;
+  ideEditorInstance.setValue(localCode);
   updateIdeLineCount();
   setTimeout(() => ideEditorInstance.refresh(), 120);
 
-  // Busca a versão mais recente salva no Supabase (pode ter mudado em outro dispositivo)
+  // Busca a versão mais recente salva no Supabase (pode ter mudado em outro dispositivo).
+  // Só aplica se o aluno não tiver digitado nada nesse meio-tempo — sem essa checagem,
+  // essa promise resolvendo enquanto o aluno já está digitando código novo sobrescreve o
+  // editor no meio da digitação, misturando o texto novo com o antigo.
   syncCodeSnippetFromSupabase(currentUser.id).then(code => {
-    if (ideEditorInstance && document.getElementById('view-ide').style.display !== 'none') {
-      ideEditorInstance.setValue(code || IDE_DEFAULT_CODE);
-    }
+    if (!ideEditorInstance || document.getElementById('view-ide').style.display === 'none') return;
+    if (ideEditorInstance.getValue() !== localCode) return;
+    const remoteCode = code || IDE_DEFAULT_CODE;
+    if (remoteCode !== localCode) ideEditorInstance.setValue(remoteCode);
   });
 
   closeSidebar();
