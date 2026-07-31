@@ -1744,11 +1744,29 @@ let ideWorkerReadyRetries = 0;
 const IDE_WORKER_READY_TIMEOUT_MS = 1500;
 const IDE_WORKER_READY_MAX_RETRIES = 2;
 
+// prompt/alert/confirm reais dentro do Worker: exige SharedArrayBuffer, que só existe se
+// a página estiver "cross-origin isolated" (headers COOP/COEP, ver vercel.json). Sem
+// isso, ideIOControl fica null e o worker mostra um erro amigável em vez de travar.
+const IDE_IO_MAX_CHARS = 4096;
+let ideIOControl = null;
+let ideIOData = null;
+
 function ensureIdeWorker() {
   if (ideWorker) return ideWorker;
   const worker = new Worker('js/ide-worker.js');
   ideWorker = worker;
   worker.onmessage = handleIdeWorkerMessage;
+
+  if (typeof SharedArrayBuffer !== 'undefined' && window.crossOriginIsolated) {
+    const controlBuffer = new SharedArrayBuffer(8);
+    const dataBuffer = new SharedArrayBuffer(IDE_IO_MAX_CHARS * 2);
+    ideIOControl = new Int32Array(controlBuffer);
+    ideIOData = new Uint16Array(dataBuffer);
+    worker.postMessage({ __ideInit: true, controlBuffer, dataBuffer });
+  } else {
+    ideIOControl = null;
+    ideIOData = null;
+  }
 
   // Vigia: se o worker não avisar "ready" a tempo (raro), descarta e recria — tentativa
   // simples de recuperação em vez de deixar o aluno preso num "Executar" que nunca sai
@@ -1780,6 +1798,8 @@ function discardIdeWorker() {
   clearTimeout(ideWorkerReadyTimeoutHandle);
   ideWorkerReady = false;
   idePendingCode = null;
+  ideIOControl = null;
+  ideIOData = null;
 }
 
 function appendIdeConsoleLine(type, text) {
@@ -1831,8 +1851,35 @@ function stopIDECode() {
   setIDERunningState(false);
 }
 
+function handleIdeIORequest(data) {
+  if (!ideIOControl) return;
+  let resultValue;
+  if (data.ioType === 'alert') {
+    window.alert(data.text);
+    resultValue = 0;
+  } else if (data.ioType === 'confirm') {
+    resultValue = window.confirm(data.text) ? 1 : 0;
+  } else {
+    const result = window.prompt(data.text, data.defaultValue || '');
+    if (result === null) {
+      resultValue = -1;
+    } else {
+      const len = Math.min(result.length, IDE_IO_MAX_CHARS);
+      for (let i = 0; i < len; i++) ideIOData[i] = result.charCodeAt(i);
+      resultValue = len;
+    }
+  }
+  Atomics.store(ideIOControl, 1, resultValue);
+  Atomics.store(ideIOControl, 0, 1);
+  Atomics.notify(ideIOControl, 0);
+}
+
 function handleIdeWorkerMessage(e) {
   const data = e.data;
+  if (data && data.__ideIO) {
+    handleIdeIORequest(data);
+    return;
+  }
   if (!data || !data.__ideConsole) return;
 
   if (data.type === 'ready') {

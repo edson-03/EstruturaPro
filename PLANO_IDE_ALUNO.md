@@ -104,3 +104,19 @@ Pedido adicional: um botão pra salvar/baixar o código do editor como arquivo, 
 4. ✅ PDF: **decisão tomada com o usuário** — em vez de adicionar uma biblioteca de geração de PDF (mais uma dependência no projeto), usa o diálogo de impressão nativo do navegador: abre uma janela nova só com o código formatado (`white-space:pre-wrap`, fonte monoespaçada) e chama `window.print()`; o aluno escolhe "Salvar como PDF" ali. Sem mudança de CSP (a janela nova só tem `<style>` inline, que já é permitido; nenhum `<script>` inline é usado).
 
 **Testado com Playwright real** (offline): os 4 formatos exportados de verdade (`page.waitForEvent('download')`, não simulado) — nome de arquivo e conteúdo conferidos para `.js`/`.txt`/`.json`; para PDF, confirmado que abre a janela com título e conteúdo corretos e que `window.print()` é chamado (stubado no teste pra não depender do diálogo real do SO).
+
+---
+
+## Fase F — `prompt`/`alert`/`confirm` reais no código do aluno (pedido depois da Fase E)
+
+**Status: concluída em 2026-07-30.**
+
+Pedido adicional: código de entrada de dados (`prompt`/`alert`) dava erro, porque Workers nunca têm essas funções (são exclusivas da janela principal). **Decisão tomada com o usuário**: implementar de verdade (não só um aviso amigável), mesmo com o risco de exigir mudança de infraestrutura.
+
+1. ✅ Protocolo síncrono via `SharedArrayBuffer` + `Atomics.wait`/`notify` entre `js/ide-worker.js` e `js/student.js`: o worker bloqueia de verdade (`Atomics.wait`) até a página principal mostrar o diálogo nativo (`window.prompt`/`alert`/`confirm` de verdade, sem fake) e escrever o resultado de volta na memória compartilhada.
+2. ✅ Headers `Cross-Origin-Opener-Policy: same-origin` + `Cross-Origin-Embedder-Policy: credentialless` em `vercel.json`, escopados só a `/student.html` e `/js/ide-worker.js` (não no site inteiro) — `credentialless` em vez de `require-corp` especificamente pra não arriscar quebrar o vídeo do YouTube incorporado nos módulos nem os scripts de CDN, que não precisam de credenciais.
+3. ✅ Fallback automático: se `SharedArrayBuffer`/`crossOriginIsolated` não estiver disponível (headers não propagaram, navegador sem suporte), `prompt`/`alert`/`confirm` mostram um erro amigável em vez de travar ou quebrar com "is not defined" — o resto do código do aluno continua rodando normalmente antes/depois da chamada que falhou.
+
+**Achado importante durante o teste** (guardado em memória, ver `estruturapro_worker_coep_gotcha`): não basta os headers COOP/COEP estarem na página (`student.html`) — o **arquivo do Worker também precisa dos mesmos headers**, senão `new Worker(...)` falha silenciosamente (`worker.onerror` dispara com `message`/`filename`/`lineno` todos vazios, o navegador redige detalhes de erro ligados a política de origem cruzada). Sem isso, o worker nunca avisava "ready" e a IDE ficava presa em "Executar" indefinidamente.
+
+**Testado com Playwright real** (com um servidor local que replica os headers do `vercel.json`, já que o servidor de teste padrão não seta headers customizados): `window.crossOriginIsolated` e `SharedArrayBuffer` confirmados disponíveis; `prompt()` real (diálogo de verdade interceptado pelo Playwright, não simulado) devolvendo o valor digitado; `confirm()` devolvendo `true`; `alert()` mostrando o diálogo e o código continuando depois; `prompt()` cancelado devolvendo `null` de verdade (`=== null` conferido) e o worker continuando utilizável pra rodar código normal depois; e o fallback sem cross-origin isolation testado à parte (servidor sem os headers) — confirmado que `console.log` antes da chamada roda normalmente e o erro amigável aparece sem nenhum diálogo real ser disparado.
