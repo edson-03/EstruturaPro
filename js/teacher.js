@@ -1643,7 +1643,26 @@ function switchIDETab(qId, tab) {
 }
 
 // ── IDE: Run code and validate test cases ──────────────────
-function runPracticalQuestion(qId) {
+// Executa a prévia de questão prática num Web Worker dedicado (js/practice-worker.js)
+// em vez de new Function() direto — bloqueado pela CSP (script-src sem 'unsafe-eval').
+// Mesmo worker usado por testStudentCode() (js/student.js), motores mantidos separados
+// de propósito (ver PLANO_CORRECAO_AUDITORIA.md); a comparação com o valor esperado roda
+// dentro do worker, que devolve só ok/pass/texto, nunca o valor bruto (pode não ser
+// serializável via postMessage).
+function runInPracticeWorker(worker, payload) {
+  return new Promise((resolve) => {
+    const handler = (e) => {
+      const data = e.data;
+      if (!data || !data.__execResult) return;
+      worker.removeEventListener('message', handler);
+      resolve(data);
+    };
+    worker.addEventListener('message', handler);
+    worker.postMessage(Object.assign({ __exec: true }, payload));
+  });
+}
+
+async function runPracticalQuestion(qId) {
   const editor = editorInstances[qId];
   if (!editor) return;
 
@@ -1666,27 +1685,23 @@ function runPracticalQuestion(qId) {
     runBtn.innerHTML = '<span class="ide-run-icon">⏳</span> Executando...';
   }
 
-  // Capture console output
+  const worker = new Worker('js/practice-worker.js?v=1');
   const logs = [];
-  const fakeConsole = {
-    log:   (...args) => logs.push({ type: 'log',   msg: args.map(safeStringify).join(' ') }),
-    warn:  (...args) => logs.push({ type: 'warn',  msg: args.map(safeStringify).join(' ') }),
-    error: (...args) => logs.push({ type: 'error', msg: args.map(safeStringify).join(' ') }),
-    info:  (...args) => logs.push({ type: 'info',  msg: args.map(safeStringify).join(' ') })
+  const addLines = (workerLines) => {
+    (workerLines || []).forEach(l => logs.push({ type: l.type === 'info' ? 'info' : l.type, msg: l.text }));
   };
 
   const code = editor.getValue();
   let execError = null;
-  let sandboxFn = null;
+  let functionDefined = false;
 
-  try {
-    // Build sandbox function that exposes fakeConsole
-    // eslint-disable-next-line no-new-func
-    sandboxFn = new Function('console', code + '\n; return typeof minhaFuncao !== "undefined" ? minhaFuncao : undefined;');
-    sandboxFn = sandboxFn(fakeConsole);
-  } catch (err) {
-    execError = err;
-    logs.push({ type: 'error', msg: '⛔ Erro de compilação: ' + err.message });
+  const checkResult = await runInPracticeWorker(worker, { kind: 'checkFunctionDefined', code });
+  addLines(checkResult.lines);
+  if (!checkResult.ok) {
+    execError = { message: checkResult.error };
+    logs.push({ type: 'error', msg: '⛔ Erro de compilação: ' + checkResult.error });
+  } else {
+    functionDefined = checkResult.functionDefined;
   }
 
   // ── Render Console ──
@@ -1704,34 +1719,24 @@ function runPracticalQuestion(qId) {
   // ── Run Test Cases ──
   let passCount = 0;
   let failCount = 0;
-  const testResults = tests.map(tc => {
-    if (execError || typeof sandboxFn !== 'function') {
-      return { ...tc, status: 'error', got: execError ? execError.message : 'Função não encontrada' };
+  const testResults = [];
+  for (const tc of tests) {
+    if (execError || !functionDefined) {
+      testResults.push({ ...tc, status: 'error', got: execError ? execError.message : 'Função não encontrada' });
+      continue;
     }
-    try {
-      // We need to run the full code so user-defined functions are in scope
-      // Re-run with the test expression appended
-      // eslint-disable-next-line no-new-func
-      const evalFn = new Function('console', code + '\n; return (' + tc.expression + ');');
-      const got = evalFn(fakeConsole);
-      const gotStr      = safeStringify(got);
-      const expectedStr = tc.expected.trim();
-      // Try numeric & strict string comparison
-      let pass = false;
-      try {
-        // eslint-disable-next-line no-eval
-        const expectedVal = JSON.parse(expectedStr);
-        pass = JSON.stringify(got) === JSON.stringify(expectedVal);
-      } catch {
-        pass = gotStr === expectedStr;
-      }
-      if (pass) passCount++; else failCount++;
-      return { ...tc, status: pass ? 'pass' : 'fail', got: gotStr };
-    } catch (err) {
+    const caseResult = await runInPracticeWorker(worker, { kind: 'runTeacherTestCase', code, expression: tc.expression, expected: tc.expected });
+    addLines(caseResult.lines);
+    if (caseResult.ok) {
+      if (caseResult.pass) passCount++; else failCount++;
+      testResults.push({ ...tc, status: caseResult.pass ? 'pass' : 'fail', got: caseResult.gotFormatted });
+    } else {
       failCount++;
-      return { ...tc, status: 'fail', got: '⛔ ' + err.message };
+      testResults.push({ ...tc, status: 'fail', got: '⛔ ' + caseResult.error });
     }
-  });
+  }
+
+  worker.terminate();
 
   // ── Render Test Pane ──
   if (tests.length === 0) {

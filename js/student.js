@@ -1083,7 +1083,28 @@ function selectStudentTheoreticalOption(button, qId, oIdx) {
 // tracks pending prompt values per question
 const pendingPromptInputs = {};
 
-function testStudentCode(qId, providedPromptValues) {
+// Executa questões práticas (aluno e professor) num Web Worker dedicado
+// (js/practice-worker.js) em vez de new Function() direto — o antigo new Function()
+// direto era bloqueado pela CSP (script-src sem 'unsafe-eval'), quebrando "Executar e
+// Testar" pra qualquer aluno. Mantido como motor SEPARADO do da IDE/Playground de
+// propósito (ver PLANO_CORRECAO_AUDITORIA.md): aqui a comparação com o valor esperado
+// roda dentro do próprio worker (que devolve só ok/pass/texto — nunca o valor bruto,
+// que pode não ser serializável via postMessage), preservando a mesma lógica de
+// comparação que já existia, só que rodando no worker em vez da thread principal.
+function runInPracticeWorker(worker, payload) {
+  return new Promise((resolve) => {
+    const handler = (e) => {
+      const data = e.data;
+      if (!data || !data.__execResult) return;
+      worker.removeEventListener('message', handler);
+      resolve(data);
+    };
+    worker.addEventListener('message', handler);
+    worker.postMessage(Object.assign({ __exec: true }, payload));
+  });
+}
+
+async function testStudentCode(qId, providedPromptValues) {
   const editor = studentEditorInstances[qId];
   if (!editor) return;
   const userCode = editor.getValue();
@@ -1107,23 +1128,19 @@ function testStudentCode(qId, providedPromptValues) {
   const runNum = runCounters[qId];
   const runTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+  const worker = new Worker('js/practice-worker.js?v=1');
+
   // ── Syntax check
-  let syntaxError = null;
-  try { new Function('console','prompt','alert','confirm', userCode); } catch (e) { syntaxError = e; }
+  const syntaxCheck = await runInPracticeWorker(worker, { kind: 'checkSyntax', code: userCode });
+  const syntaxError = syntaxCheck.ok ? null : { message: syntaxCheck.error };
 
   // ── Detect prompt() usage — show inline input panel if needed
   const hasPrompt = /\bprompt\s*\(/.test(userCode);
   if (hasPrompt && !providedPromptValues) {
     // Dry-run to discover how many prompts are called and their messages
-    const promptsFound = [];
-    const silentConsole = { log:()=>{}, warn:()=>{}, error:()=>{}, info:()=>{}, dir:()=>{}, table:()=>{} };
-    const recordingPrompt = (msg) => { promptsFound.push(msg || 'Entrada'); return ''; };
-    const silentAlert   = () => {};
-    const silentConfirm = () => false;
-    try {
-      const dryRunner = new Function('console','prompt','alert','confirm', userCode);
-      dryRunner(silentConsole, recordingPrompt, silentAlert, silentConfirm);
-    } catch(_) {}
+    const dryRun = await runInPracticeWorker(worker, { kind: 'detectPrompts', code: userCode });
+    const promptsFound = dryRun.prompts || [];
+    worker.terminate();
 
     if (outputPanel) outputPanel.style.display = 'block';
     showStudentPromptPanel(qId, promptsFound.length > 0 ? promptsFound : ['Entrada']);
@@ -1132,6 +1149,7 @@ function testStudentCode(qId, providedPromptValues) {
   }
 
   if (syntaxError) {
+    worker.terminate();
     if (outputBody) {
       // Append syntax error block to history
       const errBlock = document.createElement('div');
@@ -1156,74 +1174,27 @@ function testStudentCode(qId, providedPromptValues) {
     return;
   }
 
-  // ── Build a fake console that captures all output
-  const allOutputLines = [];
-
-  const fmtArgs = (args) => args.map(a => {
-    if (a === null) return 'null';
-    if (a === undefined) return 'undefined';
-    if (typeof a === 'object') {
-      try { return JSON.stringify(a, null, 2); } catch (_) { return String(a); }
-    }
-    return String(a);
-  }).join(' ');
-
   // Build prompt queue from provided values (or empty)
   const promptQueue = providedPromptValues ? [...providedPromptValues] : [];
-  let promptQueueIdx = 0;
-  const customPrompt = (msg) => {
-    const val = promptQueue[promptQueueIdx] !== undefined ? promptQueue[promptQueueIdx++] : '';
-    allOutputLines.push({ type: 'info', text: `⌨️ prompt("${msg || ''}") → "${val}"` });
-    return val;
-  };
-  const customAlert   = (msg) => { allOutputLines.push({ type: 'warn', text: `🔔 alert("${msg || ''}")` }); };
-  const customConfirm = (msg) => { allOutputLines.push({ type: 'info', text: `❓ confirm("${msg || ''}") → true` }); return true; };
 
   // ── Execute the code once at top-level to capture direct console.log calls
-  const topLevelConsole = {
-    log:   (...args) => { const t = fmtArgs(args); allOutputLines.push({ type: 'log',   text: t }); },
-    warn:  (...args) => { const t = fmtArgs(args); allOutputLines.push({ type: 'warn',  text: t }); },
-    error: (...args) => { const t = fmtArgs(args); allOutputLines.push({ type: 'error', text: t }); },
-    info:  (...args) => { const t = fmtArgs(args); allOutputLines.push({ type: 'info',  text: t }); },
-    dir:   (...args) => { const t = fmtArgs(args); allOutputLines.push({ type: 'log',   text: t }); },
-    table: (...args) => { const t = fmtArgs(args); allOutputLines.push({ type: 'log',   text: t }); },
-  };
-  try {
-    promptQueueIdx = 0; // reset before top-level run
-    const topRunner = new Function('console', 'prompt', 'alert', 'confirm', userCode);
-    topRunner(topLevelConsole, customPrompt, customAlert, customConfirm);
-  } catch (_) {
-    // Errors here will be caught again per test case below
-  }
+  const topResult = await runInPracticeWorker(worker, { kind: 'runTop', code: userCode, promptQueue });
+  const allOutputLines = topResult.lines || [];
 
   // ── Run test cases
   let passedAll = true;
   let testFeedbacks = [];
 
-  q.testCases.forEach((tc, idx) => {
-    const caseOutputLines = [];
+  for (let idx = 0; idx < q.testCases.length; idx++) {
+    const tc = q.testCases[idx];
+    const caseResult = await runInPracticeWorker(worker, {
+      kind: 'runTestCase', code: userCode, expression: tc.expression, expected: tc.expected, promptQueue
+    });
+    const caseOutputLines = caseResult.lines || [];
 
-    // Create a fresh fake console for each test case
-    const fakeConsole = {
-      log:   (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'log',   text: t }); },
-      warn:  (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'warn',  text: t }); },
-      error: (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'error', text: t }); },
-      info:  (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'info',  text: t }); },
-      dir:   (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'log',   text: t }); },
-      table: (...args) => { const t = fmtArgs(args); caseOutputLines.push({ type: 'log',   text: t }); },
-    };
-
-    try {
-      let result;
-      // Pass fakeConsole + prompt/alert/confirm interceptors
-      promptQueueIdx = 0; // reset per test
-      const runner = new Function('console', 'prompt', 'alert', 'confirm', `${userCode}\nreturn (${tc.expression});`);
-      result = runner(fakeConsole, customPrompt, customAlert, customConfirm);
-
-      let expectedVal;
-      try { expectedVal = eval(tc.expected); } catch (_) { expectedVal = tc.expected; }
-
-      const match = JSON.stringify(result) === JSON.stringify(expectedVal) || String(result) === String(tc.expected);
+    if (caseResult.ok) {
+      const match = caseResult.pass;
+      const gotFormatted = caseResult.gotFormatted;
 
       // Build per-case console output snippet
       const caseConsoleHtml = caseOutputLines.length
@@ -1241,7 +1212,7 @@ function testStudentCode(qId, providedPromptValues) {
             <div style="color:#34d399;font-weight:700;font-size:0.82rem;">&#10003; Caso ${idx + 1} &mdash; PASSOU</div>
             <div style="font-family:var(--font-mono);font-size:0.79rem;color:#a7f3d0;margin-top:0.2rem;">
               <span style="color:#7d8590;">${escapeHtml(tc.expression)}</span>
-              &rarr; <span style="color:#34d399;font-weight:700;">${escapeHtml(formatValue(result))}</span>
+              &rarr; <span style="color:#34d399;font-weight:700;">${escapeHtml(gotFormatted)}</span>
             </div>
             ${caseConsoleHtml}
           </div>`);
@@ -1252,24 +1223,26 @@ function testStudentCode(qId, providedPromptValues) {
             <div style="color:#f87171;font-weight:700;font-size:0.82rem;">&#10007; Caso ${idx + 1} &mdash; FALHOU</div>
             <div style="font-family:var(--font-mono);font-size:0.79rem;margin-top:0.2rem;">
               <div style="color:#7d8590;">${escapeHtml(tc.expression)}</div>
-              <div style="color:#fca5a5;">&#x21AA; Retornou: <strong>${escapeHtml(formatValue(result))}</strong></div>
+              <div style="color:#fca5a5;">&#x21AA; Retornou: <strong>${escapeHtml(gotFormatted)}</strong></div>
               <div style="color:#86efac;">&#x21AA; Esperado:&nbsp; <strong>${escapeHtml(tc.expected)}</strong></div>
             </div>
             ${caseConsoleHtml}
           </div>`);
       }
-    } catch (err) {
+    } else {
       passedAll = false;
       testFeedbacks.push(`
         <div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:0.6rem 0.85rem;margin:0.35rem 0;">
           <div style="color:#f87171;font-weight:700;font-size:0.82rem;">&#128165; Caso ${idx + 1} &mdash; ERRO</div>
           <div style="font-family:var(--font-mono);font-size:0.79rem;color:#fca5a5;margin-top:0.2rem;">
             <div style="color:#7d8590;">${escapeHtml(tc.expression)}</div>
-            <div style="background:rgba(0,0,0,0.35);border-radius:4px;padding:0.35rem 0.5rem;margin-top:0.25rem;white-space:pre-wrap;">${escapeHtml(err.message)}</div>
+            <div style="background:rgba(0,0,0,0.35);border-radius:4px;padding:0.35rem 0.5rem;margin-top:0.25rem;white-space:pre-wrap;">${escapeHtml(caseResult.error)}</div>
           </div>
         </div>`);
     }
-  });
+  }
+
+  worker.terminate();
 
   // ── Render global output panel (APPEND to history)
   if (outputBody) {
@@ -1379,11 +1352,14 @@ function showStudentPromptPanel(qId, promptMessages) {
           outline: none;
           transition: border-color 0.15s;
         "
-        onfocus="this.style.borderColor='#6366f1'"
-        onblur="this.style.borderColor='#30363d'"
       />
     `;
     panel.appendChild(row);
+    // Atributos onfocus/onblur inline são bloqueados pela CSP (script-src sem
+    // 'unsafe-inline') igual a onclick — listener via JS em vez de atributo HTML.
+    const inputEl = row.querySelector('input');
+    inputEl.addEventListener('focus', () => { inputEl.style.borderColor = '#6366f1'; });
+    inputEl.addEventListener('blur', () => { inputEl.style.borderColor = '#30363d'; });
   });
 
   const runBtn = document.createElement('button');
@@ -1402,9 +1378,11 @@ function showStudentPromptPanel(qId, promptMessages) {
     letter-spacing: 0.03em;
     transition: opacity 0.15s;
   `;
-  runBtn.onmouseenter = () => { runBtn.style.opacity = '0.85'; };
-  runBtn.onmouseleave = () => { runBtn.style.opacity = '1'; };
-  runBtn.onclick = () => runStudentCodeWithInputs(qId, promptMessages.length);
+  // .onclick/.onmouseenter/.onmouseleave (propriedade) são bloqueados pela mesma regra
+  // de CSP que onclick="..." (atributo) — só addEventListener escapa dessa restrição.
+  runBtn.addEventListener('mouseenter', () => { runBtn.style.opacity = '0.85'; });
+  runBtn.addEventListener('mouseleave', () => { runBtn.style.opacity = '1'; });
+  runBtn.addEventListener('click', () => runStudentCodeWithInputs(qId, promptMessages.length));
   panel.appendChild(runBtn);
 
   outputBody.appendChild(panel);
