@@ -1838,6 +1838,11 @@ function runIDECode() {
     idePendingCode = code;
   }
 
+  armIdeRunTimeout();
+}
+
+function armIdeRunTimeout() {
+  clearTimeout(ideRunTimeoutHandle);
   ideRunTimeoutHandle = setTimeout(() => {
     appendIdeConsoleLine('warn', '⚠️ O código está demorando muito (pode ser um loop infinito). Clique em "⏹️ Parar" se quiser interromper.');
   }, IDE_RUN_TIMEOUT_MS);
@@ -1853,6 +1858,10 @@ function stopIDECode() {
 
 function handleIdeIORequest(data) {
   if (!ideIOControl) return;
+  // Pausa o aviso de "loop infinito" enquanto o diálogo está aberto — o código não
+  // está travado, só esperando o aluno responder ao prompt/alert/confirm.
+  clearTimeout(ideRunTimeoutHandle);
+
   let resultValue;
   if (data.ioType === 'alert') {
     window.alert(data.text);
@@ -1872,6 +1881,8 @@ function handleIdeIORequest(data) {
   Atomics.store(ideIOControl, 1, resultValue);
   Atomics.store(ideIOControl, 0, 1);
   Atomics.notify(ideIOControl, 0);
+
+  armIdeRunTimeout();
 }
 
 function handleIdeWorkerMessage(e) {
