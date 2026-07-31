@@ -3926,8 +3926,8 @@ function initModulesCodeMirrorEditors() {
         'Cmd-I': () => insertMarkdownTag('italic'),
         'Ctrl-K': () => insertMarkdownTag('link'),
         'Cmd-K': () => insertMarkdownTag('link'),
-        'Ctrl-Shift-K': () => insertMarkdownTag('codeblock'),
-        'Cmd-Shift-K': () => insertMarkdownTag('codeblock'),
+        'Shift-Ctrl-K': () => insertMarkdownTag('codeblock'),
+        'Shift-Cmd-K': () => insertMarkdownTag('codeblock'),
         Esc: () => { if (theoryFullscreenActive) toggleTheoryFullscreen(); }
       }
     });
@@ -3951,7 +3951,10 @@ function initModulesCodeMirrorEditors() {
       autoCloseBrackets: true,
       matchBrackets: true,
       styleActiveLine: true,
+      hintOptions: { completeSingle: false },
       extraKeys: {
+        'Ctrl-Space': (cm) => cm.showHint({ hint: CodeMirror.hint.javascript }),
+        'Ctrl-/': (cm) => cm.toggleComment(),
         Tab: (cm) => {
           if (cm.somethingSelected()) cm.indentSelection('add');
           else cm.replaceSelection('  ', 'end');

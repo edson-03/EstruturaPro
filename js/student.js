@@ -1475,51 +1475,68 @@ function clearOutputPanel(qId) {
 let studentCodeEditorInstance = null;
 let originalModuleCode = '';
 
+// Roda num Web Worker (mesmo runner da IDE JavaScript, js/ide-worker.js) em vez de
+// new Function() na thread principal — o antigo new Function() direto era bloqueado
+// pela CSP (script-src sem 'unsafe-eval'), quebrando o botão "Executar" pra qualquer
+// aluno. Um worker novo é criado a cada execução (mais simples que reaproveitar um só,
+// já que aqui não há diálogos prompt/alert/confirm reais pra manter vivos entre runs)
+// e descartado ao final; se o aluno clicar "Executar" de novo enquanto um anterior
+// ainda está rodando (ex. loop infinito), o worker antigo é terminado primeiro.
+let playgroundWorker = null;
+
 function runPlaygroundCode() {
   if (!studentCodeEditorInstance) return;
   const code = studentCodeEditorInstance.getValue();
   const consoleOutputEl = document.getElementById('code-console-output');
   if (!consoleOutputEl) return;
-  consoleOutputEl.textContent = '';
-  
+  consoleOutputEl.textContent = '// Executando...';
+  consoleOutputEl.style.color = 'var(--text-muted)';
+
+  if (playgroundWorker) playgroundWorker.terminate();
+  const worker = new Worker('js/ide-worker.js?v=2');
+  playgroundWorker = worker;
+
   const logs = [];
-  const customConsole = {
-    log: (...args) => {
-      const formatted = args.map(arg => {
-        if (typeof arg === 'object') {
-          try {
-            return JSON.stringify(arg, null, 2);
-          } catch {
-            return String(arg);
-          }
-        }
-        return String(arg);
-      }).join(' ');
-      logs.push(formatted);
-    },
-    error: (...args) => {
-      logs.push('❌ Erro: ' + args.join(' '));
-    },
-    warn: (...args) => {
-      logs.push('⚠️ Aviso: ' + args.join(' '));
+  let errorText = null;
+
+  worker.onmessage = (e) => {
+    const data = e.data;
+    if (!data || !data.__ideConsole) return;
+
+    if (data.type === 'ready') {
+      worker.postMessage({ __ideRun: true, code });
+      return;
     }
+
+    if (data.type === 'error') {
+      errorText = data.text;
+      return;
+    }
+
+    if (data.type === 'done') {
+      if (playgroundWorker === worker) { worker.terminate(); playgroundWorker = null; }
+      if (errorText) {
+        consoleOutputEl.textContent = errorText;
+        consoleOutputEl.style.color = 'var(--red-light)';
+      } else if (logs.length === 0) {
+        consoleOutputEl.textContent = '// Código executado com sucesso (nenhum console.log emitido).';
+        consoleOutputEl.style.color = 'var(--text-muted)';
+      } else {
+        consoleOutputEl.textContent = logs.join('\n');
+        consoleOutputEl.style.color = '#a6adc8';
+      }
+      return;
+    }
+
+    // log / warn
+    logs.push(data.text);
   };
 
-  try {
-    const executor = new Function('console', code);
-    executor(customConsole);
-    
-    if (logs.length === 0) {
-      consoleOutputEl.textContent = '// Código executado com sucesso (nenhum console.log emitido).';
-      consoleOutputEl.style.color = 'var(--text-muted)';
-    } else {
-      consoleOutputEl.textContent = logs.join('\n');
-      consoleOutputEl.style.color = '#a6adc8';
-    }
-  } catch (error) {
-    consoleOutputEl.textContent = '❌ Erro de Execução:\n' + error.message;
+  worker.onerror = () => {
+    consoleOutputEl.textContent = '❌ Não foi possível inicializar o ambiente de execução. Tente novamente.';
     consoleOutputEl.style.color = 'var(--red-light)';
-  }
+    if (playgroundWorker === worker) playgroundWorker = null;
+  };
 }
 
 function stripHtmlTags(html) {
