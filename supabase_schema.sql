@@ -115,21 +115,16 @@ CREATE TABLE IF NOT EXISTS settings (
     value JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
--- ── 9. INSERIR DADOS PADRÃO (DEFAULT_USERS) ──
--- Senha de todos os usuários seed é "1234", armazenada como hash bcrypt (crypt(...) via pgcrypto).
-INSERT INTO users (id, name, email, password, role, avatar, avatar_color) VALUES
-('teacher1', 'Prof. Carlos Silva', 'professor@estrutura.edu', extensions.crypt('1234', extensions.gen_salt('bf')), 'teacher', 'CS', '#6366f1'),
-('student1', 'Ana Beatriz Souza', 'ana@aluno.edu', extensions.crypt('1234', extensions.gen_salt('bf')), 'student', 'AS', '#10b981'),
-('student2', 'Bruno Lima Costa', 'bruno@aluno.edu', extensions.crypt('1234', extensions.gen_salt('bf')), 'student', 'BL', '#f59e0b'),
-('student3', 'Carlos Eduardo Melo', 'carlos@aluno.edu', extensions.crypt('1234', extensions.gen_salt('bf')), 'student', 'CM', '#ec4899')
-ON CONFLICT (id) DO NOTHING;
-
--- Acessos iniciais liberados (apenas módulo 'arrays' por padrão)
-INSERT INTO module_access (student_id, module_ids) VALUES
-('student1', '["arrays"]'::jsonb),
-('student2', '["arrays"]'::jsonb),
-('student3', '["arrays"]'::jsonb)
-ON CONFLICT (student_id) DO NOTHING;
+-- ── 9. PRIMEIRO PROFESSOR ──
+-- Sem usuários seed por padrão. Pra criar a primeira conta de professor num banco novo
+-- (necessária pra logar pela primeira vez, já que criar professor pela interface exige
+-- estar autenticado como professor), rode manualmente algo como:
+--
+-- INSERT INTO users (id, name, email, password, role, avatar, avatar_color) VALUES
+-- ('teacher1', 'Seu Nome', 'seu-email@exemplo.com', extensions.crypt('SUA_SENHA_AQUI', extensions.gen_salt('bf')), 'teacher', 'SN', '#6366f1');
+--
+-- Troque o e-mail e a senha antes de rodar. Depois disso, use a própria tela de Segurança
+-- do professor para cadastrar as demais contas.
 
 -- Configurações iniciais padrão
 INSERT INTO settings (key, value) VALUES

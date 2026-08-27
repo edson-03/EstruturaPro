@@ -94,64 +94,6 @@ function renderMarkdown(text) {
   return DOMPurify.sanitize(html);
 }
 
-// ── Default Users ──────────────────────────────────────────
-const DEFAULT_USERS = [
-  {
-    id: 'teacher1',
-    name: 'Prof. Carlos Silva',
-    email: 'professor@estrutura.edu',
-    password: '1234',
-    role: 'teacher',
-    avatar: 'CS',
-    avatarColor: '#6366f1',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'student1',
-    name: 'Ana Beatriz Souza',
-    email: 'ana@aluno.edu',
-    password: '1234',
-    role: 'student',
-    avatar: 'AS',
-    avatarColor: '#10b981',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'student2',
-    name: 'Bruno Lima Costa',
-    email: 'bruno@aluno.edu',
-    password: '1234',
-    role: 'student',
-    avatar: 'BL',
-    avatarColor: '#f59e0b',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'student3',
-    name: 'Carlos Eduardo Melo',
-    email: 'carlos@aluno.edu',
-    password: '1234',
-    role: 'student',
-    avatar: 'CM',
-    avatarColor: '#ec4899',
-    createdAt: new Date().toISOString(),
-  },
-];
-
-// Default: only module "arrays" unlocked for each student
-const DEFAULT_MODULE_ACCESS = {
-  student1: ['arrays'],
-  student2: ['arrays'],
-  student3: ['arrays'],
-};
-
-// Default progress (empty — students haven't done anything)
-const DEFAULT_PROGRESS = {
-  student1: {},
-  student2: {},
-  student3: {},
-};
-
 // ── Default Bank Questions ──────────────────────────────────
 const DEFAULT_BANK_QUESTIONS = [
   // Módulo Arrays e Vetores
@@ -1040,14 +982,17 @@ Um **grafo** é uma estrutura composta por **vértices** (nós) e **arestas** (c
 // ============================================================
 
 function initDB() {
+  // Sem usuários seed por padrão (nenhuma conta demo é criada automaticamente). No modo
+  // local/offline (Supabase não configurado), cadastre professores/alunos pela própria
+  // interface. Com Supabase configurado, os usuários vêm do banco via syncFromSupabase().
   if (!localStorage.getItem(DB_KEYS.USERS)) {
-    localStorage.setItem(DB_KEYS.USERS, JSON.stringify(DEFAULT_USERS));
+    localStorage.setItem(DB_KEYS.USERS, JSON.stringify([]));
   }
   if (!localStorage.getItem(DB_KEYS.MODULE_ACCESS)) {
-    localStorage.setItem(DB_KEYS.MODULE_ACCESS, JSON.stringify(DEFAULT_MODULE_ACCESS));
+    localStorage.setItem(DB_KEYS.MODULE_ACCESS, JSON.stringify({}));
   }
   if (!localStorage.getItem(DB_KEYS.PROGRESS)) {
-    localStorage.setItem(DB_KEYS.PROGRESS, JSON.stringify(DEFAULT_PROGRESS));
+    localStorage.setItem(DB_KEYS.PROGRESS, JSON.stringify({}));
   }
   if (!localStorage.getItem(DB_KEYS.ACTIVITY_LOG)) {
     localStorage.setItem(DB_KEYS.ACTIVITY_LOG, JSON.stringify({}));
