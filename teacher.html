@@ -1695,7 +1695,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
 
-<script src="js/data.js"></script>
+<!-- js/data.js e js/teacher.js são immutable/cacheados por 30 dias (vercel.json), e um
+     cache de borda da CDN não invalida automaticamente em deploy novo. Incrementar este
+     número sempre que um dos dois mudar (mesmo padrão de js/ide-worker.js). -->
+<script src="js/data.js?v=2"></script>
 
 <!-- CodeMirror core -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
@@ -1711,6 +1714,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
-<script src="js/teacher.js"></script>
+<script src="js/teacher.js?v=2"></script>
 </body>
 </html>
