@@ -1190,6 +1190,33 @@
         </div>
       </div>
 
+      <!-- Edit Teacher Modal -->
+      <div class="ca-modal-overlay" id="teach-edit-modal">
+        <div class="ca-modal" style="max-width:420px;">
+          <div class="ca-modal-header">
+            <h3>✏️ Editar Professor</h3>
+            <button class="ca-modal-close" id="btn-teach-edit-close">✕</button>
+          </div>
+          <div class="ca-modal-body">
+            <input type="hidden" id="edit-teach-id" />
+            <div class="ca-fields-grid">
+              <div class="ca-field ca-field-full">
+                <label class="ca-label" for="edit-teach-name">Nome Completo</label>
+                <input type="text" id="edit-teach-name" class="ca-input" />
+              </div>
+              <div class="ca-field ca-field-full">
+                <label class="ca-label" for="edit-teach-email">E-mail</label>
+                <input type="email" id="edit-teach-email" class="ca-input" />
+              </div>
+            </div>
+          </div>
+          <div class="ca-modal-footer">
+            <button class="btn btn-ghost" id="btn-teach-edit-cancel">Cancelar</button>
+            <button class="btn btn-primary" id="btn-teach-edit-save">💾 Salvar Alterações</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ══════════ TAB: PONTUAÇÃO ══════════ -->
       <div class="cfg-panel" id="cfgpanel-scoring">
 
@@ -1698,7 +1725,7 @@
 <!-- js/data.js e js/teacher.js são immutable/cacheados por 30 dias (vercel.json), e um
      cache de borda da CDN não invalida automaticamente em deploy novo. Incrementar este
      número sempre que um dos dois mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/data.js?v=2"></script>
+<script src="js/data.js?v=3"></script>
 
 <!-- CodeMirror core -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
@@ -1714,6 +1741,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
-<script src="js/teacher.js?v=2"></script>
+<script src="js/teacher.js?v=3"></script>
 </body>
 </html>

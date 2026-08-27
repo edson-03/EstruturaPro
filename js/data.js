@@ -1368,18 +1368,43 @@ async function addTeacher({ name, email, password }) {
   return { ok: true, user: newUser };
 }
 
-async function removeTeacher(teacherId) {
-  const teachers = getTeachers();
-  if (teachers.length <= 1) {
-    return { ok: false, error: 'Não é possível remover o último professor do sistema.' };
+async function updateTeacher(teacherId, { name, email, password }) {
+  const users = getUsers();
+  const idx = users.findIndex(u => u.id === teacherId);
+  if (idx === -1) return { ok: false, error: 'Professor não encontrado.' };
+  const duplicate = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.id !== teacherId);
+  if (duplicate) return { ok: false, error: 'E-mail já cadastrado por outro usuário.' };
+
+  if (isSupabaseConfigured()) {
+    const result = await callEdgeFunction('update-teacher', { teacherId, name, email, password });
+    if (!result.ok) return { ok: false, error: result.error };
   }
 
+  const initials = name.trim().split(' ').filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('');
+  users[idx] = {
+    ...users[idx],
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    password: isSupabaseConfigured() ? users[idx].password : (password || users[idx].password),
+    avatar: initials || users[idx].avatar,
+  };
+  localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+
+  return { ok: true, user: users[idx] };
+}
+
+async function removeTeacher(teacherId) {
+  // Com Supabase configurado, a validação de "último professor" é feita no servidor
+  // (fonte da verdade); checar isso aqui contra a lista em cache do localStorage podia
+  // bloquear a exclusão por engano se o cache local estivesse defasado.
   if (isSupabaseConfigured()) {
     const result = await callEdgeFunction('remove-teacher', { teacherId });
     if (!result.ok) {
       showToast(`❌ ${result.error}`, 'error');
       return { ok: false, error: result.error };
     }
+  } else if (getTeachers().length <= 1) {
+    return { ok: false, error: 'Não é possível remover o último professor do sistema.' };
   }
 
   let users = getUsers();

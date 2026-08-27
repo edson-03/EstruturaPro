@@ -2041,6 +2041,7 @@ function renderTeachersManagementTable() {
       <td><span style="font-size:0.8rem;color:var(--text-muted);">${createdAt}</span></td>
       <td>
         <div style="display:flex;gap:0.4rem;">
+          <button class="btn btn-sm btn-ghost" data-edit-id="${t.id}" title="Editar professor">✏️ Editar</button>
           <button class="btn btn-sm btn-ghost" data-reset-id="${t.id}" title="Redefinir senha">🔑 Trocar Senha</button>
           <button class="btn btn-sm" style="background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.25);font-size:0.75rem;"
             data-remove-id="${t.id}" title="Excluir professor" ${isSelf ? 'disabled' : ''}>🗑️ Excluir</button>
@@ -2048,12 +2049,26 @@ function renderTeachersManagementTable() {
       </td>
     `;
 
+    tr.querySelector('[data-edit-id]').addEventListener('click', () => openTeacherEditModal(t.id));
     tr.querySelector('[data-reset-id]').addEventListener('click', () => openTeacherResetModal(t.id));
     const removeBtn = tr.querySelector('[data-remove-id]');
     if (!isSelf) removeBtn.addEventListener('click', () => confirmRemoveTeacher(t.id, t.name));
 
     tbody.appendChild(tr);
   });
+}
+
+function openTeacherEditModal(teacherId) {
+  const teacher = getUserById(teacherId);
+  if (!teacher) return;
+  document.getElementById('edit-teach-id').value = teacherId;
+  document.getElementById('edit-teach-name').value = teacher.name;
+  document.getElementById('edit-teach-email').value = teacher.email;
+  document.getElementById('teach-edit-modal').classList.add('open');
+}
+
+function closeTeacherEditModal() {
+  document.getElementById('teach-edit-modal').classList.remove('open');
 }
 
 function openTeacherResetModal(teacherId) {
@@ -2786,6 +2801,21 @@ function initSettingsView() {
     showToast(`✅ Professor "${name}" cadastrado com sucesso!`, 'success');
     document.getElementById('teacher-register-form').reset();
     document.getElementById('teach-password').value = '1234';
+    renderTeachersManagementTable();
+  });
+
+  document.getElementById('btn-teach-edit-close').addEventListener('click', closeTeacherEditModal);
+  document.getElementById('btn-teach-edit-cancel').addEventListener('click', closeTeacherEditModal);
+
+  document.getElementById('btn-teach-edit-save').addEventListener('click', async () => {
+    const id = document.getElementById('edit-teach-id').value;
+    const name = document.getElementById('edit-teach-name').value.trim();
+    const email = document.getElementById('edit-teach-email').value.trim();
+    if (!name || !email) { showToast('⚠️ Preencha nome e email.', 'warning'); return; }
+    const result = await updateTeacher(id, { name, email });
+    if (!result.ok) { showToast(`❌ ${result.error}`, 'error'); return; }
+    showToast('✅ Professor atualizado com sucesso!', 'success');
+    closeTeacherEditModal();
     renderTeachersManagementTable();
   });
 
