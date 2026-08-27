@@ -2006,6 +2006,84 @@ function randomAvatarColor() {
 }
 
 // ============================================================
+//  👨‍🏫 Gerenciar Professores Logic (aba Segurança)
+// ============================================================
+function renderTeachersManagementTable() {
+  const tbody = document.getElementById('teach-mgmt-tbody');
+  const empty = document.getElementById('teach-mgmt-empty');
+  if (!tbody) return; // painel ainda não renderizado
+
+  const teachers = getTeachers();
+  const currentId = getSession()?.userId;
+
+  if (teachers.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = '';
+  teachers.forEach(t => {
+    const tr = document.createElement('tr');
+    const createdAt = t.createdAt ? new Date(t.createdAt).toLocaleDateString('pt-BR') : '—';
+    const isSelf = t.id === currentId;
+    tr.innerHTML = `
+      <td>
+        <div class="student-cell">
+          <div class="s-avatar" style="background:${t.avatarColor || '#6366f1'};">${escapeHtml(t.avatar || 'PR')}</div>
+          <div>
+            <div class="s-name">${escapeHtml(t.name)}${isSelf ? ' <span style="color:var(--text-muted);font-weight:400;font-size:0.75rem;">(você)</span>' : ''}</div>
+          </div>
+        </div>
+      </td>
+      <td><span style="font-size:0.82rem;color:var(--text-secondary);">${escapeHtml(t.email)}</span></td>
+      <td><span style="font-size:0.8rem;color:var(--text-muted);">${createdAt}</span></td>
+      <td>
+        <div style="display:flex;gap:0.4rem;">
+          <button class="btn btn-sm btn-ghost" data-reset-id="${t.id}" title="Redefinir senha">🔑 Trocar Senha</button>
+          <button class="btn btn-sm" style="background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.25);font-size:0.75rem;"
+            data-remove-id="${t.id}" title="Excluir professor" ${isSelf ? 'disabled' : ''}>🗑️ Excluir</button>
+        </div>
+      </td>
+    `;
+
+    tr.querySelector('[data-reset-id]').addEventListener('click', () => openTeacherResetModal(t.id));
+    const removeBtn = tr.querySelector('[data-remove-id]');
+    if (!isSelf) removeBtn.addEventListener('click', () => confirmRemoveTeacher(t.id, t.name));
+
+    tbody.appendChild(tr);
+  });
+}
+
+function openTeacherResetModal(teacherId) {
+  document.getElementById('teach-reset-id').value = teacherId;
+  document.getElementById('teach-reset-new-pass').value = '';
+  document.getElementById('teach-reset-confirm-pass').value = '';
+  document.getElementById('teach-reset-pass-modal').classList.add('open');
+}
+
+function closeTeacherResetModal() {
+  document.getElementById('teach-reset-pass-modal').classList.remove('open');
+}
+
+function confirmRemoveTeacher(teacherId, teacherName) {
+  requireDangerPassword({
+    icon: '🗑️',
+    title: 'Excluir Professor',
+    subtitle: 'Ação irreversível — confirme sua senha',
+    warning: `⚠️ Isso removerá permanentemente a conta de <strong>${escapeHtml(teacherName)}</strong>. Esta ação não pode ser desfeita.`,
+    confirmLabel: '🗑️ Excluir Professor',
+    onConfirm: async () => {
+      const result = await removeTeacher(teacherId);
+      if (!result.ok) { showToast(`❌ ${result.error}`, 'error'); return; }
+      showToast(`🗑️ Professor "${teacherName}" removido.`, 'warning');
+      renderTeachersManagementTable();
+    },
+  });
+}
+
+// ============================================================
 //  🏆 DESEMPENHO — Performance Page Logic
 // ============================================================
 
@@ -2566,6 +2644,7 @@ function initSettingsView() {
   renderSettingsSessionInfo();
   renderSettingsSysInfo();
   renderSettingsRankLevels();
+  renderTeachersManagementTable();
 
   if (settingsInitialized) {
     loadSettingsValues();
@@ -2690,6 +2769,41 @@ function initSettingsView() {
       forcePassChange: document.getElementById('cfg-force-pass-change').checked,
     });
     showToast('✅ Configurações de segurança salvas!', 'success');
+  });
+
+  // ── GERENCIAR PROFESSORES ──
+  document.getElementById('teacher-register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('teach-name').value.trim();
+    const email = document.getElementById('teach-email').value.trim();
+    const password = document.getElementById('teach-password').value.trim() || '1234';
+
+    const result = await addTeacher({ name, email, password });
+    if (!result.ok) {
+      showToast(`❌ ${result.error}`, 'error');
+      return;
+    }
+    showToast(`✅ Professor "${name}" cadastrado com sucesso!`, 'success');
+    document.getElementById('teacher-register-form').reset();
+    document.getElementById('teach-password').value = '1234';
+    renderTeachersManagementTable();
+  });
+
+  document.getElementById('btn-teach-reset-close').addEventListener('click', closeTeacherResetModal);
+  document.getElementById('btn-teach-reset-cancel').addEventListener('click', closeTeacherResetModal);
+
+  document.getElementById('btn-teach-reset-save').addEventListener('click', async () => {
+    const teacherId = document.getElementById('teach-reset-id').value;
+    const newPass = document.getElementById('teach-reset-new-pass').value;
+    const confirmPass = document.getElementById('teach-reset-confirm-pass').value;
+    if (!newPass || !confirmPass) { showToast('⚠️ Preencha os dois campos de senha.', 'warning'); return; }
+    if (newPass !== confirmPass) { showToast('❌ As senhas não coincidem.', 'error'); return; }
+    if (newPass.length < 4) { showToast('❌ A nova senha deve ter pelo menos 4 caracteres.', 'error'); return; }
+
+    const result = await resetTeacherPassword(teacherId, newPass);
+    if (!result.ok) { showToast(`❌ ${result.error}`, 'error'); return; }
+    showToast('✅ Senha do professor redefinida com sucesso!', 'success');
+    closeTeacherResetModal();
   });
 
   // ── SCORING ──

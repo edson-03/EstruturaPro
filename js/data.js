@@ -1227,6 +1227,10 @@ function getStudents() {
   return getUsers().filter(u => u.role === 'student');
 }
 
+function getTeachers() {
+  return getUsers().filter(u => u.role === 'teacher');
+}
+
 async function addStudent({ name, email, password, avatarColor }) {
   const users = getUsers();
   if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
@@ -1327,6 +1331,78 @@ async function updateStudent(studentId, { name, email, password, avatarColor }) 
   localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
 
   return { ok: true, user: users[idx] };
+}
+
+async function addTeacher({ name, email, password }) {
+  const users = getUsers();
+  if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
+    return { ok: false, error: 'E-mail já cadastrado.' };
+  }
+
+  // Com Supabase configurado, a criação (e o hash da senha) é feita pela Edge Function
+  // "add-teacher", que valida que quem está chamando é de fato um professor autenticado.
+  if (isSupabaseConfigured()) {
+    const result = await callEdgeFunction('add-teacher', { name, email, password });
+    if (!result.ok) return { ok: false, error: result.error };
+    const newUser = result.data.user;
+    users.push(newUser);
+    localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+    return { ok: true, user: newUser };
+  }
+
+  // Modo local/offline: mantém o comportamento anterior (senha em texto puro só no localStorage).
+  const initials = name.trim().split(' ').filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('');
+  const newUser = {
+    id: 'teacher_' + Date.now() + '_' + Math.floor(Math.random() * 9999),
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    password: password || '1234',
+    role: 'teacher',
+    avatar: initials || 'PR',
+    avatarColor: '#6366f1',
+    createdAt: new Date().toISOString(),
+  };
+  users.push(newUser);
+  localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+
+  return { ok: true, user: newUser };
+}
+
+async function removeTeacher(teacherId) {
+  const teachers = getTeachers();
+  if (teachers.length <= 1) {
+    return { ok: false, error: 'Não é possível remover o último professor do sistema.' };
+  }
+
+  if (isSupabaseConfigured()) {
+    const result = await callEdgeFunction('remove-teacher', { teacherId });
+    if (!result.ok) {
+      showToast(`❌ ${result.error}`, 'error');
+      return { ok: false, error: result.error };
+    }
+  }
+
+  let users = getUsers();
+  users = users.filter(u => u.id !== teacherId);
+  localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+
+  return { ok: true };
+}
+
+async function resetTeacherPassword(teacherId, newPassword) {
+  if (isSupabaseConfigured()) {
+    const result = await callEdgeFunction('reset-teacher-password', { teacherId, newPassword });
+    if (!result.ok) return { ok: false, error: result.error };
+    return { ok: true };
+  }
+
+  const users = getUsers();
+  const idx = users.findIndex(u => u.id === teacherId);
+  if (idx === -1) return { ok: false, error: 'Professor não encontrado.' };
+  users[idx].password = newPassword;
+  localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+
+  return { ok: true };
 }
 
 // ── Edge Functions (validação server-side quando o Supabase está configurado) ──

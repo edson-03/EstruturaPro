@@ -32,6 +32,9 @@ yarn-error.log*
 node_modules/
 package-lock.json
 
+# Estado local do Supabase CLI (link do projeto, versões, etc.)
+supabase/.temp/
+
 # Diretório de agentes e caches locais do assistente
 .gemini/
 .agents/

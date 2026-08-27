@@ -1118,6 +1118,76 @@
           <button class="btn btn-primary" id="btn-cfg-security-save">💾 Salvar Configurações de Segurança</button>
         </div>
 
+        <div class="cfg-section">
+          <div class="cfg-section-title">👥 Gerenciar Professores</div>
+          <p class="cfg-hint">Crie, exclua ou redefina a senha de outras contas de professor.</p>
+
+          <form id="teacher-register-form" class="cfg-grid-2" style="margin-top:0.5rem;">
+            <div class="cfg-field">
+              <label class="cfg-label" for="teach-name">Nome Completo</label>
+              <input type="text" id="teach-name" class="cfg-input" placeholder="Nome do professor..." required />
+            </div>
+            <div class="cfg-field">
+              <label class="cfg-label" for="teach-email">E-mail</label>
+              <input type="email" id="teach-email" class="cfg-input" placeholder="professor@exemplo.com" required />
+            </div>
+            <div class="cfg-field">
+              <label class="cfg-label" for="teach-password">Senha Inicial</label>
+              <input type="text" id="teach-password" class="cfg-input" placeholder="Padrão: 1234" value="1234" />
+            </div>
+            <div class="cfg-field" style="display:flex;align-items:flex-end;">
+              <button type="submit" class="btn btn-primary" style="width:100%;">➕ Criar Professor</button>
+            </div>
+          </form>
+
+          <div class="students-table-wrap" style="margin-top:1.25rem;">
+            <table class="students-table" id="teach-mgmt-table">
+              <thead>
+                <tr>
+                  <th>Professor</th>
+                  <th>E-mail</th>
+                  <th>Cadastrado em</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="teach-mgmt-tbody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div id="teach-mgmt-empty" style="text-align:center;padding:2rem;color:var(--text-muted);font-size:0.85rem;display:none;">
+            <div style="font-size:2rem;margin-bottom:0.5rem;">👤</div>
+            Nenhum outro professor cadastrado ainda.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Reset Teacher Password Modal -->
+      <div class="ca-modal-overlay" id="teach-reset-pass-modal">
+        <div class="ca-modal" style="max-width:420px;">
+          <div class="ca-modal-header">
+            <h3>🔑 Redefinir Senha do Professor</h3>
+            <button class="ca-modal-close" id="btn-teach-reset-close">✕</button>
+          </div>
+          <div class="ca-modal-body">
+            <input type="hidden" id="teach-reset-id" />
+            <div class="ca-fields-grid">
+              <div class="ca-field ca-field-full">
+                <label class="ca-label" for="teach-reset-new-pass">Nova Senha</label>
+                <input type="password" id="teach-reset-new-pass" class="ca-input" placeholder="Mínimo 4 caracteres" autocomplete="new-password" />
+              </div>
+              <div class="ca-field ca-field-full">
+                <label class="ca-label" for="teach-reset-confirm-pass">Confirmar Nova Senha</label>
+                <input type="password" id="teach-reset-confirm-pass" class="ca-input" placeholder="Repita a nova senha" autocomplete="new-password" />
+              </div>
+            </div>
+          </div>
+          <div class="ca-modal-footer">
+            <button class="btn btn-ghost" id="btn-teach-reset-cancel">Cancelar</button>
+            <button class="btn btn-primary" id="btn-teach-reset-save">💾 Redefinir Senha</button>
+          </div>
+        </div>
       </div>
 
       <!-- ══════════ TAB: PONTUAÇÃO ══════════ -->
