@@ -3303,6 +3303,12 @@ function requireDangerPassword({ icon, title, subtitle, warning, confirmLabel, o
   document.getElementById('danger-modal-warning').innerHTML     = warning || '';
   document.getElementById('danger-modal-confirm-label').textContent = confirmLabel || 'Confirmar';
 
+  // Deixa claro que é a senha da conta LOGADA no momento, não de outra conta envolvida
+  // na ação (ex: ao excluir outro professor, é fácil confundir com a senha dele).
+  const currentUser = getUserById(getSession()?.userId);
+  document.getElementById('danger-modal-account-hint').textContent =
+    currentUser ? `a senha da sua conta (${currentUser.email})` : 'sua senha';
+
   // Reset state
   inputEl.value = '';
   inputEl.type  = 'password';

@@ -1681,7 +1681,7 @@
       </div>
       <div class="danger-modal-field">
         <label class="danger-modal-label" for="danger-password-input">
-          🔐 Digite sua senha de professor para confirmar
+          🔐 Digite <span id="danger-modal-account-hint">sua senha</span> para confirmar
         </label>
         <div class="danger-password-wrap">
           <input
@@ -1725,7 +1725,7 @@
 <!-- js/data.js e js/teacher.js são immutable/cacheados por 30 dias (vercel.json), e um
      cache de borda da CDN não invalida automaticamente em deploy novo. Incrementar este
      número sempre que um dos dois mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/data.js?v=3"></script>
+<script src="js/data.js?v=4"></script>
 
 <!-- CodeMirror core -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
@@ -1741,6 +1741,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
-<script src="js/teacher.js?v=3"></script>
+<script src="js/teacher.js?v=4"></script>
 </body>
 </html>
