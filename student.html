@@ -413,6 +413,10 @@
         Escreva ou importe um código JavaScript. Ele é salvo automaticamente (e também com Ctrl+S) e roda isolado no seu navegador (Ctrl+Enter também executa).
       </p>
 
+      <div id="ide-io-warning" style="display:none; font-size:0.82rem; color:#fbbf24; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.3); border-radius:8px; padding:0.75rem 1rem; margin:0 0 1.25rem;">
+        ⚠️ Seu navegador não suporta <code>alert()</code>, <code>prompt()</code> e <code>confirm()</code> dentro do código executado aqui (limitação conhecida do Safari/iPhone e iPad). O resto do código funciona normalmente — use um computador com Chrome, Firefox ou Edge se precisar testar essas funções.
+      </div>
+
       <div class="ide-editor-block" id="ide-editor-block" style="display:grid; grid-template-columns:1fr; gap:1.25rem;">
         <div class="code-block" id="ide-code-block" style="margin:0; border:1px solid var(--border); border-radius:8px; overflow:hidden;">
           <textarea id="ide-code-textarea"></textarea>
@@ -458,6 +462,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
 <script src="js/visualizer.js"></script>
-<script src="js/student.js"></script>
+<!-- js/student.js é immutable/cacheado por 30 dias (vercel.json). Incrementar este número sempre que js/student.js mudar (mesmo padrão de js/ide-worker.js). -->
+<script src="js/student.js?v=2"></script>
 </body>
 </html>

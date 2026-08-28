@@ -1471,7 +1471,7 @@ function runPlaygroundCode() {
   consoleOutputEl.style.color = 'var(--text-muted)';
 
   if (playgroundWorker) playgroundWorker.terminate();
-  const worker = new Worker('js/ide-worker.js?v=2');
+  const worker = new Worker('js/ide-worker.js?v=3');
   playgroundWorker = worker;
 
   const logs = [];
@@ -1546,6 +1546,11 @@ function openIDE() {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   const navIde = document.getElementById('nav-item-ide');
   if (navIde) navIde.classList.add('active');
+
+  const ioWarning = document.getElementById('ide-io-warning');
+  if (ioWarning) {
+    ioWarning.style.display = (typeof SharedArrayBuffer !== 'undefined' && window.crossOriginIsolated) ? 'none' : 'block';
+  }
 
   const textarea = document.getElementById('ide-code-textarea');
   if (!ideEditorInstance) {
@@ -1757,7 +1762,7 @@ function ensureIdeWorker() {
   // ide-worker.js é immutable/cacheado por 30 dias (vercel.json), e um cache de borda da
   // CDN pode ficar preso numa cópia sem os headers COOP/COEP corretos mesmo depois de um
   // deploy novo. Incrementar este número sempre que ide-worker.js mudar.
-  const worker = new Worker('js/ide-worker.js?v=2');
+  const worker = new Worker('js/ide-worker.js?v=3');
   ideWorker = worker;
   worker.onmessage = handleIdeWorkerMessage;
 

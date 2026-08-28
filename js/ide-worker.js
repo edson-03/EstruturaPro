@@ -41,7 +41,7 @@ var IDE_IO_MAX_CHARS = 4096;
 
 function requestIO(ioType, text, defaultValue) {
   if (!ideIOControl) {
-    throw new Error(ioType + '() não está disponível neste ambiente agora. Recarregue a página e tente de novo.');
+    throw new Error(ioType + '() não está disponível neste editor agora (pode ser uma limitação do navegador, como Safari no iPhone/iPad).');
   }
   Atomics.store(ideIOControl, 0, 0);
   self.postMessage({ __ideIO: true, ioType: ioType, text: String(text == null ? '' : text), defaultValue: defaultValue });
