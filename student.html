@@ -71,10 +71,10 @@
         <div class="nav-dot" style="background:var(--accent);"></div>
         <span class="nav-text">❓ Banco de Questões</span>
       </div>
-      <div class="nav-item unlocked" id="nav-item-ide">
+      <a class="nav-item unlocked" id="nav-item-ide" href="ide.html">
         <div class="nav-dot" style="background:var(--accent);"></div>
         <span class="nav-text">💻 IDE JavaScript</span>
-      </div>
+      </a>
     </nav>
 
     <!-- Footer -->
@@ -379,51 +379,6 @@
         <div style="display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;">
           <button class="btn btn-ghost" id="btn-qb-summary-back">Voltar ao Banco</button>
           <button class="btn btn-primary" id="btn-qb-summary-retry" style="background:var(--accent);">Gerar Novo Conjunto</button>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- ─── IDE JAVASCRIPT VIEW ─── -->
-    <div id="view-ide" style="display:none; padding:2rem; animation:fadeSlideUp 0.3s ease;">
-
-      <div class="module-viewer-header" style="position:static; margin-bottom:1.5rem; padding: 0 0 1rem; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:0.75rem;">
-        <span style="font-size:1.3rem;">💻</span>
-        <span style="font-size:1.05rem;font-weight:700;">IDE JavaScript</span>
-        <div style="margin-left:auto; display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
-          <span id="ide-save-status" style="font-size:0.78rem; color:var(--text-muted);"></span>
-          <span id="ide-line-count" class="ide-line-count"></span>
-          <input type="file" id="ide-file-input" accept=".js,text/javascript" style="display:none;">
-          <button class="btn btn-sm btn-ghost" id="btn-ide-import" title="Importar um arquivo .js do computador ou celular">📂 Importar Arquivo</button>
-          <select id="ide-save-format" class="input-field" style="padding:0.4rem 0.6rem; font-size:0.82rem; width:auto;" title="Formato do arquivo a salvar">
-            <option value="js">.js</option>
-            <option value="txt">.txt</option>
-            <option value="json">.json</option>
-            <option value="pdf">PDF</option>
-          </select>
-          <button class="btn btn-sm btn-ghost" id="btn-ide-save-file" title="Salvar o código como arquivo">💾 Salvar Arquivo</button>
-          <button class="btn btn-sm btn-ghost" id="btn-ide-clear" title="Limpar o editor">🗑️ Limpar</button>
-          <button class="btn btn-sm btn-ghost" id="btn-ide-fullscreen" title="Tela Cheia (Esc para sair)">⛶ Tela Cheia</button>
-          <button class="btn btn-sm btn-ghost" id="btn-ide-stop" title="Interromper a execução" disabled>⏹️ Parar</button>
-          <button class="btn btn-sm btn-primary" id="btn-ide-run" style="background:var(--primary);color:#fff;" title="Executar (Ctrl+Enter)">▶️ Executar</button>
-        </div>
-      </div>
-
-      <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 1.25rem;">
-        Escreva ou importe um código JavaScript. Ele é salvo automaticamente (e também com Ctrl+S) e roda isolado no seu navegador (Ctrl+Enter também executa).
-      </p>
-
-      <div id="ide-io-warning" style="display:none; font-size:0.82rem; color:#fbbf24; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.3); border-radius:8px; padding:0.75rem 1rem; margin:0 0 1.25rem;">
-        ⚠️ Seu navegador não suporta <code>alert()</code>, <code>prompt()</code> e <code>confirm()</code> dentro do código executado aqui (limitação conhecida do Safari/iPhone e iPad). O resto do código funciona normalmente — use um computador com Chrome, Firefox ou Edge se precisar testar essas funções.
-      </div>
-
-      <div class="ide-editor-block" id="ide-editor-block" style="display:grid; grid-template-columns:1fr; gap:1.25rem;">
-        <div class="code-block" id="ide-code-block" style="margin:0; border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-          <textarea id="ide-code-textarea"></textarea>
-        </div>
-        <div style="border:1px solid var(--border); border-radius:8px; background:#0f172a; padding:1.25rem; font-family:'Courier New', Courier, monospace;">
-          <div style="font-size:0.75rem; color:var(--text-muted); border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.5rem; margin-bottom:0.5rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;">💻 Console de Saída</div>
-          <div id="ide-console-output" style="font-size:0.82rem; color:#a6adc8; white-space:pre-wrap; min-height:80px; max-height:260px; overflow-y:auto; line-height:1.4;">// Clique em "Executar" (ou Ctrl+Enter) para ver a saída aqui...</div>
         </div>
       </div>
 
