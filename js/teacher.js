@@ -511,7 +511,7 @@ function renderStudentDetail(studentId) {
         const card = document.createElement('div');
         card.className = `detail-module-card ${isDone ? 'completed' : 'unlocked'}`;
         card.style.padding = '1rem';
-        
+
         card.innerHTML = `
           <div style="font-size:0.85rem;font-weight:700;margin-bottom:0.25rem;">${escapeHtml(act.title)}</div>
           <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem;">
@@ -520,7 +520,14 @@ function renderStudentDetail(studentId) {
           <div style="font-size:0.78rem;color:${isDone ? 'var(--green)' : 'var(--yellow)'};font-weight:600;">
             ${isDone ? `Concluída (${score}% de acerto)` : answeredCount > 0 ? `Em andamento (${answeredCount}/${totalCount} resp.)` : 'Não resolvida'}
           </div>
+          ${answeredCount > 0 ? `<button class="btn btn-sm btn-ghost btn-view-answers" style="margin-top:0.6rem;width:100%;">👁️ Ver Respostas</button>` : ''}
         `;
+
+        const viewBtn = card.querySelector('.btn-view-answers');
+        if (viewBtn) {
+          viewBtn.addEventListener('click', () => openActivityAnswersModal(studentId, act.id));
+        }
+
         actGrid.appendChild(card);
       });
     }
@@ -592,6 +599,9 @@ function renderStudentDetail(studentId) {
   };
 
   document.getElementById('btn-back-overview').onclick = () => switchView('overview');
+
+  document.getElementById('btn-close-activity-answers').onclick = closeActivityAnswersModal;
+  document.getElementById('btn-close-activity-answers-2').onclick = closeActivityAnswersModal;
 }
 
 // ── Event Listeners ───────────────────────────────────────
@@ -1582,6 +1592,75 @@ function previewActivity() {
 function closePreviewModal() {
   const modal = document.getElementById('ca-preview-modal');
   modal.classList.remove('open');
+}
+
+// ── Modal: respostas de um aluno numa atividade (teóricas + práticas) ──
+function openActivityAnswersModal(studentId, activityId) {
+  const activity = getActivities().find(a => a.id === activityId);
+  if (!activity) return;
+  const student = getUserById(studentId);
+  const answers = getStudentAnswers(studentId)[activityId] || {};
+
+  document.getElementById('activity-answers-title').textContent =
+    `Respostas — ${activity.title} (${student ? student.name : 'Aluno'})`;
+
+  const body = document.getElementById('activity-answers-body');
+  body.innerHTML = activity.questions.map((q, idx) => {
+    const ans = answers[q.id];
+    const header = `
+      <div class="cap-q-num" style="color:var(--text-muted);font-weight:700;font-size:0.75rem;margin-bottom:0.5rem;text-transform:uppercase;">
+        Questão ${idx + 1} — ${q.type === 'theoretical' ? 'Teórica' : 'Prática'}
+      </div>
+      <div class="cap-q-text" style="font-size:0.95rem;font-weight:700;margin-bottom:1rem;color:var(--text-primary);">${escapeHtml(q.question)}</div>
+    `;
+
+    if (!ans) {
+      return `<div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:1.25rem;margin-bottom:1.25rem;">
+        ${header}
+        <div style="font-size:0.82rem;color:var(--text-muted);">⚠️ Não respondida.</div>
+      </div>`;
+    }
+
+    if (q.type === 'theoretical') {
+      const chosen = parseInt(ans.chosen);
+      const correct = parseInt(q.correct);
+      const isCorrect = chosen === correct;
+      const options = q.options.map((opt, oIdx) => {
+        const wasChosen = oIdx === chosen;
+        const isTheCorrect = oIdx === correct;
+        let style = 'padding:0.6rem 0.85rem;border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:0.4rem;font-size:0.85rem;display:flex;align-items:center;gap:0.5rem;';
+        if (isTheCorrect) style += 'border-color:var(--green);background:rgba(16,185,129,0.08);';
+        else if (wasChosen) style += 'border-color:var(--red);background:rgba(239,68,68,0.08);';
+        let tag = '';
+        if (wasChosen && isTheCorrect) tag = ' <strong style="color:var(--green);">✓ Resposta do aluno (correta)</strong>';
+        else if (wasChosen) tag = ' <strong style="color:var(--red);">✗ Resposta do aluno</strong>';
+        else if (isTheCorrect) tag = ' <strong style="color:var(--green);">✓ Correta</strong>';
+        return `<div style="${style}"><span>${['A','B','C','D'][oIdx]}</span><span>${escapeHtml(opt)}</span>${tag}</div>`;
+      }).join('');
+      return `<div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:1.25rem;margin-bottom:1.25rem;">
+        ${header}
+        <div style="font-size:0.8rem;font-weight:700;margin-bottom:0.6rem;color:${isCorrect ? 'var(--green)' : 'var(--red)'};">
+          ${isCorrect ? '✅ Acertou' : '❌ Errou'}
+        </div>
+        ${options}
+      </div>`;
+    }
+
+    // Prática (código)
+    return `<div style="border:1px solid var(--border);border-radius:var(--radius-md);padding:1.25rem;margin-bottom:1.25rem;">
+      ${header}
+      <div style="font-size:0.8rem;font-weight:700;margin-bottom:0.6rem;color:${ans.correct ? 'var(--green)' : 'var(--red)'};">
+        ${ans.correct ? '✅ Passou nos testes' : '❌ Não passou nos testes'}
+      </div>
+      <pre style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:0.85rem;font-family:var(--font-mono);font-size:0.82rem;color:#e6edf3;overflow-x:auto;white-space:pre-wrap;word-break:break-word;margin:0;">${escapeHtml(ans.code || '')}</pre>
+    </div>`;
+  }).join('');
+
+  document.getElementById('activity-answers-modal').classList.add('open');
+}
+
+function closeActivityAnswersModal() {
+  document.getElementById('activity-answers-modal').classList.remove('open');
 }
 
 function saveActivitySubmit(e) {
