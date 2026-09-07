@@ -174,14 +174,21 @@
 
       <!-- ── THEORY Panel ── -->
       <div class="viewer-panel active" id="panel-theory">
-        <!-- Complexity -->
-        <div style="margin-bottom:2rem;">
-          <h3 style="margin-bottom:1rem;">⏱️ Complexidade de Tempo</h3>
-          <div class="complexity-grid" id="complexity-grid"></div>
+        <!-- Módulo sem etapas (modo clássico): complexidade + teoria única -->
+        <div id="theory-classic-block">
+          <div style="margin-bottom:2rem;">
+            <h3 style="margin-bottom:1rem;">⏱️ Complexidade de Tempo</h3>
+            <div class="complexity-grid" id="complexity-grid"></div>
+          </div>
+          <div class="divider"></div>
+          <div class="theory-content" id="theory-content"></div>
         </div>
-        <div class="divider"></div>
-        <!-- Theory text (rendered as markdown-ish HTML) -->
-        <div class="theory-content" id="theory-content"></div>
+
+        <!-- Fluxo de etapas — módulo COM etapas cadastradas (substitui o bloco acima) -->
+        <div id="module-steps-block" style="display:none;">
+          <div id="module-steps-nav" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.5rem;"></div>
+          <div id="module-step-content"></div>
+        </div>
       </div>
 
       <!-- ── VIDEO Panel ── -->
@@ -404,7 +411,7 @@
 <!-- js/data.js é immutable/cacheado por 30 dias (vercel.json), e um cache de borda da
      CDN não invalida automaticamente em deploy novo. Incrementar este número sempre que
      js/data.js mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/data.js?v=4"></script>
+<script src="js/data.js?v=5"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
@@ -418,6 +425,6 @@
 
 <script src="js/visualizer.js"></script>
 <!-- js/student.js é immutable/cacheado por 30 dias (vercel.json). Incrementar este número sempre que js/student.js mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/student.js?v=2"></script>
+<script src="js/student.js?v=3"></script>
 </body>
 </html>

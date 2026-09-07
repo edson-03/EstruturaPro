@@ -15,6 +15,32 @@ const DB_KEYS = {
   CODE_SNIPPETS:   'ep_code_snippets',
 };
 
+// ── Settings (compartilhado — student.js precisa ler settings.minScore pra aprovação
+// de etapa; saveSettings(), que só o professor usa, continua em teacher.js) ──
+const SETTINGS_KEY = 'ep_settings';
+
+const DEFAULT_SETTINGS = {
+  // General
+  instName: '', instSemester: '', instDiscipline: '', instTeacher: '', instDesc: '',
+  startDate: '', endDate: '',
+  // Platform
+  autoUnlockFirst: true, autoUnlockNext: false, allowRetry: true,
+  showAnswers: true, showRanking: false, maintenanceMode: false,
+  minScore: 60, minModules: 4,
+  // Security
+  passMinLen: 4, defaultPass: '1234', forcePassChange: false,
+  // Scoring
+  scoring: { MODULE_STARTED: 10, MODULE_COMPLETED: 50, QUIZ_ATTEMPT: 5, QUIZ_SCORE_BONUS: 1, ACTIVITY_DONE: 30, PERFECT_BONUS: 25 },
+  // Appearance
+  accentColor: '#6366f1', platformName: 'EstruturaPRO', platformIcon: '⚡', platformTagline: 'Painel do Professor',
+  animations: true, bgEffects: true, compactToast: false,
+};
+
+function getSettings() {
+  const saved = localStorage.getItem(SETTINGS_KEY);
+  return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : { ...DEFAULT_SETTINGS };
+}
+
 // ── HTML Escaping (compartilhado entre student.js e teacher.js) ──
 function escapeHtml(value) {
   if (value === null || value === undefined) return '';
@@ -1062,7 +1088,8 @@ async function syncFromSupabase() {
           startedAt: row.started_at,
           completed: row.completed,
           completedAt: row.completed_at,
-          score: row.score
+          score: row.score,
+          stepProgress: row.step_progress || {}
         };
       });
       localStorage.setItem(DB_KEYS.PROGRESS, JSON.stringify(progressObj));
@@ -1118,7 +1145,8 @@ async function syncFromSupabase() {
         theory: rm.theory,
         codeExample: rm.code_example,
         quiz: rm.quiz,
-        video: rm.video || {}
+        video: rm.video || {},
+        steps: rm.steps || []
       }));
       localStorage.setItem('ep_custom_modules', JSON.stringify(mappedModules));
     }
@@ -1504,6 +1532,7 @@ async function setModuleProgress(studentId, moduleId, data) {
       started: currentModule.started || false,
       completed: currentModule.completed || false,
       score: currentModule.score || 0,
+      stepProgress: currentModule.stepProgress || undefined,
     });
     if (!result.ok) {
       console.error('Erro ao salvar progresso no Supabase:', result.error);
@@ -1697,6 +1726,24 @@ function getModules() {
 
 function getModuleById(id) {
   return getModules().find(m => m.id === id) || null;
+}
+
+// Módulo com pelo menos 1 etapa cadastrada usa o fluxo de etapas sequenciais (teoria +
+// questionário por etapa) em vez do quiz único clássico — módulos sem etapas continuam
+// funcionando exatamente como sempre (retrocompatibilidade).
+function isModuleUsingSteps(mod) {
+  return !!(mod && mod.steps && mod.steps.length);
+}
+
+// Índice (0-based) da primeira etapa ainda não concluída pelo aluno — etapas antes dela
+// já foram completadas, etapas depois dela continuam bloqueadas. Se todas concluídas,
+// retorna mod.steps.length.
+function getUnlockedStepIndex(studentId, moduleId, mod) {
+  const stepProgress = getStudentProgress(studentId)[moduleId]?.stepProgress || {};
+  for (let i = 0; i < mod.steps.length; i++) {
+    if (!stepProgress[mod.steps[i].id]?.completed) return i;
+  }
+  return mod.steps.length;
 }
 
 async function saveCustomModule(module) {

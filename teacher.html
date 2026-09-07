@@ -391,6 +391,20 @@
             </div>
           </div>
 
+          <!-- Seção 3.5: Etapas do Módulo -->
+          <div class="ca-section mod-form-section-hideable">
+            <div class="ca-section-header">
+              <div class="ca-section-title">🪜 Etapas do Módulo (opcional)</div>
+              <button type="button" class="btn btn-sm" id="btn-mod-add-step" style="background:var(--primary); color:#fff;">+ Adicionar Etapa</button>
+            </div>
+            <p style="font-size:0.82rem;color:var(--text-muted);margin:-0.5rem 0 1rem;">
+              Se você adicionar pelo menos uma etapa, o Quiz único abaixo deixa de ser usado — o aluno progride etapa por etapa, cada uma com sua própria teoria e questionário, só avançando ao ser aprovado na anterior.
+            </p>
+            <div id="mod-steps-container">
+              <!-- Etapas populadas dinamicamente -->
+            </div>
+          </div>
+
           <!-- Seção 4: Quiz de Avaliação -->
           <div class="ca-section mod-form-section-hideable">
             <div class="ca-section-header">
@@ -1739,7 +1753,7 @@
 <!-- js/data.js e js/teacher.js são immutable/cacheados por 30 dias (vercel.json), e um
      cache de borda da CDN não invalida automaticamente em deploy novo. Incrementar este
      número sempre que um dos dois mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/data.js?v=4"></script>
+<script src="js/data.js?v=5"></script>
 
 <!-- CodeMirror core -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
@@ -1755,6 +1769,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
-<script src="js/teacher.js?v=5"></script>
+<script src="js/teacher.js?v=6"></script>
 </body>
 </html>

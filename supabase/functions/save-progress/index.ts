@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { token, moduleId, started, completed, score } = await req.json();
+    const { token, moduleId, started, completed, score, stepProgress } = await req.json();
     if (!moduleId) return jsonResponse({ error: "moduleId é obrigatório." }, 400);
 
     const admin = adminClient();
@@ -30,6 +30,7 @@ Deno.serve(async (req) => {
       completed: completed ?? existing?.completed ?? false,
       completed_at: completed ? now : existing?.completed_at ?? null,
       score: typeof score === "number" ? Math.max(0, Math.min(100, Math.round(score))) : existing?.score ?? 0,
+      step_progress: stepProgress ?? existing?.step_progress ?? {},
     };
 
     const { error } = await admin.from("progress").upsert(row);

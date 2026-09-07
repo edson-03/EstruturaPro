@@ -9,6 +9,7 @@ const studentEditorInstances = {};
 const runCounters = {}; // tracks execution count per question
 let visualizer = null;
 let quizState = { current: 0, answers: [], score: 0 };
+let stepQuizState = { answers: [] }; // questionário da etapa atual (fluxo de módulo com etapas)
 
 document.addEventListener('DOMContentLoaded', () => {
   initDB();
@@ -285,9 +286,23 @@ function openModule(moduleId) {
   // Mobile: close sidebar
   closeSidebar();
 
-  // Init quiz state
-  quizState = { current: 0, answers: Array(mod.quiz.length).fill(null), score: 0, done: false };
-  renderQuiz(mod);
+  // Módulos com etapas cadastradas usam o fluxo sequencial (teoria + questionário por
+  // etapa) em vez do quiz único clássico — a aba Quiz separada só existe pra módulos sem
+  // etapas (retrocompatibilidade).
+  const quizTab = document.querySelector('.viewer-tab[data-tab="quiz"]');
+  if (isModuleUsingSteps(mod)) {
+    if (quizTab) quizTab.style.display = 'none';
+    document.getElementById('theory-classic-block').style.display = 'none';
+    document.getElementById('module-steps-block').style.display = 'block';
+    renderModuleSteps(mod);
+  } else {
+    if (quizTab) quizTab.style.display = '';
+    document.getElementById('theory-classic-block').style.display = 'block';
+    document.getElementById('module-steps-block').style.display = 'none';
+    // Init quiz state
+    quizState = { current: 0, answers: Array(mod.quiz.length).fill(null), score: 0, done: false };
+    renderQuiz(mod);
+  }
 }
 
 function backToDashboard() {
@@ -806,6 +821,186 @@ function finishQuiz(mod) {
     showToast(`🏆 Parabéns! Módulo concluído com ${score}%!`, 'success');
   } else {
     showToast(`📚 Quiz finalizado: ${score}%. Revise o conteúdo!`, 'info');
+  }
+}
+
+// ── Etapas do módulo (teoria + questionário por etapa) ────
+// Funções paralelas às de quiz clássico acima (renderQuestion/applyAnswerFeedback/
+// finishQuiz) em vez de generalizá-las — pequena duplicação deliberada, sem risco de
+// regressão no fluxo de quiz único já validado.
+function renderStepsNav(mod, unlockedIndex) {
+  const nav = document.getElementById('module-steps-nav');
+  nav.innerHTML = mod.steps.map((step, i) => {
+    let bg, color, icon;
+    if (i < unlockedIndex) { bg = 'rgba(16,185,129,0.15)'; color = 'var(--green)'; icon = '✓'; }
+    else if (i === unlockedIndex) { bg = 'rgba(99,102,241,0.15)'; color = 'var(--accent-light)'; icon = i + 1; }
+    else { bg = 'rgba(255,255,255,0.04)'; color = 'var(--text-muted)'; icon = '🔒'; }
+    return `<span style="padding:0.4rem 0.85rem;border-radius:20px;font-size:0.78rem;font-weight:600;background:${bg};color:${color};">${icon} ${escapeHtml(step.title)}</span>`;
+  }).join('');
+}
+
+function renderModuleSteps(mod) {
+  const unlockedIndex = getUnlockedStepIndex(currentUser.id, mod.id, mod);
+  renderStepsNav(mod, unlockedIndex);
+
+  const contentEl = document.getElementById('module-step-content');
+
+  if (unlockedIndex >= mod.steps.length) {
+    contentEl.innerHTML = `
+      <div class="quiz-result">
+        <span class="result-emoji">🏆</span>
+        <div class="result-msg">Você concluiu todas as etapas deste módulo!</div>
+        <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="steps-back-dash">🏠 Voltar ao painel</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('steps-back-dash').addEventListener('click', backToDashboard);
+    return;
+  }
+
+  const step = mod.steps[unlockedIndex];
+  contentEl.innerHTML = `
+    <div class="theory-content">${renderMarkdown(step.theory)}</div>
+    <div class="divider"></div>
+    <div id="step-quiz-container"></div>
+  `;
+  stepQuizState = { answers: Array(step.quiz.length).fill(null) };
+  renderStepQuestion(mod, step, 0, document.getElementById('step-quiz-container'));
+}
+
+function renderStepQuestion(mod, step, idx, container) {
+  const q = step.quiz[idx];
+  const total = step.quiz.length;
+
+  container.innerHTML = `
+    <div class="question-card">
+      <div class="question-number">Questão ${idx + 1} de ${total}</div>
+      <div class="question-text">${escapeHtml(q.question)}</div>
+      <div class="quiz-options" id="step-quiz-options">
+        ${q.options.map((opt, i) => `
+          <button class="quiz-option" data-index="${i}">
+            <span class="option-letter">${['A','B','C','D'][i]}</span>
+            <span>${escapeHtml(opt)}</span>
+          </button>
+        `).join('')}
+      </div>
+      <div class="quiz-explanation" id="step-quiz-explanation">
+        💡 ${escapeHtml(q.explanation)}
+      </div>
+      <div class="quiz-nav">
+        <span style="font-size:0.82rem;color:var(--text-muted);">
+          ${stepQuizState.answers.filter(a => a !== null).length} de ${total} respondidas
+        </span>
+        <div style="display:flex;gap:0.5rem;">
+          ${idx > 0 ? `<button class="btn btn-ghost btn-sm" id="step-quiz-prev">← Anterior</button>` : ''}
+          <button class="btn btn-primary btn-sm" id="step-quiz-next" disabled>
+            ${idx < total - 1 ? 'Próxima →' : '✓ Finalizar Etapa'}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const prev = stepQuizState.answers[idx];
+  if (prev !== null) {
+    applyStepAnswerFeedback(q, prev);
+    document.getElementById('step-quiz-next').disabled = false;
+  }
+
+  container.querySelectorAll('.quiz-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (stepQuizState.answers[idx] !== null) return;
+      const chosen = parseInt(btn.dataset.index);
+      stepQuizState.answers[idx] = chosen;
+      applyStepAnswerFeedback(q, chosen);
+      document.getElementById('step-quiz-next').disabled = false;
+    });
+  });
+
+  const nextBtn = document.getElementById('step-quiz-next');
+  nextBtn.addEventListener('click', () => {
+    if (idx < total - 1) {
+      renderStepQuestion(mod, step, idx + 1, container);
+    } else {
+      finishModuleStep(mod, step);
+    }
+  });
+
+  const prevBtn = document.getElementById('step-quiz-prev');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => renderStepQuestion(mod, step, idx - 1, container));
+  }
+}
+
+function applyStepAnswerFeedback(q, chosen) {
+  const optBtns = document.querySelectorAll('#step-quiz-options .quiz-option');
+  const expEl   = document.getElementById('step-quiz-explanation');
+  optBtns.forEach(btn => {
+    btn.disabled = true;
+    const i = parseInt(btn.dataset.index);
+    if (i === q.correct) btn.classList.add('correct');
+    else if (i === chosen && chosen !== q.correct) btn.classList.add('wrong');
+    else btn.style.opacity = '0.4';
+  });
+  expEl.classList.add('visible');
+}
+
+function finishModuleStep(mod, step) {
+  const correct  = stepQuizState.answers.filter((a, i) => a === step.quiz[i].correct).length;
+  const total    = step.quiz.length;
+  const score    = Math.round((correct / total) * 100);
+  const minScore = getSettings().minScore;
+  const passed   = score >= minScore;
+
+  const progress = getStudentProgress(currentUser.id);
+  const stepProgress = { ...(progress[mod.id]?.stepProgress || {}) };
+  stepProgress[step.id] = { completed: passed, score, completedAt: new Date().toISOString() };
+  setModuleProgress(currentUser.id, mod.id, { stepProgress });
+
+  if (passed) {
+    const allCompleted = mod.steps.every(s => stepProgress[s.id]?.completed);
+    if (allCompleted) {
+      const avgScore = Math.round(
+        mod.steps.reduce((sum, s) => sum + (stepProgress[s.id]?.score || 0), 0) / mod.steps.length
+      );
+      markModuleComplete(currentUser.id, mod.id, avgScore);
+      renderSidebarNav();
+    }
+  }
+
+  const emoji = passed ? (score === 100 ? '🏆' : '🌟') : '📚';
+  const msg = passed
+    ? 'Aprovado! Você já pode seguir para a próxima etapa.'
+    : `Você precisa de pelo menos ${minScore}% para avançar. Revise a teoria e tente novamente.`;
+
+  const contentEl = document.getElementById('module-step-content');
+  contentEl.innerHTML = `
+    <div class="quiz-result">
+      <span class="result-emoji">${emoji}</span>
+      <div class="result-score" style="color:${passed ? 'var(--green)' : 'var(--red)'}">${score}%</div>
+      <div class="result-msg">${correct} de ${total} questões corretas. ${msg}</div>
+      <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+        ${passed ? `<button class="btn btn-primary" id="step-continue">➡️ Continuar</button>` : `<button class="btn btn-ghost" id="step-retry">🔄 Tentar novamente</button>`}
+        <button class="btn btn-ghost" id="step-back-dash">🏠 Voltar ao painel</button>
+      </div>
+    </div>
+  `;
+
+  renderStepsNav(mod, getUnlockedStepIndex(currentUser.id, mod.id, mod));
+
+  const retryBtn = document.getElementById('step-retry');
+  if (retryBtn) retryBtn.addEventListener('click', () => renderModuleSteps(mod));
+
+  const continueBtn = document.getElementById('step-continue');
+  if (continueBtn) continueBtn.addEventListener('click', () => renderModuleSteps(mod));
+
+  document.getElementById('step-back-dash').addEventListener('click', backToDashboard);
+
+  if (passed) {
+    showToast(`🎉 Etapa concluída com ${score}%!`, 'success');
+  } else {
+    showToast(`📚 Etapa não aprovada: ${score}% (mínimo ${minScore}%).`, 'warning');
   }
 }
 

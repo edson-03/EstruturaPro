@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
       code_example: module.codeExample || "",
       quiz: module.quiz || [],
       video: module.video || {},
+      steps: module.steps || [],
     });
     if (error) return jsonResponse({ error: "Erro ao salvar módulo." }, 500);
 

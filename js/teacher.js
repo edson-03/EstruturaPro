@@ -1584,7 +1584,8 @@ function renderActivityPreview(activity) {
 function previewActivity() {
   const activity = readActivityForm();
   renderActivityPreview(activity);
-  
+
+  document.getElementById('ca-preview-title').textContent = 'Prévia da Atividade';
   const modal = document.getElementById('ca-preview-modal');
   modal.classList.add('open');
 }
@@ -2695,30 +2696,9 @@ function renderTimeline(studentId, studentData) {
 // ============================================================
 //  ⚙️ CONFIGURAÇÕES — Settings Page Logic
 // ============================================================
-
-const SETTINGS_KEY = 'ep_settings';
-
-const DEFAULT_SETTINGS = {
-  // General
-  instName: '', instSemester: '', instDiscipline: '', instTeacher: '', instDesc: '',
-  startDate: '', endDate: '',
-  // Platform
-  autoUnlockFirst: true, autoUnlockNext: false, allowRetry: true,
-  showAnswers: true, showRanking: false, maintenanceMode: false,
-  minScore: 60, minModules: 4,
-  // Security
-  passMinLen: 4, defaultPass: '1234', forcePassChange: false,
-  // Scoring
-  scoring: { MODULE_STARTED: 10, MODULE_COMPLETED: 50, QUIZ_ATTEMPT: 5, QUIZ_SCORE_BONUS: 1, ACTIVITY_DONE: 30, PERFECT_BONUS: 25 },
-  // Appearance
-  accentColor: '#6366f1', platformName: 'EstruturaPRO', platformIcon: '⚡', platformTagline: 'Painel do Professor',
-  animations: true, bgEffects: true, compactToast: false,
-};
-
-function getSettings() {
-  const saved = localStorage.getItem(SETTINGS_KEY);
-  return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : { ...DEFAULT_SETTINGS };
-}
+// SETTINGS_KEY/DEFAULT_SETTINGS/getSettings() moraram aqui e foram movidas para
+// js/data.js (compartilhado) — student.js também precisa ler settings.minScore
+// para aprovação de etapa. saveSettings() (só usada pelo professor) continua aqui.
 
 function saveSettings(patch) {
   const current = getSettings();
@@ -3549,6 +3529,7 @@ function setupModulesCrudEvents() {
     document.getElementById('modules-crud-form').reset();
     document.getElementById('mod-id').disabled = false;
     document.getElementById('mod-quiz-questions-container').innerHTML = '';
+    document.getElementById('mod-steps-container').innerHTML = '';
     
     // Default values
     document.getElementById('mod-color').value = '#6366f1';
@@ -3594,7 +3575,12 @@ function setupModulesCrudEvents() {
 
   // Add quiz question button
   document.getElementById('btn-mod-add-quiz-q').addEventListener('click', () => {
-    addQuizQuestionEditor();
+    addQuizQuestionEditor(document.getElementById('mod-quiz-questions-container'));
+  });
+
+  // Add module stage button
+  document.getElementById('btn-mod-add-step').addEventListener('click', () => {
+    addModuleStageEditor();
   });
 
   // Form submit
@@ -3617,8 +3603,7 @@ function setupModulesCrudEvents() {
   });
 }
 
-function addQuizQuestionEditor(q = null) {
-  const container = document.getElementById('mod-quiz-questions-container');
+function addQuizQuestionEditor(container = document.getElementById('mod-quiz-questions-container'), q = null) {
   const card = document.createElement('div');
   card.className = 'ca-question-card quiz-question-block';
   card.style.cssText = 'padding:1.25rem; margin-top:1rem; border-left:3px solid var(--primary); background:var(--card-bg);';
@@ -3674,6 +3659,66 @@ function addQuizQuestionEditor(q = null) {
   card.querySelector('.btn-mod-delete-q').addEventListener('click', () => {
     card.remove();
   });
+
+  container.appendChild(card);
+}
+
+// Cada etapa é um mini-módulo: título + teoria própria (textarea simples, sem CodeMirror —
+// evita gerenciar N instâncias simultâneas de um editor pesado só pra texto markdown) +
+// seu próprio questionário, reaproveitando addQuizQuestionEditor com um container escopado
+// dentro do próprio card (evita misturar com as perguntas do Quiz do Módulo clássico).
+function addModuleStageEditor(stage = null) {
+  const container = document.getElementById('mod-steps-container');
+  const card = document.createElement('div');
+  card.className = 'ca-question-card module-stage-block';
+  card.style.cssText = 'padding:1.25rem; margin-top:1rem; border-left:3px solid var(--accent-light, #8b5cf6); background:var(--card-bg);';
+  const stageId = stage ? stage.id : 'step_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+  card.dataset.stageId = stageId;
+
+  card.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <h4 style="margin:0; font-size:0.9rem; font-weight:600; color:var(--text-primary);">Etapa</h4>
+      <button type="button" class="btn btn-ghost btn-sm btn-mod-delete-step" style="color:var(--red-light); padding:2px 8px;">🗑️ Remover Etapa</button>
+    </div>
+    <div class="ca-fields-grid" style="grid-template-columns: 1fr;">
+      <div class="ca-field ca-field-full">
+        <label class="ca-label">Título da Etapa <span class="ca-required">*</span></label>
+        <input type="text" class="ca-input stage-title" required placeholder="Ex: Introdução aos Arrays" value="${escapeHtml(stage ? stage.title : '')}" />
+      </div>
+      <div class="ca-field ca-field-full">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <label class="ca-label">Teoria da Etapa (Markdown) <span class="ca-required">*</span></label>
+          <button type="button" class="btn btn-ghost btn-sm btn-stage-preview-theory">👁️ Prévia</button>
+        </div>
+        <textarea class="ca-input stage-theory" rows="6" required placeholder="Explicação teórica desta etapa...">${stage ? stage.theory : ''}</textarea>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin:1.25rem 0 0.75rem;">
+      <label class="ca-label" style="margin:0;">Questionário da Etapa</label>
+      <button type="button" class="btn btn-sm btn-stage-add-q" style="background:var(--primary); color:#fff;">+ Pergunta</button>
+    </div>
+    <div class="stage-quiz-questions-container ca-questions-list"></div>
+  `;
+
+  card.querySelector('.btn-mod-delete-step').addEventListener('click', () => {
+    card.remove();
+  });
+
+  const stageQContainer = card.querySelector('.stage-quiz-questions-container');
+  card.querySelector('.btn-stage-add-q').addEventListener('click', () => {
+    addQuizQuestionEditor(stageQContainer);
+  });
+
+  card.querySelector('.btn-stage-preview-theory').addEventListener('click', () => {
+    const text = card.querySelector('.stage-theory').value;
+    document.getElementById('ca-preview-title').textContent = 'Prévia da Etapa';
+    document.getElementById('ca-preview-body').innerHTML = renderMarkdown(text);
+    document.getElementById('ca-preview-modal').classList.add('open');
+  });
+
+  if (stage && stage.quiz && stage.quiz.length > 0) {
+    stage.quiz.forEach(q => addQuizQuestionEditor(stageQContainer, q));
+  }
 
   container.appendChild(card);
 }
@@ -3820,8 +3865,15 @@ function fillModuleFormFields(m, { lockId = false } = {}) {
   container.innerHTML = '';
   if (m.quiz && m.quiz.length > 0) {
     m.quiz.forEach(q => {
-      addQuizQuestionEditor(q);
+      addQuizQuestionEditor(container, q);
     });
+  }
+
+  // Populate module stages
+  const stepsContainer = document.getElementById('mod-steps-container');
+  stepsContainer.innerHTML = '';
+  if (m.steps && m.steps.length > 0) {
+    m.steps.forEach(stage => addModuleStageEditor(stage));
   }
 
   // Switch views
@@ -3928,41 +3980,78 @@ function saveModuleCrudForm() {
     space: document.getElementById('mod-c-space').value.trim() || 'O(n)'
   };
 
-  // Gather Quiz
-  const quiz = [];
-  const questionBlocks = document.querySelectorAll('.quiz-question-block');
-  let quizValid = true;
-  questionBlocks.forEach(block => {
-    const qText = block.querySelector('.q-text').value.trim();
-    const opt0 = block.querySelector('.q-opt-0').value.trim();
-    const opt1 = block.querySelector('.q-opt-1').value.trim();
-    const opt2 = block.querySelector('.q-opt-2').value.trim();
-    const opt3 = block.querySelector('.q-opt-3').value.trim();
-    const correct = parseInt(block.querySelector('.q-correct').value);
-    const explanation = block.querySelector('.q-explanation').value.trim();
+  // Gather Quiz (escopado ao container do quiz do módulo — não misturar com as perguntas
+  // dentro dos cards de etapa, que têm a mesma classe .quiz-question-block mas em containers
+  // próprios dentro de .module-stage-block)
+  function collectQuestionBlocks(scopeEl) {
+    const list = [];
+    let valid = true;
+    scopeEl.querySelectorAll('.quiz-question-block').forEach(block => {
+      const qText = block.querySelector('.q-text').value.trim();
+      const opt0 = block.querySelector('.q-opt-0').value.trim();
+      const opt1 = block.querySelector('.q-opt-1').value.trim();
+      const opt2 = block.querySelector('.q-opt-2').value.trim();
+      const opt3 = block.querySelector('.q-opt-3').value.trim();
+      const correct = parseInt(block.querySelector('.q-correct').value);
+      const explanation = block.querySelector('.q-explanation').value.trim();
 
-    if (!qText || !opt0 || !opt1 || !opt2 || !opt3) {
-      quizValid = false;
+      if (!qText || !opt0 || !opt1 || !opt2 || !opt3) {
+        valid = false;
+        return;
+      }
+
+      list.push({
+        question: qText,
+        options: [opt0, opt1, opt2, opt3],
+        correct: correct,
+        explanation: explanation
+      });
+    });
+    return { list, valid };
+  }
+
+  const quizResult = collectQuestionBlocks(document.getElementById('mod-quiz-questions-container'));
+  const quiz = quizResult.list;
+
+  if (!quizResult.valid) {
+    showToast('❌ Preencha todos os campos obrigatórios em todas as perguntas do quiz.', 'warning');
+    return;
+  }
+
+  // Gather Steps (etapas): cada card precisa de título + teoria não vazios e pelo menos
+  // 1 pergunta válida no seu próprio questionário.
+  const steps = [];
+  let stepsValid = true;
+  document.querySelectorAll('#mod-steps-container .module-stage-block').forEach(stageBlock => {
+    const stageTitle = stageBlock.querySelector('.stage-title').value.trim();
+    const stageTheory = stageBlock.querySelector('.stage-theory').value.trim();
+    const stageQuizContainer = stageBlock.querySelector('.stage-quiz-questions-container');
+    const stageQuizResult = collectQuestionBlocks(stageQuizContainer);
+
+    if (!stageTitle || !stageTheory || !stageQuizResult.valid || stageQuizResult.list.length === 0) {
+      stepsValid = false;
       return;
     }
 
-    quiz.push({
-      question: qText,
-      options: [opt0, opt1, opt2, opt3],
-      correct: correct,
-      explanation: explanation
+    steps.push({
+      id: stageBlock.dataset.stageId,
+      title: stageTitle,
+      theory: stageTheory,
+      quiz: stageQuizResult.list
     });
   });
 
-  if (!quizValid) {
-    showToast('❌ Preencha todos os campos obrigatórios em todas as perguntas do quiz.', 'warning');
+  if (!stepsValid) {
+    showToast('❌ Cada etapa precisa de título, teoria e pelo menos 1 pergunta válida no questionário.', 'warning');
     return;
   }
 
   const theoryVal = modTheoryEditor ? modTheoryEditor.getValue() : '';
   const codeVal   = modCodeEditor ? modCodeEditor.getValue() : '';
 
-  if (!theoryVal.trim()) {
+  // A teoria "clássica" do módulo só é exibida quando ele NÃO usa etapas (o aluno vê o
+  // fluxo de etapas em vez dela) — por isso só é obrigatória nesse caso.
+  if (steps.length === 0 && !theoryVal.trim()) {
     showToast('❌ O conteúdo teórico do módulo é obrigatório.', 'warning');
     return;
   }
@@ -3993,14 +4082,15 @@ function saveModuleCrudForm() {
     emoji: document.getElementById('mod-emoji').value.trim() || '📦',
     color: color,
     gradient: gradient,
-    description: theoryVal.trim().substring(0, 120) + '...',
+    description: (theoryVal.trim() || (steps[0]?.theory || '')).substring(0, 120) + '...',
     duration: document.getElementById('mod-duration').value.trim() || '45 min',
     difficulty: document.getElementById('mod-difficulty').value,
     complexity: complexity,
     theory: theoryVal,
     codeExample: codeVal,
     quiz: quiz,
-    video: video
+    video: video,
+    steps: steps
   };
 
   // Save
@@ -4053,6 +4143,35 @@ function previewModuleCrud(m) {
 
   const theoryHtml = renderMarkdown(m.theory);
 
+  // Módulos com etapas mostram o percurso etapa por etapa (teoria + gabarito do
+  // questionário de cada uma) em vez da seção única de Teoria + Quiz clássico.
+  let stepsHtml = '';
+  if (m.steps && m.steps.length > 0) {
+    stepsHtml = `
+      <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary); border-left:3px solid ${m.color || '#6366f1'}; padding-left:0.5rem;">🪜 Etapas do Módulo (${m.steps.length})</h3>
+      <div style="display:flex; flex-direction:column; gap:1.5rem; margin-bottom:2rem;">
+        ${m.steps.map((step, sIdx) => `
+          <div style="padding:1.25rem; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,0.015);">
+            <div style="font-weight:700; font-size:0.95rem; margin-bottom:0.75rem; color:var(--text-primary);">Etapa ${sIdx + 1}: ${escapeHtml(step.title)}</div>
+            <div style="font-size:0.85rem; line-height:1.6; color:var(--text-secondary); margin-bottom:1rem;">${renderMarkdown(step.theory)}</div>
+            <div style="display:flex; flex-direction:column; gap:0.85rem;">
+              ${(step.quiz || []).map((q, idx) => `
+                <div style="padding:0.85rem 1rem; border:1px solid var(--border); border-radius:8px; border-left:3px solid ${m.color || '#6366f1'};">
+                  <div style="font-weight:600; font-size:0.85rem; margin-bottom:0.5rem; color:var(--text-primary);">${idx + 1}. ${escapeHtml(q.question)}</div>
+                  ${q.options.map((opt, optIdx) => `
+                    <div style="font-size:0.78rem; padding:0.4rem 0.75rem; border-radius:6px; border:1px solid ${optIdx === q.correct ? 'rgba(16,185,129,0.4)' : 'var(--border)'}; background:${optIdx === q.correct ? 'rgba(16,185,129,0.08)' : 'transparent'}; color:${optIdx === q.correct ? 'var(--green-light)' : 'var(--text-secondary)'}; margin-bottom:0.3rem;">
+                      ${escapeHtml(opt)} ${optIdx === q.correct ? ' <span style="font-weight:700; margin-left:0.5rem;">✓ Correta</span>' : ''}
+                    </div>
+                  `).join('')}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
   const videoEmbedUrl = buildYouTubeEmbedUrl(m.video);
   const videoHtml = videoEmbedUrl ? `
     <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary); border-left:3px solid ${m.color || '#6366f1'}; padding-left:0.5rem;">🎥 Vídeo Aula</h3>
@@ -4089,18 +4208,20 @@ function previewModuleCrud(m) {
     <!-- Video -->
     ${videoHtml}
 
+    ${m.steps && m.steps.length > 0 ? stepsHtml : `
     <!-- Theory -->
     <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary); border-left:3px solid ${m.color || '#6366f1'}; padding-left:0.5rem;">📖 Explicação Teórica</h3>
     <div class="theory-text" style="font-size:0.88rem; line-height:1.6; color:var(--text-secondary); margin-bottom:2rem; padding-left:0.5rem;">
       ${theoryHtml}
     </div>
+    `}
 
     <!-- Code Block -->
     <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary); border-left:3px solid ${m.color || '#6366f1'}; padding-left:0.5rem;">💻 Código de Exemplo</h3>
     <pre style="background:#1e1e2e; color:#a6adc8; padding:1.25rem; border-radius:10px; overflow-x:auto; font-size:0.82rem; border:1px solid var(--border); margin-bottom:2rem;"><code style="font-family:'Courier New', Courier, monospace; line-height:1.4;">${escapeHtml(m.codeExample || '')}</code></pre>
 
-    <!-- Quiz -->
-    ${quizHtml}
+    <!-- Quiz (só pra módulos sem etapas) -->
+    ${m.steps && m.steps.length > 0 ? '' : quizHtml}
   `;
 
   modal.style.display = 'flex';

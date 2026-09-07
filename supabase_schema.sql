@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS progress (
     completed BOOLEAN DEFAULT FALSE,
     completed_at TIMESTAMP WITH TIME ZONE,
     score INTEGER DEFAULT 0,
+    step_progress JSONB NOT NULL DEFAULT '{}'::jsonb, -- { [stepId]: { completed, score, completedAt } }
     PRIMARY KEY (student_id, module_id)
 );
 
@@ -106,6 +107,7 @@ CREATE TABLE IF NOT EXISTS modules (
     code_example TEXT,
     quiz JSONB NOT NULL DEFAULT '[]'::jsonb,
     video JSONB NOT NULL DEFAULT '{}'::jsonb, -- { url, autoplay }
+    steps JSONB NOT NULL DEFAULT '[]'::jsonb, -- [{ id, title, theory, quiz }] — vazio = modo antigo (quiz único)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
