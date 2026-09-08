@@ -550,8 +550,15 @@
               <input type="datetime-local" id="act-deadline" class="ca-input" />
             </div>
             <div class="ca-field ca-field-full">
-              <label class="ca-label" for="act-description">Descrição / Instruções</label>
-              <textarea id="act-description" class="ca-input ca-textarea" rows="3" placeholder="Descreva os objetivos e instruções para os alunos..."></textarea>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label class="ca-label" for="act-description">Descrição / Instruções <span style="font-weight:400;color:var(--text-muted);">(aceita Markdown)</span></label>
+                <div style="display:flex; gap:0.5rem;">
+                  <input type="file" id="act-description-md-file" accept=".md,text/markdown,text/plain" style="display:none;">
+                  <button type="button" class="btn btn-ghost btn-sm" id="btn-act-description-import">📄 Importar .md</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="btn-act-description-preview">👁️ Prévia</button>
+                </div>
+              </div>
+              <textarea id="act-description" class="ca-input ca-textarea" rows="3" placeholder="Descreva os objetivos e instruções para os alunos... (markdown: **negrito**, listas, links...)"></textarea>
             </div>
           </div>
         </div>
@@ -1769,6 +1776,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
-<script src="js/teacher.js?v=7"></script>
+<script src="js/teacher.js?v=8"></script>
 </body>
 </html>

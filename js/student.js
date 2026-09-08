@@ -1194,7 +1194,7 @@ function openActivity(activityId) {
 
   // Header update
   document.getElementById('header-title').textContent = act.title;
-  document.getElementById('header-subtitle').textContent = act.description || 'Responda as questões teóricas e práticas abaixo.';
+  document.getElementById('header-subtitle').textContent = 'Responda as questões teóricas e práticas abaixo.';
   document.getElementById('viewer-activity-title').textContent = act.title;
 
   renderActivityStudentView(act);
@@ -1205,6 +1205,13 @@ function openActivity(activityId) {
 function renderActivityStudentView(act) {
   const container = document.getElementById('activity-student-container');
   container.innerHTML = '';
+
+  if (act.description) {
+    const descDiv = document.createElement('div');
+    descDiv.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:1.5rem;font-size:0.9rem;line-height:1.6;color:var(--text-secondary);';
+    descDiv.innerHTML = renderMarkdown(act.description);
+    container.appendChild(descDiv);
+  }
 
   const answers = getStudentAnswers(currentUser.id)[act.id] || {};
 

@@ -1249,6 +1249,27 @@ function initCreateActivityView() {
   document.getElementById('btn-close-preview').addEventListener('click', closePreviewModal);
   document.getElementById('btn-close-preview-2').addEventListener('click', closePreviewModal);
 
+  // Descrição/Instruções em Markdown: importar de arquivo .md ou prévia inline
+  // (mesmo padrão já usado na prévia de teoria de etapa do módulo).
+  const descFileInput = document.getElementById('act-description-md-file');
+  document.getElementById('btn-act-description-import').addEventListener('click', () => descFileInput.click());
+  descFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      document.getElementById('act-description').value = ev.target.result;
+    };
+    reader.readAsText(file, 'UTF-8');
+    descFileInput.value = '';
+  });
+  document.getElementById('btn-act-description-preview').addEventListener('click', () => {
+    const text = document.getElementById('act-description').value;
+    document.getElementById('ca-preview-title').textContent = 'Prévia da Descrição';
+    document.getElementById('ca-preview-body').innerHTML = renderMarkdown(text) || '<p style="color:var(--text-muted);">Nada para mostrar ainda.</p>';
+    document.getElementById('ca-preview-modal').classList.add('open');
+  });
+
   // Submit form
   document.getElementById('activity-form').addEventListener('submit', saveActivitySubmit);
 }
@@ -1531,7 +1552,7 @@ function renderActivityPreview(activity) {
       <span>📅 Prazo: ${activity.deadline ? new Date(activity.deadline).toLocaleString('pt-BR') : 'Sem prazo'}</span>
       <span>❓ Questões: ${activity.questions.length}</span>
     </div>
-    ${activity.description ? `<div class="cap-desc">${escapeHtml(activity.description)}</div>` : ''}
+    ${activity.description ? `<div class="cap-desc">${renderMarkdown(activity.description)}</div>` : ''}
   `;
 
   if (!activity.questions.length) {
@@ -2419,6 +2440,8 @@ function renderRanking(studentData, filter) {
 
     const card = document.createElement('div');
     card.className = `perf-rank-card ${idx === 0 ? 'rank-first' : ''}`;
+    card.style.cursor = 'pointer';
+    card.title = 'Ver detalhes deste aluno';
     card.innerHTML = `
       <div class="rank-medal">${medal}</div>
       <div class="rank-avatar" style="background:${d.student.avatarColor};">${escapeHtml(d.student.avatar)}</div>
@@ -2435,6 +2458,9 @@ function renderRanking(studentData, filter) {
         </div>
       </div>
     `;
+    // Mesma tela de detalhe (progresso por módulo, atividades com "Ver Respostas",
+    // banco de questões, log) já usada na aba Alunos — reaproveitada aqui.
+    card.addEventListener('click', () => switchView('student-detail', d.student.id));
     list.appendChild(card);
   });
 }
