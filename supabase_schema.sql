@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS activities (
     description TEXT,
     created_by TEXT REFERENCES users(id) ON DELETE CASCADE,
     questions JSONB NOT NULL DEFAULT '[]'::jsonb,
+    module_id TEXT, -- módulo relacionado (opcional); TEXT simples, não FK, pra não travar se o módulo for excluído
+    deadline TEXT, -- valor cru do <input type="datetime-local">, sem timezone; comparado sempre client-side
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

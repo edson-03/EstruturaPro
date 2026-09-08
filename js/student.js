@@ -83,8 +83,7 @@ function updateGreeting() {
 // ── Sidebar Nav ──────────────────────────────────────────
 function renderSidebarNav() {
   const modulesList = document.getElementById('nav-modules-list');
-  const activitiesList = document.getElementById('nav-activities-list');
-  
+
   const access = getStudentModuleAccess(currentUser.id);
   const progress = getStudentProgress(currentUser.id);
   const modules = getModules();
@@ -111,34 +110,7 @@ function renderSidebarNav() {
     });
   }
 
-  if (activitiesList) {
-    activitiesList.innerHTML = '';
-    const activities = getActivities();
-    const studentAnswers = getStudentAnswers(currentUser.id);
-    
-    if (activities.length === 0) {
-      activitiesList.innerHTML = '<div style="font-size:0.75rem;color:var(--text-muted);padding:0.5rem 0.75rem;font-style:italic;">Nenhuma atividade pendente</div>';
-    } else {
-      activities.forEach(act => {
-        const answersForAct = studentAnswers[act.id] || {};
-        const totalQuestions = act.questions.length;
-        const answeredQuestions = Object.keys(answersForAct).length;
-        const isDone = answeredQuestions === totalQuestions && totalQuestions > 0;
-        
-        const item = document.createElement('div');
-        item.className = `nav-item unlocked ${currentActivity?.id === act.id ? 'active' : ''}`;
-        
-        item.innerHTML = `
-          <div class="nav-dot ${isDone ? 'completed' : 'unlocked'}"></div>
-          <span class="nav-text">${escapeHtml(act.title)}</span>
-          ${isDone ? '<span class="nav-check">✓</span>' : answeredQuestions > 0 ? `<span style="font-size:0.7rem;color:var(--text-muted);">${answeredQuestions}/${totalQuestions}</span>` : ''}
-        `;
-        
-        item.addEventListener('click', () => openActivity(act.id));
-        activitiesList.appendChild(item);
-      });
-    }
-  }
+  updateActivitiesNavBadge();
 
   // Update progress bar
   const stats = getStudentStats(currentUser.id);
@@ -261,6 +233,9 @@ function openModule(moduleId) {
   if (document.getElementById('view-question-bank')) {
     document.getElementById('view-question-bank').style.display = 'none';
   }
+  if (document.getElementById('view-activities-hub')) {
+    document.getElementById('view-activities-hub').style.display = 'none';
+  }
 
   // Update header
   document.getElementById('header-title').textContent = mod.title;
@@ -316,6 +291,9 @@ function backToDashboard() {
   }
   if (document.getElementById('view-question-bank')) {
     document.getElementById('view-question-bank').style.display = 'none';
+  }
+  if (document.getElementById('view-activities-hub')) {
+    document.getElementById('view-activities-hub').style.display = 'none';
   }
   document.getElementById('header-title').textContent = 'Meus Módulos';
   document.getElementById('header-subtitle').textContent = 'Selecione um módulo para começar a aprender';
@@ -690,6 +668,104 @@ function populateModuleActivities(mod) {
   });
 }
 
+// ── Central de Atividades (histórico cruzando todos os módulos) ───
+function updateActivitiesNavBadge() {
+  const badge = document.getElementById('nav-activities-badge');
+  if (!badge) return;
+
+  const activities = getActivities();
+  const statuses = activities.map(act => getActivityStatus(act, currentUser.id));
+  const overdueCount = statuses.filter(s => s === 'overdue').length;
+  const pendingCount = statuses.filter(s => s === 'open' || s === 'overdue').length;
+
+  if (pendingCount === 0) {
+    badge.style.display = 'none';
+    return;
+  }
+  badge.textContent = pendingCount;
+  badge.style.display = 'inline-block';
+  badge.style.background = overdueCount > 0 ? 'rgba(239,68,68,0.25)' : 'rgba(99,102,241,0.25)';
+  badge.style.color = overdueCount > 0 ? 'var(--red-light)' : 'var(--accent-light)';
+}
+
+function openActivitiesHub() {
+  currentModule = null;
+  currentActivity = null;
+
+  document.getElementById('header-title').textContent = 'Central de Atividades';
+  document.getElementById('header-subtitle').textContent = 'Todas as suas atividades, de todos os módulos, em um só lugar.';
+
+  document.getElementById('view-dashboard').style.display = 'none';
+  document.getElementById('view-module').style.display = 'none';
+  if (document.getElementById('view-activity')) {
+    document.getElementById('view-activity').style.display = 'none';
+  }
+  if (document.getElementById('view-question-bank')) {
+    document.getElementById('view-question-bank').style.display = 'none';
+  }
+  document.getElementById('view-activities-hub').style.display = 'block';
+
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const navItem = document.getElementById('nav-item-activities-hub');
+  if (navItem) navItem.classList.add('active');
+
+  renderActivitiesHub();
+  closeSidebar();
+}
+
+function buildActivitiesHubCard(act) {
+  const moduleTitle = act.moduleId ? (getModuleById(act.moduleId)?.title || act.moduleId) : 'Nenhum módulo';
+  const deadlineText = act.deadline ? new Date(act.deadline).toLocaleString('pt-BR') : 'Sem prazo';
+
+  const card = document.createElement('div');
+  card.style.cssText = `
+    background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg);
+    padding:1rem 1.5rem; margin-bottom:0.85rem; display:flex; align-items:center; gap:1rem;
+    cursor:pointer; transition:border-color 0.2s;
+  `;
+  card.addEventListener('mouseenter', () => { card.style.borderColor = 'var(--accent)'; });
+  card.addEventListener('mouseleave', () => { card.style.borderColor = 'var(--border)'; });
+
+  card.innerHTML = `
+    <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0;">✏️</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:0.9rem;font-weight:700;margin-bottom:0.2rem;">${escapeHtml(act.title)}</div>
+      <div style="font-size:0.78rem;color:var(--text-muted);">📚 ${escapeHtml(moduleTitle)} &nbsp;·&nbsp; 📅 ${escapeHtml(deadlineText)}</div>
+    </div>
+    <div style="font-size:1.2rem;color:var(--text-muted);">›</div>
+  `;
+
+  card.addEventListener('click', () => openActivity(act.id));
+  return card;
+}
+
+function renderActivitiesHub() {
+  const activities = getActivities();
+  const overdueEl   = document.getElementById('activities-hub-overdue');
+  const openEl      = document.getElementById('activities-hub-open');
+  const completedEl = document.getElementById('activities-hub-completed');
+
+  const empty = '<div style="font-size:0.82rem;color:var(--text-muted);font-style:italic;padding:0.5rem 0;">Nenhuma atividade aqui.</div>';
+  overdueEl.innerHTML = '';
+  openEl.innerHTML = '';
+  completedEl.innerHTML = '';
+
+  const groups = { overdue: [], open: [], completed: [] };
+  activities.forEach(act => {
+    groups[getActivityStatus(act, currentUser.id)].push(act);
+  });
+
+  const targets = { overdue: overdueEl, open: openEl, completed: completedEl };
+  Object.keys(groups).forEach(status => {
+    const el = targets[status];
+    if (groups[status].length === 0) {
+      el.innerHTML = empty;
+    } else {
+      groups[status].forEach(act => el.appendChild(buildActivitiesHubCard(act)));
+    }
+  });
+}
+
 // ── Quiz ─────────────────────────────────────────────────
 function renderQuiz(mod) {
   const container = document.getElementById('quiz-container');
@@ -1015,6 +1091,13 @@ function setupEventListeners() {
   if (document.getElementById('btn-submit-activity-answers')) {
     document.getElementById('btn-submit-activity-answers').addEventListener('click', submitActivityAnswers);
   }
+  if (document.getElementById('btn-back-activities-hub')) {
+    document.getElementById('btn-back-activities-hub').addEventListener('click', backToDashboard);
+  }
+  const navActivitiesHub = document.getElementById('nav-item-activities-hub');
+  if (navActivitiesHub) {
+    navActivitiesHub.addEventListener('click', openActivitiesHub);
+  }
 
   // Viewer tabs
   document.getElementById('viewer-tabs').addEventListener('click', (e) => {
@@ -1104,6 +1187,9 @@ function openActivity(activityId) {
   document.getElementById('view-activity').style.display = 'block';
   if (document.getElementById('view-question-bank')) {
     document.getElementById('view-question-bank').style.display = 'none';
+  }
+  if (document.getElementById('view-activities-hub')) {
+    document.getElementById('view-activities-hub').style.display = 'none';
   }
 
   // Header update
@@ -1703,6 +1789,9 @@ function openQuestionBank() {
   document.getElementById('view-module').style.display = 'none';
   if (document.getElementById('view-activity')) {
     document.getElementById('view-activity').style.display = 'none';
+  }
+  if (document.getElementById('view-activities-hub')) {
+    document.getElementById('view-activities-hub').style.display = 'none';
   }
   document.getElementById('view-question-bank').style.display = 'block';
 

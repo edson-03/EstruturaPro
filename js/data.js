@@ -1112,7 +1112,17 @@ async function syncFromSupabase() {
     // 5. Atividades Personalizadas
     const { data: activities, error: errActivities } = await supabaseClient.from('activities').select('*');
     if (!errActivities && activities) {
-      localStorage.setItem(DB_KEYS.ACTIVITIES, JSON.stringify(activities));
+      const mappedActivities = activities.map(a => ({
+        id: a.id,
+        title: a.title,
+        description: a.description,
+        createdBy: a.created_by,
+        questions: a.questions,
+        moduleId: a.module_id || '',
+        deadline: a.deadline || '',
+        createdAt: a.created_at,
+      }));
+      localStorage.setItem(DB_KEYS.ACTIVITIES, JSON.stringify(mappedActivities));
     }
 
     // 6. Respostas dos Exercícios
@@ -1711,6 +1721,18 @@ function getStudentActivityScore(studentId, activityId) {
     }
   });
   return Math.round((correctCount / activity.questions.length) * 100);
+}
+
+// Status de uma atividade pro aluno: 'completed' (respondeu tudo), 'overdue' (prazo já
+// passou e não terminou) ou 'open' (ainda dentro do prazo, ou sem prazo definido).
+function getActivityStatus(act, studentId) {
+  const answers = getStudentAnswers(studentId)[act.id] || {};
+  const totalQuestions = act.questions.length;
+  const answeredQuestions = Object.keys(answers).length;
+  const isDone = totalQuestions > 0 && answeredQuestions === totalQuestions;
+  if (isDone) return 'completed';
+  if (act.deadline && new Date(act.deadline) < new Date()) return 'overdue';
+  return 'open';
 }
 
 // ── Modules ──

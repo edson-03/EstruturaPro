@@ -64,7 +64,11 @@
       <div id="nav-modules-list"></div>
       
       <div class="nav-label" style="margin-top:1.5rem;">Atividades</div>
-      <div id="nav-activities-list"></div>
+      <div class="nav-item unlocked" id="nav-item-activities-hub">
+        <div class="nav-dot" style="background:var(--accent);"></div>
+        <span class="nav-text">📋 Atividades</span>
+        <span id="nav-activities-badge" style="display:none;font-size:0.7rem;font-weight:700;padding:1px 7px;border-radius:10px;margin-left:auto;"></span>
+      </div>
 
       <div class="nav-label" style="margin-top:1.5rem;">Prática</div>
       <div class="nav-item unlocked" id="nav-item-question-bank">
@@ -302,6 +306,36 @@
 
     </div>
 
+    <!-- ─── ACTIVITIES HUB (histórico de todas as atividades do aluno) ─── -->
+    <div id="view-activities-hub" style="display:none; padding:2rem; animation:fadeSlideUp 0.3s ease;">
+
+      <div class="module-viewer-header" style="position:static; margin-bottom:1.5rem; padding: 0 0 1rem; border-bottom:1px solid var(--border); display:flex; align-items:center;">
+        <button class="btn-back-module" id="btn-back-activities-hub">
+          ← Voltar
+        </button>
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-left:1rem;">
+          <span style="font-size:1.3rem;">📋</span>
+          <span style="font-size:1.05rem;font-weight:700;">Central de Atividades</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom:2rem;">
+        <h3 style="margin-bottom:1rem;color:var(--red-light, #f87171);">🔴 Em Atraso</h3>
+        <div id="activities-hub-overdue"></div>
+      </div>
+
+      <div style="margin-bottom:2rem;">
+        <h3 style="margin-bottom:1rem;color:var(--yellow, #eab308);">🟡 Em Aberto</h3>
+        <div id="activities-hub-open"></div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:1rem;color:var(--green, #22c55e);">🟢 Finalizadas</h3>
+        <div id="activities-hub-completed"></div>
+      </div>
+
+    </div>
+
     <!-- ─── QUESTION BANK VIEW ─── -->
     <div id="view-question-bank" style="display:none; padding:2rem; animation:fadeSlideUp 0.3s ease;">
       
@@ -411,7 +445,7 @@
 <!-- js/data.js é immutable/cacheado por 30 dias (vercel.json), e um cache de borda da
      CDN não invalida automaticamente em deploy novo. Incrementar este número sempre que
      js/data.js mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/data.js?v=5"></script>
+<script src="js/data.js?v=6"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
@@ -425,6 +459,6 @@
 
 <script src="js/visualizer.js"></script>
 <!-- js/student.js é immutable/cacheado por 30 dias (vercel.json). Incrementar este número sempre que js/student.js mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/student.js?v=3"></script>
+<script src="js/student.js?v=4"></script>
 </body>
 </html>

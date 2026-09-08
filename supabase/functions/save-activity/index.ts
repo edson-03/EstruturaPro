@@ -20,6 +20,8 @@ Deno.serve(async (req) => {
       description: activity.description || "",
       created_by: teacher.id,
       questions: activity.questions || [],
+      module_id: activity.moduleId || null,
+      deadline: activity.deadline || null,
       created_at: activity.createdAt || new Date().toISOString(),
     });
     if (error) return jsonResponse({ error: "Erro ao salvar atividade." }, 500);
