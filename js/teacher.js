@@ -2355,11 +2355,15 @@ function renderPerformancePage() {
     : 0;
   const totalAttempts   = studentData.reduce((a, d) => a + d.perf.totalAttempts, 0);
   const totalBadges     = studentData.reduce((a, d) => a + BADGES.filter(b => b.condition(d.perf)).length, 0);
+  const activities      = getActivities();
+  const overdueCount    = students.reduce((a, s) =>
+    a + activities.filter(act => getActivityStatus(act, s.id) === 'overdue').length, 0);
 
   document.getElementById('kpi-total-points').textContent   = totalPoints.toLocaleString('pt-BR');
   document.getElementById('kpi-avg-accuracy').textContent   = avgAccuracy + '%';
   document.getElementById('kpi-quiz-attempts').textContent  = totalAttempts;
   document.getElementById('kpi-badges-earned').textContent  = totalBadges;
+  document.getElementById('kpi-overdue-activities').textContent = overdueCount;
 
   // Animate kpi counters
   animateKpiCounters();
@@ -2379,6 +2383,9 @@ function renderPerformancePage() {
 
   // ── Module stats ──
   renderModulePerformance(modules, students, allProgress);
+
+  // ── Activity stats ──
+  renderActivityPerformance(activities, students);
 
   // ── Quiz analysis ──
   renderQuizAnalysis(modules, students, allProgress);
@@ -2518,6 +2525,60 @@ function renderModulePerformance(modules, students, allProgress) {
           const sName = escapeHtml(s.name);
           const tips = { done: `${sName}: Concluído (${prog?.score || 0}%)`, progress: `${sName}: Em andamento`, unlocked: `${sName}: Liberado`, locked: `${sName}: Bloqueado` };
           return `<div class="perf-student-dot" style="background:${s.avatarColor};border-color:${colors2[status]};" title="${tips[status]}">${escapeHtml(s.avatar)}</div>`;
+        }).join('')}
+      </div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+// ── Activity Performance ─────────────────────────────────────
+function renderActivityPerformance(activities, students) {
+  const list = document.getElementById('perf-activity-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  if (activities.length === 0) {
+    list.innerHTML = `<div class="perf-empty">✏️ Nenhuma atividade cadastrada ainda.</div>`;
+    return;
+  }
+
+  activities.forEach(act => {
+    const statuses = students.map(s => ({ student: s, status: getActivityStatus(act, s.id) }));
+    const completedCount = statuses.filter(x => x.status === 'completed').length;
+    const overdueCount   = statuses.filter(x => x.status === 'overdue').length;
+    const completionRate = students.length > 0 ? Math.round((completedCount / students.length) * 100) : 0;
+
+    const moduleTitle = act.moduleId ? (getModuleById(act.moduleId)?.title || act.moduleId) : 'Todos os módulos';
+    const deadlineText = act.deadline ? new Date(act.deadline).toLocaleString('pt-BR') : 'Sem prazo';
+
+    const item = document.createElement('div');
+    item.className = 'perf-module-item';
+    item.innerHTML = `
+      <div class="perf-mod-header">
+        <div class="perf-mod-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">✏️</div>
+        <div class="perf-mod-meta">
+          <div class="perf-mod-name">${escapeHtml(act.title)}</div>
+          <div class="perf-mod-sub">📚 ${escapeHtml(moduleTitle)} · 📅 ${escapeHtml(deadlineText)}</div>
+        </div>
+        <div class="perf-mod-score" style="color:${overdueCount > 0 ? 'var(--red)' : 'var(--green)'};">
+          ${overdueCount > 0 ? `🔴 ${overdueCount} atrasada${overdueCount !== 1 ? 's' : ''}` : `${completedCount}/${students.length}`}
+        </div>
+      </div>
+      <div class="perf-mod-bars">
+        <div class="perf-mod-bar-row">
+          <span class="perf-mod-bar-label">Conclusão</span>
+          <div class="perf-mod-bar-track">
+            <div class="perf-mod-bar-fill" style="width:${completionRate}%;background:linear-gradient(90deg,#6366f1,#8b5cf6);"></div>
+          </div>
+          <span class="perf-mod-bar-pct">${completionRate}%</span>
+        </div>
+      </div>
+      <div class="perf-mod-students">
+        ${statuses.map(({ student: s, status }) => {
+          const colors = { completed: 'var(--green)', overdue: 'var(--red)', open: 'var(--border)' };
+          const tips = { completed: `${s.name}: Concluída`, overdue: `${s.name}: Em atraso`, open: `${s.name}: Em aberto` };
+          return `<div class="perf-student-dot" style="background:${s.avatarColor};border-color:${colors[status]};" title="${escapeHtml(tips[status])}">${escapeHtml(s.avatar)}</div>`;
         }).join('')}
       </div>
     `;

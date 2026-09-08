@@ -1457,7 +1457,7 @@ li.CodeMirror-hint-active {
 /* KPI Grid */
 .perf-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -1490,6 +1490,7 @@ li.CodeMirror-hint-active {
 .perf-kpi.green::before  { background: linear-gradient(90deg, #10b981, #059669); }
 .perf-kpi.yellow::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
 .perf-kpi.pink::before   { background: linear-gradient(90deg, #ec4899, #db2777); }
+.perf-kpi.red::before    { background: linear-gradient(90deg, #ef4444, #dc2626); }
 
 .perf-kpi-icon { font-size: 1.6rem; }
 .perf-kpi-value {
@@ -1502,6 +1503,7 @@ li.CodeMirror-hint-active {
 .perf-kpi.green  .perf-kpi-value { color: #34d399; }
 .perf-kpi.yellow .perf-kpi-value { color: #fbbf24; }
 .perf-kpi.pink   .perf-kpi-value { color: #f472b6; }
+.perf-kpi.red    .perf-kpi-value { color: #f87171; }
 
 .perf-kpi-label {
   font-size: 0.72rem;
