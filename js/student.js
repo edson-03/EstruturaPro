@@ -1371,7 +1371,7 @@ async function testStudentCode(qId, providedPromptValues) {
   const runNum = runCounters[qId];
   const runTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-  const worker = new Worker('js/practice-worker.js?v=1');
+  const worker = new Worker('js/practice-worker.js?v=2');
 
   // ── Syntax check
   const syntaxCheck = await runInPracticeWorker(worker, { kind: 'checkSyntax', code: userCode });
@@ -1528,13 +1528,20 @@ async function testStudentCode(qId, providedPromptValues) {
   }
 
   // ── Render test results summary
-  const summary = passedAll
+  // Sem nenhum caso de teste cadastrado, "todos passaram" seria enganoso (0 de 0) —
+  // o aluno via essa mensagem de sucesso mesmo com erro de execução no código.
+  const summary = q.testCases.length === 0
+    ? `<div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:0.6rem 1rem;margin-bottom:0.5rem;color:#fbbf24;font-weight:700;">&#9888; Esta questão não tem casos de teste cadastrados — confira a saída do código acima.</div>`
+    : passedAll
     ? `<div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:0.6rem 1rem;margin-bottom:0.5rem;color:#34d399;font-weight:700;">&#127881; Todos os ${q.testCases.length} caso(s) de teste passaram!</div>`
     : `<div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:0.6rem 1rem;margin-bottom:0.5rem;color:#f87171;font-weight:700;">&#10060; Alguns testes falharam. Revise seu código.</div>`;
 
   logContainer.innerHTML = summary + testFeedbacks.join('');
 
-  if (passedAll) {
+  if (q.testCases.length === 0) {
+    statusSpan.innerHTML = '<span style="color:#fbbf24;">&#9888; Sem casos de teste cadastrados</span>';
+    saveStudentAnswer(currentUser.id, currentActivity.id, qId, { code: userCode, correct: true });
+  } else if (passedAll) {
     statusSpan.innerHTML = '<span style="color:#34d399;">&#10003; Todos os testes passaram!</span>';
     saveStudentAnswer(currentUser.id, currentActivity.id, qId, { code: userCode, correct: true });
   } else {

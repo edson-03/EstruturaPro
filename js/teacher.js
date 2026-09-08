@@ -1765,7 +1765,7 @@ async function runPracticalQuestion(qId) {
     runBtn.innerHTML = '<span class="ide-run-icon">⏳</span> Executando...';
   }
 
-  const worker = new Worker('js/practice-worker.js?v=1');
+  const worker = new Worker('js/practice-worker.js?v=2');
   const logs = [];
   const addLines = (workerLines) => {
     (workerLines || []).forEach(l => logs.push({ type: l.type === 'info' ? 'info' : l.type, msg: l.text }));

@@ -84,15 +84,19 @@ self.onmessage = function (e) {
   }
 
   if (data.kind === 'runTop') {
-    // Execução "top-level" pra capturar o console.log direto do código do aluno — erros
-    // aqui são silenciados de propósito (o mesmo erro reaparece por caso de teste abaixo).
+    // Execução "top-level" pra capturar o console.log direto do código do aluno. Erros
+    // de execução (ex: nome de função digitado errado) entram como linha de erro, senão
+    // o aluno vê "sem saída de console" sem nenhuma pista do que deu errado — e se a
+    // questão não tiver nenhum caso de teste cadastrado, essa é a ÚNICA saída que ele vê.
     const lines = [];
     const fakeConsole = makeFakeConsole(lines);
     const io = makeFakeIO(lines, data.promptQueue || []);
     try {
       const fn = new Function('console', 'prompt', 'alert', 'confirm', data.code);
       fn(fakeConsole, io.prompt, io.alert, io.confirm);
-    } catch (_e) { /* ignorado, igual ao comportamento original */ }
+    } catch (err) {
+      lines.push({ type: 'error', text: err.message });
+    }
     reply.lines = lines;
     self.postMessage(reply);
     return;
