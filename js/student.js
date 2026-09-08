@@ -1325,6 +1325,7 @@ function selectStudentTheoreticalOption(button, qId, oIdx) {
   if (currentActivity) {
     const answerData = { chosen: oIdx };
     saveStudentAnswer(currentUser.id, currentActivity.id, qId, answerData);
+    recordActivityCompletionIfNeeded(currentActivity, currentUser.id);
     updateActivityStatusInfo();
     renderSidebarNav();
   }
@@ -1420,6 +1421,7 @@ async function testStudentCode(qId, providedPromptValues) {
     `;
     statusSpan.innerHTML = '<span style="color:#f87171;">&#9940; Erro de sintaxe &mdash; corrija o código</span>';
     saveStudentAnswer(currentUser.id, currentActivity.id, qId, { code: userCode, correct: false });
+    recordActivityCompletionIfNeeded(currentActivity, currentUser.id);
     updateActivityStatusInfo();
     return;
   }
@@ -1555,6 +1557,7 @@ async function testStudentCode(qId, providedPromptValues) {
     statusSpan.innerHTML = '<span style="color:#f87171;">&#10007; Alguns testes falharam</span>';
     saveStudentAnswer(currentUser.id, currentActivity.id, qId, { code: userCode, correct: false });
   }
+  recordActivityCompletionIfNeeded(currentActivity, currentUser.id);
 
   updateActivityStatusInfo();
   renderSidebarNav();

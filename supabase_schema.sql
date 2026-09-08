@@ -92,6 +92,18 @@ CREATE TABLE IF NOT EXISTS student_answers (
     PRIMARY KEY (student_id, activity_id, question_id)
 );
 
+-- ── 7.4. TABELA DE CONCLUSÃO DE ATIVIDADES (activity_completions) ──
+-- Registra o momento em que o aluno terminou de responder TODAS as questões de uma
+-- atividade pela primeira vez (e se isso foi depois do prazo) — usado só pra decidir a
+-- penalidade de pontos por atraso; edição de respostas depois não reescreve esta linha.
+CREATE TABLE IF NOT EXISTS activity_completions (
+    student_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    activity_id TEXT REFERENCES activities(id) ON DELETE CASCADE,
+    completed_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    late BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (student_id, activity_id)
+);
+
 -- ── 7.5. TABELA DE MÓDULOS DE AULA (modules) ──
 CREATE TABLE IF NOT EXISTS modules (
     id TEXT PRIMARY KEY,
@@ -223,6 +235,7 @@ ALTER TABLE progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE student_answers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_completions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bank_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE student_bank_scores ENABLE ROW LEVEL SECURITY;
@@ -265,6 +278,10 @@ REVOKE INSERT, UPDATE, DELETE ON activities FROM anon, authenticated;
 -- student_answers: leitura pública, escrita só via Edge Function "save-student-answer".
 CREATE POLICY "Permitir leitura pública de respostas" ON student_answers FOR SELECT USING (true);
 REVOKE INSERT, UPDATE, DELETE ON student_answers FROM anon, authenticated;
+
+-- activity_completions: leitura pública, escrita só via Edge Function "save-activity-completion".
+CREATE POLICY "Permitir leitura pública de activity_completions" ON activity_completions FOR SELECT USING (true);
+REVOKE INSERT, UPDATE, DELETE ON activity_completions FROM anon, authenticated;
 
 -- settings: leitura pública, escrita só via Edge Function "save-settings" (professor).
 CREATE POLICY "Permitir leitura pública de configurações" ON settings FOR SELECT USING (true);

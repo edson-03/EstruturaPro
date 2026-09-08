@@ -2204,23 +2204,9 @@ function confirmRemoveTeacher(teacherId, teacherName) {
 // ============================================================
 
 // ── Scoring System ──────────────────────────────────────────
-// Points per action:
-//   Module started:    +10 pts
-//   Module completed:  +50 pts
-//   Quiz attempt:      +5 pts per attempt
-//   Quiz score bonus:  score% mapped to 0-100 pts (added on completion)
-//   Activity done:     +30 pts per activity completed
-//   Perfect score:     +25 bonus pts (100%)
-//   First try correct: +15 bonus pts
-
-const POINT_RULES = {
-  MODULE_STARTED:    10,
-  MODULE_COMPLETED:  50,
-  QUIZ_ATTEMPT:       5,
-  QUIZ_SCORE_BONUS:   1,   // multiplied by score %
-  ACTIVITY_DONE:     30,
-  PERFECT_BONUS:     25,
-};
+// Valores padrão em DEFAULT_SETTINGS.scoring (js/data.js), editáveis em
+// Configurações > Pontuação — calculateStudentPoints() lê de lá (com fallback pros
+// defaults), nunca hardcoded aqui.
 
 // Badge definitions
 const BADGES = [
@@ -2243,6 +2229,7 @@ function calculateStudentPoints(studentId) {
   const log       = getActivityLog()[studentId] || [];
   const answers   = getStudentAnswers(studentId);
   const activities = getActivities();
+  const rules     = { ...DEFAULT_SETTINGS.scoring, ...(getSettings().scoring || {}) };
 
   let points = 0;
   let totalAttempts = 0;
@@ -2258,18 +2245,18 @@ function calculateStudentPoints(studentId) {
 
     if (prog.started) {
       hasStarted = true;
-      const p = POINT_RULES.MODULE_STARTED;
+      const p = rules.MODULE_STARTED;
       points += p;
       breakdown.push({ label: `Iniciou "${mod.title}"`, pts: p, icon: mod.emoji, ts: prog.startedAt || prog.completedAt });
     }
 
     if (prog.completed) {
-      const p = POINT_RULES.MODULE_COMPLETED;
+      const p = rules.MODULE_COMPLETED;
       points += p;
       breakdown.push({ label: `Concluiu "${mod.title}"`, pts: p, icon: '✅', ts: prog.completedAt });
 
       // Score bonus
-      const scoreBonus = Math.round((prog.score || 0) * POINT_RULES.QUIZ_SCORE_BONUS);
+      const scoreBonus = Math.round((prog.score || 0) * rules.QUIZ_SCORE_BONUS);
       if (scoreBonus > 0) {
         points += scoreBonus;
         breakdown.push({ label: `Bônus quiz ${mod.title} (${prog.score}%)`, pts: scoreBonus, icon: '📊', ts: prog.completedAt });
@@ -2277,8 +2264,8 @@ function calculateStudentPoints(studentId) {
 
       if (prog.score === 100) {
         hasPerfectScore = true;
-        points += POINT_RULES.PERFECT_BONUS;
-        breakdown.push({ label: `Nota perfeita em "${mod.title}"!`, pts: POINT_RULES.PERFECT_BONUS, icon: '💯', ts: prog.completedAt });
+        points += rules.PERFECT_BONUS;
+        breakdown.push({ label: `Nota perfeita em "${mod.title}"!`, pts: rules.PERFECT_BONUS, icon: '💯', ts: prog.completedAt });
         firstTryWin = true;
       }
     }
@@ -2290,27 +2277,34 @@ function calculateStudentPoints(studentId) {
 
     // Attempt points
     if (attempts > 1) {
-      const ap = (attempts - 1) * POINT_RULES.QUIZ_ATTEMPT;
+      const ap = (attempts - 1) * rules.QUIZ_ATTEMPT;
       points += ap;
     }
   });
 
-  // Activity points
+  // Activity points — atraso desconta pontos (só quando a atividade É concluída depois
+  // do prazo; nunca entregar já não rende os pontos normais, sem desconto adicional).
   activities.forEach(act => {
     const actAnswers = answers[act.id] || {};
     const totalQ = act.questions.length;
     const answered = Object.keys(actAnswers).length;
     if (answered === totalQ && totalQ > 0) {
       activitiesDone++;
-      points += POINT_RULES.ACTIVITY_DONE;
-      breakdown.push({ label: `Atividade "${act.title}" concluída`, pts: POINT_RULES.ACTIVITY_DONE, icon: '✏️', ts: null });
+      points += rules.ACTIVITY_DONE;
+      breakdown.push({ label: `Atividade "${act.title}" concluída`, pts: rules.ACTIVITY_DONE, icon: '✏️', ts: null });
+
+      const completion = getActivityCompletion(studentId, act.id);
+      if (completion?.late && rules.LATE_ACTIVITY_PENALTY > 0) {
+        points -= rules.LATE_ACTIVITY_PENALTY;
+        breakdown.push({ label: `Atividade "${act.title}" entregue em atraso`, pts: -rules.LATE_ACTIVITY_PENALTY, icon: '⏰', ts: completion.completedAt });
+      }
     }
   });
 
   const stats = getStudentStats(studentId);
 
   return {
-    points,
+    points: Math.max(0, points), // descontos por atraso não deixam o total líquido negativo
     breakdown: breakdown.sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0)),
     totalAttempts,
     hasPerfectScore,
@@ -2737,7 +2731,8 @@ function renderTimeline(studentId, studentData) {
   container.innerHTML = '';
   breakdown.forEach((item, idx) => {
     cumulativePoints += item.pts;
-    const pct = maxPoints > 0 ? Math.round((cumulativePoints / maxPoints) * 100) : 100;
+    const pct = maxPoints > 0 ? Math.max(0, Math.round((cumulativePoints / maxPoints) * 100)) : 100;
+    const isNegative = item.pts < 0;
 
     const el = document.createElement('div');
     el.className = 'perf-timeline-item';
@@ -2748,7 +2743,7 @@ function renderTimeline(studentId, studentData) {
         <div class="ptl-row">
           <span class="ptl-icon">${item.icon}</span>
           <span class="ptl-label">${item.label}</span>
-          <span class="ptl-pts">+${item.pts} pts</span>
+          <span class="ptl-pts" style="${isNegative ? 'color:var(--red);' : ''}">${isNegative ? '' : '+'}${item.pts} pts</span>
         </div>
         <div class="ptl-bar-wrap">
           <div class="ptl-bar" style="width:${pct}%;background:${student.avatarColor};"></div>
@@ -2983,15 +2978,15 @@ function initSettingsView() {
   });
 
   // ── SCORING ──
+  // calculateStudentPoints() lê os valores direto de getSettings().scoring a cada
+  // chamada — não precisa sincronizar nenhuma constante em memória depois de salvar.
   document.getElementById('btn-cfg-scoring-save').addEventListener('click', () => {
-    const keys = ['MODULE_STARTED','MODULE_COMPLETED','QUIZ_ATTEMPT','QUIZ_SCORE_BONUS','ACTIVITY_DONE','PERFECT_BONUS'];
+    const keys = ['MODULE_STARTED','MODULE_COMPLETED','QUIZ_ATTEMPT','QUIZ_SCORE_BONUS','ACTIVITY_DONE','PERFECT_BONUS','LATE_ACTIVITY_PENALTY'];
     const scoring = {};
     keys.forEach(k => {
       scoring[k] = parseFloat(document.getElementById('score-' + k).value) || 0;
     });
     saveSettings({ scoring });
-    // Update the live POINT_RULES so existing page session uses new values
-    Object.assign(POINT_RULES, scoring);
     showToast('✅ Regras de pontuação salvas!', 'success');
   });
 
@@ -3003,7 +2998,6 @@ function initSettingsView() {
       if (el) el.value = defaults[k];
     });
     saveSettings({ scoring: { ...defaults } });
-    Object.assign(POINT_RULES, defaults);
     showToast('✅ Pontuação restaurada para os padrões!', 'info');
   });
 
@@ -3200,8 +3194,9 @@ function loadSettingsValues() {
   document.getElementById('cfg-pass-min-len').value    = s.passMinLen;
   document.getElementById('cfg-default-pass').value    = s.defaultPass;
   document.getElementById('cfg-force-pass-change').checked = s.forcePassChange;
-  // Scoring
-  const sc = s.scoring || DEFAULT_SETTINGS.scoring;
+  // Scoring (merge com os defaults — settings salvos antes de um campo novo existir,
+  // como LATE_ACTIVITY_PENALTY, não teriam essa chave no objeto salvo)
+  const sc = { ...DEFAULT_SETTINGS.scoring, ...(s.scoring || {}) };
   Object.keys(sc).forEach(k => {
     const el = document.getElementById('score-' + k);
     if (el) el.value = sc[k];

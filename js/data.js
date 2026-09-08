@@ -13,6 +13,7 @@ const DB_KEYS = {
   BANK_QUESTIONS:  'ep_bank_questions',
   BANK_SCORES:     'ep_bank_scores',
   CODE_SNIPPETS:   'ep_code_snippets',
+  ACTIVITY_COMPLETIONS: 'ep_activity_completions',
 };
 
 // ── Settings (compartilhado — student.js precisa ler settings.minScore pra aprovação
@@ -30,7 +31,7 @@ const DEFAULT_SETTINGS = {
   // Security
   passMinLen: 4, defaultPass: '1234', forcePassChange: false,
   // Scoring
-  scoring: { MODULE_STARTED: 10, MODULE_COMPLETED: 50, QUIZ_ATTEMPT: 5, QUIZ_SCORE_BONUS: 1, ACTIVITY_DONE: 30, PERFECT_BONUS: 25 },
+  scoring: { MODULE_STARTED: 10, MODULE_COMPLETED: 50, QUIZ_ATTEMPT: 5, QUIZ_SCORE_BONUS: 1, ACTIVITY_DONE: 30, PERFECT_BONUS: 25, LATE_ACTIVITY_PENALTY: 15 },
   // Appearance
   accentColor: '#6366f1', platformName: 'EstruturaPRO', platformIcon: '⚡', platformTagline: 'Painel do Professor',
   animations: true, bgEffects: true, compactToast: false,
@@ -1137,6 +1138,17 @@ async function syncFromSupabase() {
       localStorage.setItem(DB_KEYS.STUDENT_ANSWERS, JSON.stringify(answersObj));
     }
 
+    // 6.2. Conclusão de Atividades (usado pra saber se foi entregue em atraso)
+    const { data: completions, error: errCompletions } = await supabaseClient.from('activity_completions').select('*');
+    if (!errCompletions && completions) {
+      const completionsObj = {};
+      completions.forEach(row => {
+        if (!completionsObj[row.student_id]) completionsObj[row.student_id] = {};
+        completionsObj[row.student_id][row.activity_id] = { completedAt: row.completed_at, late: row.late };
+      });
+      localStorage.setItem(DB_KEYS.ACTIVITY_COMPLETIONS, JSON.stringify(completionsObj));
+    }
+
     // 6.5. Módulos Personalizados
     const { data: remoteModules, error: errRemoteModules } = await supabaseClient.from('modules').select('*');
     if (!errRemoteModules && remoteModules) {
@@ -1733,6 +1745,41 @@ function getActivityStatus(act, studentId) {
   if (isDone) return 'completed';
   if (act.deadline && new Date(act.deadline) < new Date()) return 'overdue';
   return 'open';
+}
+
+// ── Activity Completions (pra saber se a atividade foi entregue em atraso) ──
+function getActivityCompletions() {
+  return JSON.parse(localStorage.getItem(DB_KEYS.ACTIVITY_COMPLETIONS) || '{}');
+}
+
+function getActivityCompletion(studentId, activityId) {
+  return getActivityCompletions()[studentId]?.[activityId] || null;
+}
+
+// Chamado depois de salvar qualquer resposta — se a atividade acabou de ficar 100%
+// respondida e ainda não há registro de conclusão, grava o momento (e se foi em atraso)
+// pela primeira vez. Editar respostas depois não reescreve esse registro (a Edge Function
+// já protege isso), então nunca "limpa" um atraso já contabilizado.
+async function recordActivityCompletionIfNeeded(act, studentId) {
+  if (getActivityCompletion(studentId, act.id)) return;
+
+  const answers = getStudentAnswers(studentId)[act.id] || {};
+  const totalQuestions = act.questions.length;
+  const answeredQuestions = Object.keys(answers).length;
+  if (totalQuestions === 0 || answeredQuestions !== totalQuestions) return;
+
+  const late = !!(act.deadline && new Date(act.deadline) < new Date());
+  const completions = getActivityCompletions();
+  if (!completions[studentId]) completions[studentId] = {};
+  completions[studentId][act.id] = { completedAt: new Date().toISOString(), late };
+  localStorage.setItem(DB_KEYS.ACTIVITY_COMPLETIONS, JSON.stringify(completions));
+
+  if (isSupabaseConfigured()) {
+    const result = await callEdgeFunction('save-activity-completion', { activityId: act.id, late });
+    if (!result.ok) {
+      console.error('Erro ao registrar conclusão da atividade no Supabase:', result.error);
+    }
+  }
 }
 
 // ── Modules ──
