@@ -836,6 +836,94 @@
 }
 .result-msg { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem; }
 
+/* ── Module Steps (etapas sequenciais dentro do módulo) ── */
+#module-steps-nav {
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  padding: 0.25rem 0.25rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.step-node {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+  padding: 0.35rem 0.9rem 0.35rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  transition: all var(--tr-fast);
+}
+.step-node-circle {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 2px solid;
+}
+.step-node-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.step-connector {
+  width: 28px;
+  height: 2px;
+  flex-shrink: 0;
+  margin: 0 0.1rem;
+  border-radius: 2px;
+}
+
+.step-node.completed { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.25); }
+.step-node.completed .step-node-circle { background: var(--green); border-color: var(--green); color: #04120c; }
+.step-node.completed .step-node-label  { color: var(--green-light); }
+
+.step-node.current { background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.3); box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+.step-node.current .step-node-circle { background: var(--accent); border-color: var(--accent); color: #fff; }
+.step-node.current .step-node-label  { color: var(--text-primary); }
+
+.step-node.locked { opacity: 0.5; }
+.step-node.locked .step-node-circle { background: rgba(255,255,255,0.04); border-color: var(--border); color: var(--text-muted); }
+.step-node.locked .step-node-label  { color: var(--text-muted); }
+
+.step-connector.done    { background: var(--green); }
+.step-connector.pending { background: var(--border); }
+
+.step-content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem 2rem;
+  backdrop-filter: blur(12px);
+}
+
+.step-content-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+.step-content-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent-light);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.step-content-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0.2rem 0 1.25rem;
+}
+
 /* ── Mobile ── */
 .mobile-sidebar-toggle {
   display: none;

@@ -906,13 +906,23 @@ function finishQuiz(mod) {
 // regressão no fluxo de quiz único já validado.
 function renderStepsNav(mod, unlockedIndex) {
   const nav = document.getElementById('module-steps-nav');
-  nav.innerHTML = mod.steps.map((step, i) => {
-    let bg, color, icon;
-    if (i < unlockedIndex) { bg = 'rgba(16,185,129,0.15)'; color = 'var(--green)'; icon = '✓'; }
-    else if (i === unlockedIndex) { bg = 'rgba(99,102,241,0.15)'; color = 'var(--accent-light)'; icon = i + 1; }
-    else { bg = 'rgba(255,255,255,0.04)'; color = 'var(--text-muted)'; icon = '🔒'; }
-    return `<span style="padding:0.4rem 0.85rem;border-radius:20px;font-size:0.78rem;font-weight:600;background:${bg};color:${color};">${icon} ${escapeHtml(step.title)}</span>`;
-  }).join('');
+  const parts = mod.steps.map((step, i) => {
+    let state, circleContent;
+    if (i < unlockedIndex)       { state = 'completed'; circleContent = '✓'; }
+    else if (i === unlockedIndex) { state = 'current';   circleContent = i + 1; }
+    else                          { state = 'locked';    circleContent = '🔒'; }
+
+    const node = `
+      <div class="step-node ${state}" title="${escapeHtml(step.title)}">
+        <span class="step-node-circle">${circleContent}</span>
+        <span class="step-node-label">${escapeHtml(step.title)}</span>
+      </div>
+    `;
+    if (i === 0) return node;
+    const connectorState = i <= unlockedIndex ? 'done' : 'pending';
+    return `<div class="step-connector ${connectorState}"></div>${node}`;
+  });
+  nav.innerHTML = parts.join('');
 }
 
 function renderModuleSteps(mod) {
@@ -923,11 +933,13 @@ function renderModuleSteps(mod) {
 
   if (unlockedIndex >= mod.steps.length) {
     contentEl.innerHTML = `
-      <div class="quiz-result">
-        <span class="result-emoji">🏆</span>
-        <div class="result-msg">Você concluiu todas as etapas deste módulo!</div>
-        <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
-          <button class="btn btn-primary" id="steps-back-dash">🏠 Voltar ao painel</button>
+      <div class="step-content-card">
+        <div class="quiz-result">
+          <span class="result-emoji">🏆</span>
+          <div class="result-msg">Você concluiu todas as ${mod.steps.length} etapas deste módulo!</div>
+          <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+            <button class="btn btn-primary" id="steps-back-dash">🏠 Voltar ao painel</button>
+          </div>
         </div>
       </div>
     `;
@@ -937,7 +949,13 @@ function renderModuleSteps(mod) {
 
   const step = mod.steps[unlockedIndex];
   contentEl.innerHTML = `
-    <div class="theory-content">${renderMarkdown(step.theory)}</div>
+    <div class="step-content-card">
+      <div class="step-content-header">
+        <span class="step-content-eyebrow">Etapa ${unlockedIndex + 1} de ${mod.steps.length}</span>
+      </div>
+      <div class="step-content-title">📖 ${escapeHtml(step.title)}</div>
+      <div class="theory-content">${renderMarkdown(step.theory)}</div>
+    </div>
     <div class="divider"></div>
     <div id="step-quiz-container"></div>
   `;
@@ -1052,13 +1070,15 @@ function finishModuleStep(mod, step) {
 
   const contentEl = document.getElementById('module-step-content');
   contentEl.innerHTML = `
-    <div class="quiz-result">
-      <span class="result-emoji">${emoji}</span>
-      <div class="result-score" style="color:${passed ? 'var(--green)' : 'var(--red)'}">${score}%</div>
-      <div class="result-msg">${correct} de ${total} questões corretas. ${msg}</div>
-      <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
-        ${passed ? `<button class="btn btn-primary" id="step-continue">➡️ Continuar</button>` : `<button class="btn btn-ghost" id="step-retry">🔄 Tentar novamente</button>`}
-        <button class="btn btn-ghost" id="step-back-dash">🏠 Voltar ao painel</button>
+    <div class="step-content-card">
+      <div class="quiz-result">
+        <span class="result-emoji">${emoji}</span>
+        <div class="result-score" style="color:${passed ? 'var(--green)' : 'var(--red)'}">${score}%</div>
+        <div class="result-msg">${correct} de ${total} questões corretas. ${msg}</div>
+        <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+          ${passed ? `<button class="btn btn-primary" id="step-continue">➡️ Continuar</button>` : `<button class="btn btn-ghost" id="step-retry">🔄 Tentar novamente</button>`}
+          <button class="btn btn-ghost" id="step-back-dash">🏠 Voltar ao painel</button>
+        </div>
       </div>
     </div>
   `;

@@ -3759,8 +3759,12 @@ function addModuleStageEditor(stage = null) {
 
   card.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-      <h4 style="margin:0; font-size:0.9rem; font-weight:600; color:var(--text-primary);">Etapa</h4>
-      <button type="button" class="btn btn-ghost btn-sm btn-mod-delete-step" style="color:var(--red-light); padding:2px 8px;">🗑️ Remover Etapa</button>
+      <h4 class="stage-order-label" style="margin:0; font-size:0.9rem; font-weight:600; color:var(--text-primary);">Etapa</h4>
+      <div style="display:flex; gap:0.35rem;">
+        <button type="button" class="btn btn-ghost btn-sm btn-stage-move-up" title="Mover pra cima" style="padding:2px 8px;">⬆️</button>
+        <button type="button" class="btn btn-ghost btn-sm btn-stage-move-down" title="Mover pra baixo" style="padding:2px 8px;">⬇️</button>
+        <button type="button" class="btn btn-ghost btn-sm btn-mod-delete-step" style="color:var(--red-light); padding:2px 8px;">🗑️ Remover Etapa</button>
+      </div>
     </div>
     <div class="ca-fields-grid" style="grid-template-columns: 1fr;">
       <div class="ca-field ca-field-full">
@@ -3784,6 +3788,23 @@ function addModuleStageEditor(stage = null) {
 
   card.querySelector('.btn-mod-delete-step').addEventListener('click', () => {
     card.remove();
+    renumberModuleStages();
+  });
+
+  card.querySelector('.btn-stage-move-up').addEventListener('click', () => {
+    const prev = card.previousElementSibling;
+    if (prev) {
+      container.insertBefore(card, prev);
+      renumberModuleStages();
+    }
+  });
+
+  card.querySelector('.btn-stage-move-down').addEventListener('click', () => {
+    const next = card.nextElementSibling;
+    if (next) {
+      container.insertBefore(next, card);
+      renumberModuleStages();
+    }
   });
 
   const stageQContainer = card.querySelector('.stage-quiz-questions-container');
@@ -3803,6 +3824,22 @@ function addModuleStageEditor(stage = null) {
   }
 
   container.appendChild(card);
+  renumberModuleStages();
+}
+
+// Atualiza o rótulo "Etapa N" de cada card (refletindo a ordem real no DOM) e
+// desabilita os botões mover-pra-cima/baixo nas pontas — chamado sempre que a lista
+// de etapas muda (adicionar, remover, mover).
+function renumberModuleStages() {
+  const cards = document.querySelectorAll('#mod-steps-container .module-stage-block');
+  cards.forEach((card, idx) => {
+    const label = card.querySelector('.stage-order-label');
+    if (label) label.textContent = `Etapa ${idx + 1}`;
+    const upBtn = card.querySelector('.btn-stage-move-up');
+    const downBtn = card.querySelector('.btn-stage-move-down');
+    if (upBtn) upBtn.disabled = idx === 0;
+    if (downBtn) downBtn.disabled = idx === cards.length - 1;
+  });
 }
 
 function renderModulesCrudList() {

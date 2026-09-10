@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/global.css" />
   <!-- css/teacher.css é immutable/cacheado por 30 dias (vercel.json). Incrementar este
        número sempre que css/teacher.css mudar (mesmo padrão dos js/*.js do projeto). -->
-  <link rel="stylesheet" href="css/teacher.css?v=1" />
+  <link rel="stylesheet" href="css/teacher.css?v=2" />
   <!-- CodeMirror IDE -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" />
@@ -600,20 +600,22 @@
 
       </form>
 
-      <!-- ── Preview Modal ── -->
-      <div class="ca-modal-overlay" id="ca-preview-modal">
-        <div class="ca-modal">
-          <div class="ca-modal-header">
-            <h3 id="ca-preview-title">Prévia da Atividade</h3>
-            <button class="ca-modal-close" id="btn-close-preview">✕</button>
-          </div>
-          <div class="ca-modal-body" id="ca-preview-body"></div>
-          <div class="ca-modal-footer">
-            <button class="btn btn-ghost" id="btn-close-preview-2">Fechar</button>
-          </div>
+    </div>
+
+    <!-- ── Preview Modal (compartilhado: prévia de atividade, de descrição em markdown
+         e de teoria de etapa de módulo — fica FORA de qualquer view-* pra continuar
+         acessível não importa qual aba estiver ativa) ── -->
+    <div class="ca-modal-overlay" id="ca-preview-modal">
+      <div class="ca-modal">
+        <div class="ca-modal-header">
+          <h3 id="ca-preview-title">Prévia da Atividade</h3>
+          <button class="ca-modal-close" id="btn-close-preview">✕</button>
+        </div>
+        <div class="ca-modal-body" id="ca-preview-body"></div>
+        <div class="ca-modal-footer">
+          <button class="btn btn-ghost" id="btn-close-preview-2">Fechar</button>
         </div>
       </div>
-
     </div>
 
     <!-- ─── STUDENTS MANAGEMENT VIEW ─── -->
@@ -1805,6 +1807,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
-<script src="js/teacher.js?v=10"></script>
+<script src="js/teacher.js?v=11"></script>
 </body>
 </html>
