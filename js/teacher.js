@@ -612,6 +612,14 @@ function setupEventListeners() {
     window.location.href = 'index.html';
   });
 
+  // Fechar o modal de prévia compartilhado (atividade, descrição, teoria de etapa) —
+  // vinculado aqui (roda sempre, uma vez, no carregamento da página) em vez de dentro de
+  // initCreateActivityView(), que só roda se o professor abrir a aba "Criar Atividade"
+  // pelo menos uma vez; sem isso, abrir a prévia a partir de "Módulos" funcionava, mas
+  // os botões "✕"/"Fechar" nunca tinham sido vinculados.
+  document.getElementById('btn-close-preview').addEventListener('click', closePreviewModal);
+  document.getElementById('btn-close-preview-2').addEventListener('click', closePreviewModal);
+
   // Mobile sidebar
   document.getElementById('sidebar-toggle').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('open');
@@ -1244,10 +1252,6 @@ function initCreateActivityView() {
   document.getElementById('btn-add-practical').addEventListener('click', () => addQuestion('practical'));
   document.getElementById('btn-ca-reset').addEventListener('click', resetCreateActivityForm);
   document.getElementById('btn-ca-preview').addEventListener('click', previewActivity);
-  
-  // Modal close
-  document.getElementById('btn-close-preview').addEventListener('click', closePreviewModal);
-  document.getElementById('btn-close-preview-2').addEventListener('click', closePreviewModal);
 
   // Descrição/Instruções em Markdown: importar de arquivo .md ou prévia inline
   // (mesmo padrão já usado na prévia de teoria de etapa do módulo).
@@ -3766,25 +3770,64 @@ function addModuleStageEditor(stage = null) {
         <button type="button" class="btn btn-ghost btn-sm btn-mod-delete-step" style="color:var(--red-light); padding:2px 8px;">🗑️ Remover Etapa</button>
       </div>
     </div>
-    <div class="ca-fields-grid" style="grid-template-columns: 1fr;">
-      <div class="ca-field ca-field-full">
-        <label class="ca-label">Título da Etapa <span class="ca-required">*</span></label>
-        <input type="text" class="ca-input stage-title" required placeholder="Ex: Introdução aos Arrays" value="${escapeHtml(stage ? stage.title : '')}" />
+
+    <div class="stage-summary" style="display:none; align-items:center; gap:0.75rem; padding:0.25rem 0;">
+      <span style="font-size:1.4rem;">✅</span>
+      <div style="flex:1; min-width:0;">
+        <div class="stage-summary-title" style="font-weight:600; font-size:0.9rem; color:var(--text-primary);"></div>
+        <div class="stage-summary-meta" style="font-size:0.78rem; color:var(--text-muted);"></div>
       </div>
-      <div class="ca-field ca-field-full">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <label class="ca-label">Teoria da Etapa (Markdown) <span class="ca-required">*</span></label>
-          <button type="button" class="btn btn-ghost btn-sm btn-stage-preview-theory">👁️ Prévia</button>
+      <button type="button" class="btn btn-ghost btn-sm btn-stage-edit">✏️ Editar Etapa</button>
+    </div>
+
+    <div class="stage-edit-body">
+      <div class="ca-fields-grid" style="grid-template-columns: 1fr;">
+        <div class="ca-field ca-field-full">
+          <label class="ca-label">Título da Etapa <span class="ca-required">*</span></label>
+          <input type="text" class="ca-input stage-title" required placeholder="Ex: Introdução aos Arrays" value="${escapeHtml(stage ? stage.title : '')}" />
         </div>
-        <textarea class="ca-input stage-theory" rows="6" required placeholder="Explicação teórica desta etapa...">${stage ? stage.theory : ''}</textarea>
+        <div class="ca-field ca-field-full">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label class="ca-label">Teoria da Etapa (Markdown) <span class="ca-required">*</span></label>
+            <button type="button" class="btn btn-ghost btn-sm btn-stage-preview-theory">👁️ Prévia</button>
+          </div>
+          <textarea class="ca-input stage-theory" rows="6" required placeholder="Explicação teórica desta etapa...">${stage ? stage.theory : ''}</textarea>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin:1.25rem 0 0.75rem;">
+        <label class="ca-label" style="margin:0;">Questionário da Etapa</label>
+        <button type="button" class="btn btn-sm btn-stage-add-q" style="background:var(--primary); color:#fff;">+ Pergunta</button>
+      </div>
+      <div class="stage-quiz-questions-container ca-questions-list"></div>
+      <div style="display:flex; justify-content:flex-end; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border);">
+        <button type="button" class="btn btn-primary btn-sm btn-stage-save">💾 Salvar Etapa</button>
       </div>
     </div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin:1.25rem 0 0.75rem;">
-      <label class="ca-label" style="margin:0;">Questionário da Etapa</label>
-      <button type="button" class="btn btn-sm btn-stage-add-q" style="background:var(--primary); color:#fff;">+ Pergunta</button>
-    </div>
-    <div class="stage-quiz-questions-container ca-questions-list"></div>
   `;
+
+  const summaryEl = card.querySelector('.stage-summary');
+  const bodyEl = card.querySelector('.stage-edit-body');
+
+  function expandStage() {
+    summaryEl.style.display = 'none';
+    bodyEl.style.display = 'block';
+  }
+
+  function collapseStage() {
+    const title = card.querySelector('.stage-title').value.trim();
+    const theory = card.querySelector('.stage-theory').value.trim();
+    const qCount = stageQContainer.querySelectorAll('.quiz-question-block').length;
+
+    if (!title || !theory || qCount === 0) {
+      showToast('⚠️ Preencha título, teoria e pelo menos 1 pergunta antes de salvar a etapa.', 'warning');
+      return;
+    }
+
+    card.querySelector('.stage-summary-title').textContent = title;
+    card.querySelector('.stage-summary-meta').textContent = `${qCount} pergunta${qCount !== 1 ? 's' : ''} · teoria preenchida`;
+    summaryEl.style.display = 'flex';
+    bodyEl.style.display = 'none';
+  }
 
   card.querySelector('.btn-mod-delete-step').addEventListener('click', () => {
     card.remove();
@@ -3819,12 +3862,19 @@ function addModuleStageEditor(stage = null) {
     document.getElementById('ca-preview-modal').classList.add('open');
   });
 
+  card.querySelector('.btn-stage-save').addEventListener('click', collapseStage);
+  card.querySelector('.btn-stage-edit').addEventListener('click', expandStage);
+
   if (stage && stage.quiz && stage.quiz.length > 0) {
     stage.quiz.forEach(q => addQuizQuestionEditor(stageQContainer, q));
   }
 
   container.appendChild(card);
   renumberModuleStages();
+
+  // Etapa já existente (vinda de um módulo salvo) começa recolhida, pra não abarrotar a
+  // tela com várias etapas abertas de uma vez — etapa nova (recém-criada) começa aberta.
+  if (stage) collapseStage();
 }
 
 // Atualiza o rótulo "Etapa N" de cada card (refletindo a ordem real no DOM) e
