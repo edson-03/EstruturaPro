@@ -3670,10 +3670,24 @@ function setupModulesCrudEvents() {
   });
 
   // Form submit
-  document.getElementById('modules-crud-form').addEventListener('submit', (e) => {
+  const modulesCrudForm = document.getElementById('modules-crud-form');
+  modulesCrudForm.addEventListener('submit', (e) => {
     e.preventDefault();
     saveModuleCrudForm();
   });
+
+  // O navegador bloqueia o submit silenciosamente (sem rodar nenhum JS, sem erro no
+  // console) se algum campo "required" do formulário estiver vazio — incluindo campos
+  // dentro de uma etapa ou de uma pergunta do quiz esquecidos em branco. O evento
+  // "invalid" não borbulha (bubble), por isso o listener precisa estar na fase de
+  // captura pra pegar o primeiro campo inválido, não importa onde ele esteja.
+  let modFormInvalidToastShown = false;
+  modulesCrudForm.addEventListener('invalid', (e) => {
+    if (modFormInvalidToastShown) return;
+    modFormInvalidToastShown = true;
+    showToast('❌ Existe um campo obrigatório vazio no formulário (destacado em vermelho) — o módulo não foi salvo.', 'error');
+    setTimeout(() => { modFormInvalidToastShown = false; }, 500);
+  }, true);
 
   // Preview modals close
   document.getElementById('btn-mod-close-preview').addEventListener('click', () => {
