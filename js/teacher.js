@@ -620,6 +620,11 @@ function setupEventListeners() {
   document.getElementById('btn-close-preview').addEventListener('click', closePreviewModal);
   document.getElementById('btn-close-preview-2').addEventListener('click', closePreviewModal);
 
+  // Mesmo motivo/padrão acima, agora para o modal de importar perguntas via texto.
+  document.getElementById('btn-close-quiz-import').addEventListener('click', closeQuizImportModal);
+  document.getElementById('btn-close-quiz-import-2').addEventListener('click', closeQuizImportModal);
+  document.getElementById('btn-quiz-import-confirm').addEventListener('click', confirmQuizImport);
+
   // Mobile sidebar
   document.getElementById('sidebar-toggle').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('open');
@@ -1618,6 +1623,109 @@ function previewActivity() {
 function closePreviewModal() {
   const modal = document.getElementById('ca-preview-modal');
   modal.classList.remove('open');
+}
+
+// ── Modal: importar perguntas de quiz via texto (Quiz do Módulo e Questionário de Etapa) ──
+let quizImportTargetContainer = null;
+
+function openQuizImportModal(targetContainer) {
+  quizImportTargetContainer = targetContainer;
+  document.getElementById('quiz-import-text').value = '';
+  document.getElementById('quiz-import-modal').classList.add('open');
+}
+
+function closeQuizImportModal() {
+  document.getElementById('quiz-import-modal').classList.remove('open');
+  quizImportTargetContainer = null;
+}
+
+// Formato esperado (ver prévia no próprio modal):
+//   1. Texto da pergunta
+//   a) Opção 1
+//   b) Opção 2
+//   c) Opção 3
+//   d) Opção 4
+//   Resposta: a
+//   Explicação: opcional
+// Perguntas separadas por pelo menos uma linha em branco.
+function parseMarkdownQuiz(text) {
+  const blocks = text.split(/\n\s*\n+/).map(b => b.trim()).filter(Boolean);
+  const questions = [];
+  const errors = [];
+
+  blocks.forEach((block, bi) => {
+    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+    const label = `Pergunta ${bi + 1}`;
+
+    if (lines.length < 6) {
+      errors.push(`${label}: preciso da pergunta, 4 opções (a-d) e uma linha "Resposta:".`);
+      return;
+    }
+
+    const question = lines[0].replace(/^\d+[.)]\s*/, '').trim();
+    if (!question) { errors.push(`${label}: texto da pergunta vazio.`); return; }
+
+    const options = [];
+    let i = 1;
+    while (options.length < 4 && i < lines.length) {
+      const m = lines[i].match(/^[a-dA-D1-4][.)]\s*(.+)$/);
+      if (!m) break;
+      options.push(m[1].trim());
+      i++;
+    }
+    if (options.length !== 4) {
+      errors.push(`${label}: não encontrei as 4 opções no formato "a) texto".`);
+      return;
+    }
+
+    let correct = null;
+    let explanation = '';
+    for (; i < lines.length; i++) {
+      const respM = lines[i].match(/^(resposta|gabarito|correta)\s*:\s*([a-dA-D1-4])/i);
+      if (respM) {
+        const letter = respM[2].toLowerCase();
+        correct = 'abcd'.includes(letter) ? 'abcd'.indexOf(letter) : parseInt(letter, 10) - 1;
+        continue;
+      }
+      const expM = lines[i].match(/^explica[cç][aã]o\s*:\s*(.+)/i);
+      if (expM) explanation = expM[1].trim();
+    }
+
+    if (correct === null || correct < 0 || correct > 3) {
+      errors.push(`${label}: não encontrei uma linha "Resposta: a/b/c/d" válida.`);
+      return;
+    }
+
+    questions.push({ question, options, correct, explanation });
+  });
+
+  return { questions, errors };
+}
+
+function confirmQuizImport() {
+  if (!quizImportTargetContainer) return;
+  const text = document.getElementById('quiz-import-text').value;
+  if (!text.trim()) {
+    showToast('⚠️ Cole o texto das perguntas antes de importar.', 'warning');
+    return;
+  }
+
+  const { questions, errors } = parseMarkdownQuiz(text);
+
+  if (questions.length === 0) {
+    showToast(`❌ Nenhuma pergunta reconhecida. ${errors[0] || ''}`, 'error');
+    return;
+  }
+
+  questions.forEach(q => addQuizQuestionEditor(quizImportTargetContainer, q));
+
+  if (errors.length > 0) {
+    showToast(`⚠️ ${questions.length} pergunta${questions.length !== 1 ? 's' : ''} importada${questions.length !== 1 ? 's' : ''}, mas ${errors.length} bloco${errors.length !== 1 ? 's' : ''} não foi reconhecido: ${errors[0]}`, 'warning');
+  } else {
+    showToast(`✓ ${questions.length} pergunta${questions.length !== 1 ? 's' : ''} importada${questions.length !== 1 ? 's' : ''} com sucesso!`, 'success');
+  }
+
+  closeQuizImportModal();
 }
 
 // ── Modal: respostas de um aluno numa atividade (teóricas + práticas) ──
@@ -3664,6 +3772,10 @@ function setupModulesCrudEvents() {
     addQuizQuestionEditor(document.getElementById('mod-quiz-questions-container'));
   });
 
+  document.getElementById('btn-mod-quiz-import').addEventListener('click', () => {
+    openQuizImportModal(document.getElementById('mod-quiz-questions-container'));
+  });
+
   // Add module stage button
   document.getElementById('btn-mod-add-step').addEventListener('click', () => {
     addModuleStageEditor();
@@ -3810,7 +3922,10 @@ function addModuleStageEditor(stage = null) {
       </div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin:1.25rem 0 0.75rem;">
         <label class="ca-label" style="margin:0;">Questionário da Etapa</label>
-        <button type="button" class="btn btn-sm btn-stage-add-q" style="background:var(--primary); color:#fff;">+ Pergunta</button>
+        <div style="display:flex;gap:0.5rem;">
+          <button type="button" class="btn btn-ghost btn-sm btn-stage-quiz-import">📥 Importar via Texto</button>
+          <button type="button" class="btn btn-sm btn-stage-add-q" style="background:var(--primary); color:#fff;">+ Pergunta</button>
+        </div>
       </div>
       <div class="stage-quiz-questions-container ca-questions-list"></div>
       <div style="display:flex; justify-content:flex-end; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border);">
@@ -3872,6 +3987,10 @@ function addModuleStageEditor(stage = null) {
   const stageQContainer = card.querySelector('.stage-quiz-questions-container');
   card.querySelector('.btn-stage-add-q').addEventListener('click', () => {
     addQuizQuestionEditor(stageQContainer);
+  });
+
+  card.querySelector('.btn-stage-quiz-import').addEventListener('click', () => {
+    openQuizImportModal(stageQContainer);
   });
 
   card.querySelector('.btn-stage-preview-theory').addEventListener('click', () => {

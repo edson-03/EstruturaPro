@@ -411,7 +411,10 @@
           <div class="ca-section mod-form-section-hideable">
             <div class="ca-section-header">
               <div class="ca-section-title">❓ Quiz do Módulo</div>
-              <button type="button" class="btn btn-sm" id="btn-mod-add-quiz-q" style="background:var(--primary); color:#fff;">+ Adicionar Pergunta</button>
+              <div style="display:flex;gap:0.5rem;">
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-mod-quiz-import">📥 Importar via Texto</button>
+                <button type="button" class="btn btn-sm" id="btn-mod-add-quiz-q" style="background:var(--primary); color:#fff;">+ Adicionar Pergunta</button>
+              </div>
             </div>
             <div id="mod-quiz-questions-container" class="ca-questions-list">
               <!-- Quiz questions populated dynamically -->
@@ -614,6 +617,45 @@
         <div class="ca-modal-body" id="ca-preview-body"></div>
         <div class="ca-modal-footer">
           <button class="btn btn-ghost" id="btn-close-preview-2">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Quiz Import Modal (colar perguntas em texto/markdown e importar de uma vez —
+         reaproveitado pelo Quiz do Módulo e pelo Questionário de cada Etapa; fica FORA
+         de qualquer view-* pelo mesmo motivo do ca-preview-modal acima) ── -->
+    <div class="ca-modal-overlay" id="quiz-import-modal">
+      <div class="ca-modal" style="max-width:700px;">
+        <div class="ca-modal-header">
+          <h3>📥 Importar Perguntas via Texto</h3>
+          <button class="ca-modal-close" id="btn-close-quiz-import">✕</button>
+        </div>
+        <div class="ca-modal-body">
+          <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem;">
+            Cole abaixo uma ou mais perguntas nesse formato (deixe uma linha em branco entre cada pergunta):
+          </p>
+          <pre style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;font-size:0.78rem;line-height:1.6;overflow-x:auto;white-space:pre-wrap;margin-bottom:1rem;">1. Qual é a complexidade de acesso a um elemento de um Array pelo índice?
+a) O(1)
+b) O(n)
+c) O(log n)
+d) O(n²)
+Resposta: a
+Explicação: Arrays acessam qualquer posição diretamente pelo índice.
+
+2. O que a estrutura de Pilha (Stack) segue?
+a) FIFO
+b) LIFO
+c) Ordenação aleatória
+d) Busca binária
+Resposta: b</pre>
+          <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:1rem;">
+            A linha "Explicação:" é opcional. A "Resposta:" aceita a letra (a, b, c, d) da opção correta.
+          </p>
+          <textarea id="quiz-import-text" class="ca-input" rows="10" placeholder="Cole aqui as perguntas no formato acima..." style="font-family:var(--font-mono, monospace); font-size:0.85rem;"></textarea>
+        </div>
+        <div class="ca-modal-footer">
+          <button class="btn btn-ghost" id="btn-close-quiz-import-2">Cancelar</button>
+          <button class="btn btn-primary" id="btn-quiz-import-confirm">📥 Importar Perguntas</button>
         </div>
       </div>
     </div>
@@ -1807,6 +1849,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
-<script src="js/teacher.js?v=14"></script>
+<script src="js/teacher.js?v=15"></script>
 </body>
 </html>
