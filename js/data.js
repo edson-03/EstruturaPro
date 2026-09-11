@@ -31,7 +31,7 @@ const DEFAULT_SETTINGS = {
   // Security
   passMinLen: 4, defaultPass: '1234', forcePassChange: false,
   // Scoring
-  scoring: { MODULE_STARTED: 10, MODULE_COMPLETED: 50, QUIZ_ATTEMPT: 5, QUIZ_SCORE_BONUS: 1, ACTIVITY_DONE: 30, PERFECT_BONUS: 25, LATE_ACTIVITY_PENALTY: 15 },
+  scoring: { MODULE_STARTED: 10, MODULE_COMPLETED: 50, QUIZ_ATTEMPT: 5, QUIZ_SCORE_BONUS: 1, ACTIVITY_DONE: 30, PERFECT_BONUS: 25, LATE_ACTIVITY_PENALTY: 15, STEP_COMPLETED: 15 },
   // Appearance
   accentColor: '#6366f1', platformName: 'EstruturaPRO', platformIcon: '⚡', platformTagline: 'Painel do Professor',
   animations: true, bgEffects: true, compactToast: false,
@@ -1898,6 +1898,144 @@ function getStudentStats(studentId) {
     : 0;
   const lastAccess = progress._lastAccess || null;
   return { total, unlocked, completed, avgScore, lastAccess };
+}
+
+// ── Pontuação / Ranking / Badges (compartilhado entre teacher.js e student.js) ──
+// Valores padrão em DEFAULT_SETTINGS.scoring, editáveis em Configurações > Pontuação
+// (professor) — calculateStudentPoints() sempre lê de lá (com fallback pros defaults),
+// nunca hardcoded aqui. Usado tanto no Desempenho do professor quanto no Ranking do
+// aluno (visível só se getSettings().showRanking estiver ligado).
+const BADGES = [
+  { id: 'first_module',    icon: '🌟', name: 'Primeiro Passo',      desc: 'Completou o 1º módulo',            condition: (s) => s.completed >= 1  },
+  { id: 'half_modules',    icon: '🔥', name: 'Na Metade',           desc: 'Completou 50% dos módulos',        condition: (s) => s.completed >= Math.ceil(getModules().length / 2) },
+  { id: 'all_modules',     icon: '🏆', name: 'Mestre das Estruturas', desc: 'Completou todos os módulos',     condition: (s) => s.completed === getModules().length },
+  { id: 'perfect_quiz',    icon: '💯', name: 'Nota Máxima',          desc: 'Obteve 100% em algum quiz',       condition: (s) => s.hasPerfectScore   },
+  { id: 'high_avg',        icon: '🎯', name: 'Precisão Total',       desc: 'Média de acerto acima de 80%',    condition: (s) => s.avgScore >= 80 && s.completed > 0 },
+  { id: 'starter',         icon: '🚀', name: 'Iniciante',            desc: 'Acessou a plataforma pela 1ª vez', condition: (s) => s.hasStarted       },
+  { id: 'persistent',      icon: '💪', name: 'Persistente',          desc: 'Fez 3+ tentativas de quiz',       condition: (s) => s.totalAttempts >= 3 },
+  { id: 'scholar',         icon: '📚', name: 'Estudioso',            desc: 'Completou 3+ módulos',             condition: (s) => s.completed >= 3    },
+  { id: 'speed_runner',    icon: '⚡', name: 'Velocista',            desc: 'Completou módulo na 1ª tentativa', condition: (s) => s.firstTryWin       },
+  { id: 'activity_hero',   icon: '✏️',  name: 'Ativo nas Atividades', desc: 'Respondeu pelo menos 1 atividade', condition: (s) => s.activitiesDone > 0 },
+  { id: 'step_master',     icon: '🪜', name: 'Sobe Degraus',         desc: 'Completou 5+ etapas de módulos',   condition: (s) => s.stepsCompleted >= 5 },
+];
+
+function calculateStudentPoints(studentId) {
+  const progress  = getStudentProgress(studentId);
+  const modules   = getModules();
+  const log       = getActivityLog()[studentId] || [];
+  const answers   = getStudentAnswers(studentId);
+  const activities = getActivities();
+  const rules     = { ...DEFAULT_SETTINGS.scoring, ...(getSettings().scoring || {}) };
+
+  let points = 0;
+  let totalAttempts = 0;
+  let hasPerfectScore = false;
+  let hasStarted = false;
+  let firstTryWin = false;
+  let activitiesDone = 0;
+  let stepsCompleted = 0;
+  const breakdown = []; // { label, pts, icon, ts }
+
+  modules.forEach(mod => {
+    const prog = progress[mod.id];
+    if (!prog) return;
+
+    if (prog.started) {
+      hasStarted = true;
+      const p = rules.MODULE_STARTED;
+      points += p;
+      breakdown.push({ label: `Iniciou "${mod.title}"`, pts: p, icon: mod.emoji, ts: prog.startedAt || prog.completedAt });
+    }
+
+    // Etapas concluídas (módulos que usam o fluxo de etapas): cada etapa aprovada rende
+    // pontos assim que é concluída, além do bônus de módulo completo no final — recompensa
+    // progresso incremental em módulos longos, não só o resultado final.
+    if (isModuleUsingSteps(mod) && prog.stepProgress) {
+      mod.steps.forEach(step => {
+        const sp = prog.stepProgress[step.id];
+        if (sp?.completed) {
+          stepsCompleted++;
+          const p = rules.STEP_COMPLETED;
+          points += p;
+          breakdown.push({ label: `Etapa "${step.title}" concluída (${mod.title})`, pts: p, icon: '🪜', ts: sp.completedAt });
+        }
+      });
+    }
+
+    if (prog.completed) {
+      const p = rules.MODULE_COMPLETED;
+      points += p;
+      breakdown.push({ label: `Concluiu "${mod.title}"`, pts: p, icon: '✅', ts: prog.completedAt });
+
+      // Score bonus
+      const scoreBonus = Math.round((prog.score || 0) * rules.QUIZ_SCORE_BONUS);
+      if (scoreBonus > 0) {
+        points += scoreBonus;
+        breakdown.push({ label: `Bônus quiz ${mod.title} (${prog.score}%)`, pts: scoreBonus, icon: '📊', ts: prog.completedAt });
+      }
+
+      if (prog.score === 100) {
+        hasPerfectScore = true;
+        points += rules.PERFECT_BONUS;
+        breakdown.push({ label: `Nota perfeita em "${mod.title}"!`, pts: rules.PERFECT_BONUS, icon: '💯', ts: prog.completedAt });
+        firstTryWin = true;
+      }
+    }
+
+    // Count quiz attempts from activity log
+    const attemptLogs = log.filter(l => l.message && l.message.includes(mod.title) && l.message.includes('concluído'));
+    const attempts = attemptLogs.length + (prog.completed ? 1 : 0);
+    totalAttempts += attempts > 0 ? attempts : 0;
+
+    // Attempt points
+    if (attempts > 1) {
+      const ap = (attempts - 1) * rules.QUIZ_ATTEMPT;
+      points += ap;
+    }
+  });
+
+  // Activity points — atraso desconta pontos (só quando a atividade É concluída depois
+  // do prazo; nunca entregar já não rende os pontos normais, sem desconto adicional).
+  activities.forEach(act => {
+    const actAnswers = answers[act.id] || {};
+    const totalQ = act.questions.length;
+    const answered = Object.keys(actAnswers).length;
+    if (answered === totalQ && totalQ > 0) {
+      activitiesDone++;
+      points += rules.ACTIVITY_DONE;
+      breakdown.push({ label: `Atividade "${act.title}" concluída`, pts: rules.ACTIVITY_DONE, icon: '✏️', ts: null });
+
+      const completion = getActivityCompletion(studentId, act.id);
+      if (completion?.late && rules.LATE_ACTIVITY_PENALTY > 0) {
+        points -= rules.LATE_ACTIVITY_PENALTY;
+        breakdown.push({ label: `Atividade "${act.title}" entregue em atraso`, pts: -rules.LATE_ACTIVITY_PENALTY, icon: '⏰', ts: completion.completedAt });
+      }
+    }
+  });
+
+  const stats = getStudentStats(studentId);
+
+  return {
+    points: Math.max(0, points), // descontos por atraso não deixam o total líquido negativo
+    breakdown: breakdown.sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0)),
+    totalAttempts,
+    hasPerfectScore,
+    hasStarted,
+    firstTryWin,
+    activitiesDone,
+    stepsCompleted,
+    avgScore: stats.avgScore,
+    completed: stats.completed,
+  };
+}
+
+function getRankLabel(points) {
+  if (points >= 500) return { label: 'Mestre',        color: '#f59e0b', icon: '👑' };
+  if (points >= 300) return { label: 'Especialista',  color: '#8b5cf6', icon: '💎' };
+  if (points >= 150) return { label: 'Avançado',      color: '#10b981', icon: '🔥' };
+  if (points >= 75)  return { label: 'Intermediário', color: '#06b6d4', icon: '⚡' };
+  if (points >= 20)  return { label: 'Iniciante',     color: '#6366f1', icon: '🌱' };
+  return                    { label: 'Novato',         color: '#64748b', icon: '🔰' };
 }
 
 function getOverallStats() {

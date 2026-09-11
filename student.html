@@ -9,7 +9,7 @@
   <meta name="description" content="Painel do aluno na plataforma EstruturaPRO de ensino de estrutura de dados." />
   <link rel="stylesheet" href="css/global.css" />
   <!-- css/student.css é immutable/cacheado por 30 dias (vercel.json). Incrementar este número sempre que css/student.css mudar (mesmo padrão dos js/*.js do projeto). -->
-  <link rel="stylesheet" href="css/student.css?v=2" />
+  <link rel="stylesheet" href="css/student.css?v=3" />
   <!-- CodeMirror for student JavaScript coding -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" />
@@ -69,6 +69,12 @@
         <div class="nav-dot" style="background:var(--accent);"></div>
         <span class="nav-text">📋 Atividades</span>
         <span id="nav-activities-badge" style="display:none;font-size:0.7rem;font-weight:700;padding:1px 7px;border-radius:10px;margin-left:auto;"></span>
+      </div>
+
+      <div class="nav-label" style="margin-top:1.5rem;" id="nav-label-ranking">Turma</div>
+      <div class="nav-item unlocked" id="nav-item-ranking" style="display:none;">
+        <div class="nav-dot" style="background:var(--accent);"></div>
+        <span class="nav-text">🏆 Ranking</span>
       </div>
 
       <div class="nav-label" style="margin-top:1.5rem;">Prática</div>
@@ -337,6 +343,27 @@
 
     </div>
 
+    <!-- ─── RANKING VIEW (só visível se o professor ligar em Configurações > Plataforma) ─── -->
+    <div id="view-ranking" style="display:none; padding:2rem; animation:fadeSlideUp 0.3s ease;">
+
+      <div class="module-viewer-header" style="position:static; margin-bottom:1.5rem; padding: 0 0 1rem; border-bottom:1px solid var(--border); display:flex; align-items:center;">
+        <button class="btn-back-module" id="btn-back-ranking">
+          ← Voltar
+        </button>
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-left:1rem;">
+          <span style="font-size:1.3rem;">🏆</span>
+          <span style="font-size:1.05rem;font-weight:700;">Ranking da Turma</span>
+        </div>
+      </div>
+
+      <div class="ranking-me-card" id="ranking-me-card"></div>
+
+      <div id="ranking-badges-row" style="display:flex; gap:0.6rem; flex-wrap:wrap; margin:1.25rem 0;"></div>
+
+      <div id="ranking-list"></div>
+
+    </div>
+
     <!-- ─── QUESTION BANK VIEW ─── -->
     <div id="view-question-bank" style="display:none; padding:2rem; animation:fadeSlideUp 0.3s ease;">
       
@@ -446,7 +473,7 @@
 <!-- js/data.js é immutable/cacheado por 30 dias (vercel.json), e um cache de borda da
      CDN não invalida automaticamente em deploy novo. Incrementar este número sempre que
      js/data.js mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/data.js?v=7"></script>
+<script src="js/data.js?v=8"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
@@ -460,6 +487,6 @@
 
 <script src="js/visualizer.js"></script>
 <!-- js/student.js é immutable/cacheado por 30 dias (vercel.json). Incrementar este número sempre que js/student.js mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/student.js?v=9"></script>
+<script src="js/student.js?v=10"></script>
 </body>
 </html>

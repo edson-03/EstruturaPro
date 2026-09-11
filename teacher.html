@@ -1513,6 +1513,18 @@ Quais dos seguintes são estados da região Nordeste do Brasil? (Marque todas as
               </div>
             </div>
 
+            <div class="cfg-score-card" data-key="STEP_COMPLETED">
+              <div class="cfg-score-icon">🪜</div>
+              <div class="cfg-score-info">
+                <div class="cfg-score-label">Etapa Concluída</div>
+                <div class="cfg-score-desc">Por cada etapa aprovada num módulo com etapas (além do bônus de módulo completo)</div>
+              </div>
+              <div class="cfg-score-input-wrap">
+                <input type="number" class="cfg-score-input" id="score-STEP_COMPLETED" value="15" min="0" max="999" />
+                <span class="cfg-score-unit">pts</span>
+              </div>
+            </div>
+
             <div class="cfg-score-card" data-key="LATE_ACTIVITY_PENALTY">
               <div class="cfg-score-icon">⏰</div>
               <div class="cfg-score-info">
@@ -1953,7 +1965,7 @@ Quais dos seguintes são estados da região Nordeste do Brasil? (Marque todas as
 <!-- js/data.js e js/teacher.js são immutable/cacheados por 30 dias (vercel.json), e um
      cache de borda da CDN não invalida automaticamente em deploy novo. Incrementar este
      número sempre que um dos dois mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/data.js?v=7"></script>
+<script src="js/data.js?v=8"></script>
 
 <!-- CodeMirror core -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
@@ -1969,6 +1981,6 @@ Quais dos seguintes são estados da região Nordeste do Brasil? (Marque todas as
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
-<script src="js/teacher.js?v=16"></script>
+<script src="js/teacher.js?v=17"></script>
 </body>
 </html>

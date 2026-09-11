@@ -112,6 +112,15 @@ function renderSidebarNav() {
 
   updateActivitiesNavBadge();
 
+  // Ranking só aparece pro aluno se o professor ligar em Configurações > Plataforma
+  // ("Mostrar progresso de outros alunos") — getSettings().showRanking, mesmo campo já
+  // usado pelo painel do professor, só nunca tinha sido lido aqui.
+  const rankingVisible = !!getSettings().showRanking;
+  const rankingNavItem = document.getElementById('nav-item-ranking');
+  const rankingNavLabel = document.getElementById('nav-label-ranking');
+  if (rankingNavItem) rankingNavItem.style.display = rankingVisible ? 'flex' : 'none';
+  if (rankingNavLabel) rankingNavLabel.style.display = rankingVisible ? 'block' : 'none';
+
   // Update progress bar
   const stats = getStudentStats(currentUser.id);
   const pct = Math.round((stats.completed / stats.total) * 100);
@@ -236,6 +245,9 @@ function openModule(moduleId) {
   if (document.getElementById('view-activities-hub')) {
     document.getElementById('view-activities-hub').style.display = 'none';
   }
+  if (document.getElementById('view-ranking')) {
+    document.getElementById('view-ranking').style.display = 'none';
+  }
 
   // Update header
   document.getElementById('header-title').textContent = mod.title;
@@ -294,6 +306,9 @@ function backToDashboard() {
   }
   if (document.getElementById('view-activities-hub')) {
     document.getElementById('view-activities-hub').style.display = 'none';
+  }
+  if (document.getElementById('view-ranking')) {
+    document.getElementById('view-ranking').style.display = 'none';
   }
   document.getElementById('header-title').textContent = 'Meus Módulos';
   document.getElementById('header-subtitle').textContent = 'Selecione um módulo para começar a aprender';
@@ -703,6 +718,9 @@ function openActivitiesHub() {
   if (document.getElementById('view-question-bank')) {
     document.getElementById('view-question-bank').style.display = 'none';
   }
+  if (document.getElementById('view-ranking')) {
+    document.getElementById('view-ranking').style.display = 'none';
+  }
   document.getElementById('view-activities-hub').style.display = 'block';
 
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -711,6 +729,116 @@ function openActivitiesHub() {
 
   renderActivitiesHub();
   closeSidebar();
+}
+
+// ── Ranking da turma (gamificação — visível só se getSettings().showRanking estiver
+// ligado; usa calculateStudentPoints()/getRankLabel()/BADGES compartilhados com o
+// professor, definidos em js/data.js) ──
+function openRanking() {
+  currentModule = null;
+  currentActivity = null;
+
+  document.getElementById('header-title').textContent = 'Ranking da Turma';
+  document.getElementById('header-subtitle').textContent = 'Veja sua posição e a da turma inteira.';
+
+  document.getElementById('view-dashboard').style.display = 'none';
+  document.getElementById('view-module').style.display = 'none';
+  if (document.getElementById('view-activity')) {
+    document.getElementById('view-activity').style.display = 'none';
+  }
+  if (document.getElementById('view-question-bank')) {
+    document.getElementById('view-question-bank').style.display = 'none';
+  }
+  if (document.getElementById('view-activities-hub')) {
+    document.getElementById('view-activities-hub').style.display = 'none';
+  }
+  document.getElementById('view-ranking').style.display = 'block';
+
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const navItem = document.getElementById('nav-item-ranking');
+  if (navItem) navItem.classList.add('active');
+
+  renderRankingView();
+  closeSidebar();
+}
+
+function renderRankingView() {
+  const students = getStudents();
+  const ranked = students
+    .map(s => ({ student: s, perf: calculateStudentPoints(s.id) }))
+    .sort((a, b) => b.perf.points - a.perf.points);
+
+  const myIndex = ranked.findIndex(r => r.student.id === currentUser.id);
+  const me = myIndex >= 0 ? ranked[myIndex] : null;
+
+  // Card de destaque: minha posição
+  const meCard = document.getElementById('ranking-me-card');
+  if (me) {
+    const rank = getRankLabel(me.perf.points);
+    const nextTier = [20, 75, 150, 300, 500].find(t => t > me.perf.points);
+    meCard.innerHTML = `
+      <div class="ranking-me-position">#${myIndex + 1}</div>
+      <div class="ranking-me-info">
+        <div class="ranking-me-name">Sua posição na turma</div>
+        <div class="ranking-me-chip" style="color:${rank.color};background:${rank.color}22;border-color:${rank.color}44;">
+          ${rank.icon} ${rank.label} · ${me.perf.points} pts
+        </div>
+        ${nextTier ? `<div class="ranking-me-next">Faltam ${nextTier - me.perf.points} pts pro próximo nível</div>` : `<div class="ranking-me-next">🏆 Nível máximo alcançado!</div>`}
+      </div>
+    `;
+  } else {
+    meCard.innerHTML = '';
+  }
+
+  // Badges conquistadas
+  const badgesRow = document.getElementById('ranking-badges-row');
+  badgesRow.innerHTML = '';
+  if (me) {
+    const earned = BADGES.filter(b => b.condition(me.perf));
+    if (earned.length === 0) {
+      badgesRow.innerHTML = `<div style="font-size:0.82rem;color:var(--text-muted);">Complete módulos e atividades pra desbloquear suas primeiras conquistas 🏅</div>`;
+    } else {
+      earned.forEach(b => {
+        const chip = document.createElement('div');
+        chip.className = 'ranking-badge-chip';
+        chip.title = b.desc;
+        chip.innerHTML = `<span>${b.icon}</span><span>${escapeHtml(b.name)}</span>`;
+        badgesRow.appendChild(chip);
+      });
+    }
+  }
+
+  // Lista completa
+  const list = document.getElementById('ranking-list');
+  list.innerHTML = '';
+  const medals = ['🥇', '🥈', '🥉'];
+
+  if (ranked.length === 0) {
+    list.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:2rem;">Nenhum aluno na turma ainda.</div>`;
+    return;
+  }
+
+  ranked.forEach((r, idx) => {
+    const isMe = r.student.id === currentUser.id;
+    const rank = getRankLabel(r.perf.points);
+    const pct = ranked[0].perf.points > 0 ? Math.round((r.perf.points / ranked[0].perf.points) * 100) : 0;
+
+    const row = document.createElement('div');
+    row.className = `ranking-row ${isMe ? 'is-me' : ''}`;
+    row.innerHTML = `
+      <div class="ranking-row-medal">${medals[idx] || `#${idx + 1}`}</div>
+      <div class="ranking-row-avatar" style="background:${r.student.avatarColor};">${escapeHtml(r.student.avatar)}</div>
+      <div class="ranking-row-info">
+        <div class="ranking-row-name">${escapeHtml(r.student.name.split(' ').slice(0, 2).join(' '))}${isMe ? ' <span class="ranking-row-you">(você)</span>' : ''}</div>
+        <div class="ranking-row-chip" style="color:${rank.color};background:${rank.color}22;border-color:${rank.color}44;">${rank.icon} ${rank.label}</div>
+      </div>
+      <div class="ranking-row-right">
+        <div class="ranking-row-pts">${r.perf.points} pts</div>
+        <div class="ranking-row-bar-wrap"><div class="ranking-row-bar" style="width:${pct}%;background:${r.student.avatarColor};"></div></div>
+      </div>
+    `;
+    list.appendChild(row);
+  });
 }
 
 function buildActivitiesHubCard(act) {
@@ -1088,9 +1216,13 @@ function finishModuleStep(mod, step) {
   stepProgress[step.id] = { completed: passed, score, completedAt: new Date().toISOString() };
   setModuleProgress(currentUser.id, mod.id, { stepProgress });
 
+  const rules = { ...DEFAULT_SETTINGS.scoring, ...(getSettings().scoring || {}) };
+  let moduleJustCompleted = false;
+
   if (passed) {
     const allCompleted = mod.steps.every(s => stepProgress[s.id]?.completed);
     if (allCompleted) {
+      moduleJustCompleted = true;
       const avgScore = Math.round(
         mod.steps.reduce((sum, s) => sum + (stepProgress[s.id]?.score || 0), 0) / mod.steps.length
       );
@@ -1111,6 +1243,7 @@ function finishModuleStep(mod, step) {
         <span class="result-emoji">${emoji}</span>
         <div class="result-score" style="color:${passed ? 'var(--green)' : 'var(--red)'}">${score}%</div>
         <div class="result-msg">${correct} de ${total} questões corretas. ${msg}</div>
+        ${passed ? `<div class="result-points">+${rules.STEP_COMPLETED} pts${moduleJustCompleted ? ` · +${rules.MODULE_COMPLETED} pts por concluir o módulo!` : ''}</div>` : ''}
         <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
           ${passed ? `<button class="btn btn-primary" id="step-continue">➡️ Continuar</button>` : `<button class="btn btn-ghost" id="step-retry">🔄 Tentar novamente</button>`}
           <button class="btn btn-ghost" id="step-back-dash">🏠 Voltar ao painel</button>
@@ -1130,7 +1263,10 @@ function finishModuleStep(mod, step) {
   document.getElementById('step-back-dash').addEventListener('click', backToDashboard);
 
   if (passed) {
-    showToast(`🎉 Etapa concluída com ${score}%!`, 'success');
+    showToast(`🎉 Etapa concluída com ${score}%! +${rules.STEP_COMPLETED} pts`, 'success');
+    if (moduleJustCompleted) {
+      showToast(`🏆 Módulo "${mod.title}" concluído! +${rules.MODULE_COMPLETED} pts`, 'success');
+    }
   } else {
     showToast(`📚 Etapa não aprovada: ${score}% (mínimo ${minScore}%).`, 'warning');
   }
@@ -1153,6 +1289,13 @@ function setupEventListeners() {
   const navActivitiesHub = document.getElementById('nav-item-activities-hub');
   if (navActivitiesHub) {
     navActivitiesHub.addEventListener('click', openActivitiesHub);
+  }
+  if (document.getElementById('btn-back-ranking')) {
+    document.getElementById('btn-back-ranking').addEventListener('click', backToDashboard);
+  }
+  const navRanking = document.getElementById('nav-item-ranking');
+  if (navRanking) {
+    navRanking.addEventListener('click', openRanking);
   }
 
   // Viewer tabs
@@ -1246,6 +1389,9 @@ function openActivity(activityId) {
   }
   if (document.getElementById('view-activities-hub')) {
     document.getElementById('view-activities-hub').style.display = 'none';
+  }
+  if (document.getElementById('view-ranking')) {
+    document.getElementById('view-ranking').style.display = 'none';
   }
 
   // Header update
@@ -1865,6 +2011,9 @@ function openQuestionBank() {
   }
   if (document.getElementById('view-activities-hub')) {
     document.getElementById('view-activities-hub').style.display = 'none';
+  }
+  if (document.getElementById('view-ranking')) {
+    document.getElementById('view-ranking').style.display = 'none';
   }
   document.getElementById('view-question-bank').style.display = 'block';
 

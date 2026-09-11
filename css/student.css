@@ -835,6 +835,17 @@
   margin-bottom: 0.5rem;
 }
 .result-msg { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem; }
+.result-points {
+  display: inline-block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--green-light);
+  background: rgba(16,185,129,0.12);
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  margin: 0 0 1.5rem;
+}
 
 /* ── Module Steps (etapas sequenciais dentro do módulo) ── */
 #module-steps-nav {
@@ -1028,4 +1039,98 @@
 #ide-save-format option {
   background: var(--bg-secondary);
   color: var(--text-primary);
+}
+
+/* ── Ranking da turma (gamificação) ── */
+.ranking-me-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  background: linear-gradient(135deg, rgba(99,102,241,0.14), rgba(139,92,246,0.08));
+  border: 1px solid rgba(99,102,241,0.3);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+}
+.ranking-me-position {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--accent-light, #8b5cf6);
+  flex-shrink: 0;
+}
+.ranking-me-info { flex: 1; min-width: 0; }
+.ranking-me-name { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem; }
+.ranking-me-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid;
+}
+.ranking-me-next { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.5rem; }
+
+.ranking-badge-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  cursor: default;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.9rem 1.25rem;
+  margin-bottom: 0.6rem;
+  transition: border-color var(--tr-fast, 0.2s);
+}
+.ranking-row.is-me {
+  border-color: var(--accent);
+  background: rgba(99,102,241,0.08);
+}
+.ranking-row-medal { font-size: 1.3rem; width: 2rem; text-align: center; flex-shrink: 0; }
+.ranking-row-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.ranking-row-info { flex: 1; min-width: 0; }
+.ranking-row-name { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem; }
+.ranking-row-you { color: var(--accent-light, #8b5cf6); font-weight: 700; }
+.ranking-row-chip {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid;
+}
+.ranking-row-right { text-align: right; flex-shrink: 0; width: 120px; }
+.ranking-row-pts { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.35rem; }
+.ranking-row-bar-wrap {
+  width: 100%;
+  height: 5px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.ranking-row-bar { height: 100%; border-radius: 999px; }
+
+@media (max-width: 600px) {
+  .ranking-row-right { width: 70px; }
+  .ranking-row-name { font-size: 0.82rem; }
 }
