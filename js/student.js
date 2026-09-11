@@ -904,7 +904,7 @@ function finishQuiz(mod) {
 // Funções paralelas às de quiz clássico acima (renderQuestion/applyAnswerFeedback/
 // finishQuiz) em vez de generalizá-las — pequena duplicação deliberada, sem risco de
 // regressão no fluxo de quiz único já validado.
-function renderStepsNav(mod, unlockedIndex) {
+function renderStepsNav(mod, unlockedIndex, activeIndex) {
   const nav = document.getElementById('module-steps-nav');
   const parts = mod.steps.map((step, i) => {
     let state, circleContent;
@@ -912,8 +912,10 @@ function renderStepsNav(mod, unlockedIndex) {
     else if (i === unlockedIndex) { state = 'current';   circleContent = i + 1; }
     else                          { state = 'locked';    circleContent = '🔒'; }
 
+    const clickable = state !== 'locked';
+    const activeClass = i === activeIndex ? ' active' : '';
     const node = `
-      <div class="step-node ${state}" title="${escapeHtml(step.title)}">
+      <div class="step-node ${state}${activeClass}" data-index="${i}" title="${clickable ? 'Clique para ' + (state === 'completed' ? 'revisar' : 'ver') + ' esta etapa' : escapeHtml(step.title)}" style="${clickable ? 'cursor:pointer;' : ''}">
         <span class="step-node-circle">${circleContent}</span>
         <span class="step-node-label">${escapeHtml(step.title)}</span>
       </div>
@@ -923,15 +925,27 @@ function renderStepsNav(mod, unlockedIndex) {
     return `<div class="step-connector ${connectorState}"></div>${node}`;
   });
   nav.innerHTML = parts.join('');
+
+  // Só etapas já desbloqueadas (concluídas ou a atual) podem ser revisitadas — a bloqueada
+  // (🔒) continua sem clique nenhum, o aluno não pula etapa.
+  nav.querySelectorAll('.step-node.completed, .step-node.current').forEach(el => {
+    el.addEventListener('click', () => {
+      renderModuleSteps(mod, parseInt(el.dataset.index));
+    });
+  });
 }
 
-function renderModuleSteps(mod) {
+// viewIndex: null = comportamento padrão (mostra a etapa atual, ou o troféu se todas
+// concluídas); um número = o aluno clicou numa etapa já desbloqueada pra revisá-la.
+function renderModuleSteps(mod, viewIndex = null) {
   const unlockedIndex = getUnlockedStepIndex(currentUser.id, mod.id, mod);
-  renderStepsNav(mod, unlockedIndex);
+  const allDone = unlockedIndex >= mod.steps.length;
+  const activeIndex = viewIndex !== null ? viewIndex : (allDone ? null : unlockedIndex);
+  renderStepsNav(mod, unlockedIndex, activeIndex);
 
   const contentEl = document.getElementById('module-step-content');
 
-  if (unlockedIndex >= mod.steps.length) {
+  if (activeIndex === null) {
     contentEl.innerHTML = `
       <div class="step-content-card">
         <div class="quiz-result">
@@ -947,11 +961,33 @@ function renderModuleSteps(mod) {
     return;
   }
 
-  const step = mod.steps[unlockedIndex];
+  const step = mod.steps[activeIndex];
+
+  // Revendo uma etapa já concluída: só a teoria, sem refazer o questionário (evita
+  // sobrescrever uma nota/progresso já registrado com uma resposta digitada às pressas).
+  if (activeIndex < unlockedIndex) {
+    const stepProg = getStudentProgress(currentUser.id)[mod.id]?.stepProgress?.[step.id];
+    contentEl.innerHTML = `
+      <div class="step-content-card">
+        <div class="step-content-header">
+          <span class="step-content-eyebrow">Etapa ${activeIndex + 1} de ${mod.steps.length} · revisão</span>
+          ${stepProg ? `<span style="font-size:0.78rem;font-weight:700;color:var(--green-light);">✓ Concluída com ${stepProg.score}%</span>` : ''}
+        </div>
+        <div class="step-content-title">📖 ${escapeHtml(step.title)}</div>
+        <div class="theory-content">${renderMarkdown(step.theory)}</div>
+        <div style="margin-top:1.5rem;">
+          <button class="btn btn-primary btn-sm" id="steps-back-current">↩️ Voltar para a etapa atual</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('steps-back-current').addEventListener('click', () => renderModuleSteps(mod));
+    return;
+  }
+
   contentEl.innerHTML = `
     <div class="step-content-card">
       <div class="step-content-header">
-        <span class="step-content-eyebrow">Etapa ${unlockedIndex + 1} de ${mod.steps.length}</span>
+        <span class="step-content-eyebrow">Etapa ${activeIndex + 1} de ${mod.steps.length}</span>
       </div>
       <div class="step-content-title">📖 ${escapeHtml(step.title)}</div>
       <div class="theory-content">${renderMarkdown(step.theory)}</div>
@@ -1083,7 +1119,7 @@ function finishModuleStep(mod, step) {
     </div>
   `;
 
-  renderStepsNav(mod, getUnlockedStepIndex(currentUser.id, mod.id, mod));
+  renderStepsNav(mod, getUnlockedStepIndex(currentUser.id, mod.id, mod), mod.steps.findIndex(s => s.id === step.id));
 
   const retryBtn = document.getElementById('step-retry');
   if (retryBtn) retryBtn.addEventListener('click', () => renderModuleSteps(mod));

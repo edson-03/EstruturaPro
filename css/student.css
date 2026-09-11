@@ -891,6 +891,9 @@
 .step-node.locked .step-node-circle { background: rgba(255,255,255,0.04); border-color: var(--border); color: var(--text-muted); }
 .step-node.locked .step-node-label  { color: var(--text-muted); }
 
+.step-node.completed:hover, .step-node.current:hover { filter: brightness(1.15); }
+.step-node.active { box-shadow: 0 0 0 2px var(--accent-light, #8b5cf6); }
+
 .step-connector.done    { background: var(--green); }
 .step-connector.pending { background: var(--border); }
 
