@@ -3814,7 +3814,7 @@ function addModuleStageEditor(stage = null) {
       </div>
       <div class="stage-quiz-questions-container ca-questions-list"></div>
       <div style="display:flex; justify-content:flex-end; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border);">
-        <button type="button" class="btn btn-primary btn-sm btn-stage-save">💾 Salvar Etapa</button>
+        <button type="button" class="btn btn-primary btn-sm btn-stage-save">✓ Concluir Etapa</button>
       </div>
     </div>
   `;
@@ -3841,6 +3841,11 @@ function addModuleStageEditor(stage = null) {
     card.querySelector('.stage-summary-meta').textContent = `${qCount} pergunta${qCount !== 1 ? 's' : ''} · teoria preenchida`;
     summaryEl.style.display = 'flex';
     bodyEl.style.display = 'none';
+
+    // "Concluir Etapa" só organiza o card nesta tela — ainda não salva nada no servidor.
+    // Sem este aviso, é fácil achar que a etapa já foi salva e sair da página sem clicar
+    // em "Salvar Módulo", perdendo tudo o que foi preenchido.
+    showToast('✓ Etapa pronta! Role até o final da página e clique em "💾 Salvar Módulo" para salvar de vez.', 'info');
   }
 
   card.querySelector('.btn-mod-delete-step').addEventListener('click', () => {
