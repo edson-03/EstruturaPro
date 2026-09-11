@@ -625,6 +625,15 @@ function setupEventListeners() {
   document.getElementById('btn-close-quiz-import-2').addEventListener('click', closeQuizImportModal);
   document.getElementById('btn-quiz-import-confirm').addEventListener('click', confirmQuizImport);
 
+  document.getElementById('btn-copy-suap-prompt').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(document.getElementById('suap-prompt-text').textContent);
+      showToast('✓ Prompt copiado!');
+    } catch (e) {
+      showToast('❌ Não foi possível copiar — selecione o texto manualmente.', 'error');
+    }
+  });
+
   // Mobile sidebar
   document.getElementById('sidebar-toggle').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('open');
@@ -1639,64 +1648,83 @@ function closeQuizImportModal() {
   quizImportTargetContainer = null;
 }
 
-// Formato esperado (ver prévia no próprio modal):
-//   1. Texto da pergunta
-//   a) Opção 1
-//   b) Opção 2
-//   c) Opção 3
-//   d) Opção 4
-//   Resposta: a
-//   Explicação: opcional
-// Perguntas separadas por pelo menos uma linha em branco.
+// Formato esperado: Markdown do AVA SUAP (ver exemplo e prompt de referência no próprio
+// modal). Cada questão:
+//   ## Questão N
+//   (linha em branco)
+//   Texto da pergunta
+//   (linha em branco)
+//   - Pontuação: X.XX        ← lido mas ignorado (aqui todas as perguntas valem igual)
+//   - Obrigatória: Sim       ← lido mas ignorado (aqui toda pergunta é respondida)
+//   - Tipo: Escolha Única
+//   - Feedback: texto        ← vira a explicação mostrada ao aluno
+//   (linha em branco)
+//   ### Opções
+//   (linha em branco)
+//   1. [ ] opção
+//   2. [x] opção correta
+//   3. [ ] opção
+//   4. [ ] opção
+// Só é aceita 1 resposta marcada com [x] e exatamente 4 opções — nosso quiz não suporta
+// múltipla escolha com mais de uma correta nem número variável de alternativas.
 function parseMarkdownQuiz(text) {
-  const blocks = text.split(/\n\s*\n+/).map(b => b.trim()).filter(Boolean);
+  const blocks = text.split(/(?=^##\s*Quest(?:ã|a)o\s+\d+)/im).map(b => b.trim()).filter(Boolean);
   const questions = [];
   const errors = [];
 
-  blocks.forEach((block, bi) => {
-    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
-    const label = `Pergunta ${bi + 1}`;
+  if (blocks.length === 0 || !/^##\s*Quest/im.test(text)) {
+    errors.push('Não encontrei nenhum cabeçalho "## Questão N" no texto colado.');
+    return { questions, errors };
+  }
 
-    if (lines.length < 6) {
-      errors.push(`${label}: preciso da pergunta, 4 opções (a-d) e uma linha "Resposta:".`);
+  blocks.forEach((block, bi) => {
+    const headerMatch = block.match(/^##\s*Quest(?:ã|a)o\s+(\d+)/i);
+    const label = headerMatch ? `Questão ${headerMatch[1]}` : `Bloco ${bi + 1}`;
+
+    const optSplit = block.split(/###\s*Op[cç][õo]es/i);
+    if (optSplit.length < 2) {
+      errors.push(`${label}: não encontrei a seção "### Opções".`);
       return;
     }
 
-    const question = lines[0].replace(/^\d+[.)]\s*/, '').trim();
+    const bodyLines = optSplit[0]
+      .replace(/^##\s*Quest(?:ã|a)o\s+\d+/i, '')
+      .split('\n').map(l => l.trim()).filter(Boolean);
+
+    let explanation = '';
+    const questionTextLines = [];
+    bodyLines.forEach(line => {
+      const metaM = line.match(/^-\s*(Pontua[cç][ãa]o|Obrigat[óo]ria|Tipo|Feedback)\s*:\s*(.+)$/i);
+      if (metaM) {
+        if (/feedback/i.test(metaM[1])) explanation = metaM[2].trim();
+        return;
+      }
+      questionTextLines.push(line);
+    });
+    const question = questionTextLines.join(' ').trim();
     if (!question) { errors.push(`${label}: texto da pergunta vazio.`); return; }
 
+    const optionsPart = optSplit.slice(1).join('### Opções');
     const options = [];
-    let i = 1;
-    while (options.length < 4 && i < lines.length) {
-      const m = lines[i].match(/^[a-dA-D1-4][.)]\s*(.+)$/);
-      if (!m) break;
-      options.push(m[1].trim());
-      i++;
-    }
+    let correctCount = 0;
+    let correctIndex = -1;
+    optionsPart.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
+      const m = line.match(/^\d+\.\s*\[( |x|X)\]\s*(.+)$/);
+      if (!m) return;
+      if (m[1].toLowerCase() === 'x') { correctIndex = options.length; correctCount++; }
+      options.push(m[2].trim());
+    });
+
     if (options.length !== 4) {
-      errors.push(`${label}: não encontrei as 4 opções no formato "a) texto".`);
+      errors.push(`${label}: tem ${options.length} ${options.length !== 1 ? 'opções' : 'opção'}, mas o sistema só aceita exatamente 4 por pergunta.`);
+      return;
+    }
+    if (correctCount !== 1) {
+      errors.push(`${label}: tem ${correctCount} resposta(s) marcada(s) com [x] — só é aceita 1 correta por pergunta (Múltipla Escolha ainda não é suportada aqui).`);
       return;
     }
 
-    let correct = null;
-    let explanation = '';
-    for (; i < lines.length; i++) {
-      const respM = lines[i].match(/^(resposta|gabarito|correta)\s*:\s*([a-dA-D1-4])/i);
-      if (respM) {
-        const letter = respM[2].toLowerCase();
-        correct = 'abcd'.includes(letter) ? 'abcd'.indexOf(letter) : parseInt(letter, 10) - 1;
-        continue;
-      }
-      const expM = lines[i].match(/^explica[cç][aã]o\s*:\s*(.+)/i);
-      if (expM) explanation = expM[1].trim();
-    }
-
-    if (correct === null || correct < 0 || correct > 3) {
-      errors.push(`${label}: não encontrei uma linha "Resposta: a/b/c/d" válida.`);
-      return;
-    }
-
-    questions.push({ question, options, correct, explanation });
+    questions.push({ question, options, correct: correctIndex, explanation });
   });
 
   return { questions, errors };

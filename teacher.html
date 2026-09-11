@@ -632,26 +632,146 @@
         </div>
         <div class="ca-modal-body">
           <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem;">
-            Cole abaixo uma ou mais perguntas nesse formato (deixe uma linha em branco entre cada pergunta):
+            Cole abaixo uma ou mais perguntas no formato Markdown do AVA SUAP (cada pergunta precisa ter exatamente 4 opções e só 1 marcada com <code>[x]</code> — múltipla escolha com mais de uma correta ainda não é suportado por aqui):
           </p>
-          <pre style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;font-size:0.78rem;line-height:1.6;overflow-x:auto;white-space:pre-wrap;margin-bottom:1rem;">1. Qual é a complexidade de acesso a um elemento de um Array pelo índice?
-a) O(1)
-b) O(n)
-c) O(log n)
-d) O(n²)
-Resposta: a
-Explicação: Arrays acessam qualquer posição diretamente pelo índice.
+          <pre style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;font-size:0.76rem;line-height:1.6;overflow-x:auto;white-space:pre-wrap;margin-bottom:1rem;">## Questão 1
 
-2. O que a estrutura de Pilha (Stack) segue?
-a) FIFO
-b) LIFO
-c) Ordenação aleatória
-d) Busca binária
-Resposta: b</pre>
+Qual é a complexidade de acesso a um elemento de um Array pelo índice?
+
+- Pontuação: 5.00
+- Obrigatória: Sim
+- Tipo: Escolha Única
+- Feedback: Arrays acessam qualquer posição diretamente pelo índice.
+
+### Opções
+
+1. [ ] O(n)
+2. [x] O(1)
+3. [ ] O(log n)
+4. [ ] O(n²)</pre>
           <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:1rem;">
-            A linha "Explicação:" é opcional. A "Resposta:" aceita a letra (a, b, c, d) da opção correta.
+            "Pontuação" e "Obrigatória" são lidas mas ignoradas — aqui todas as perguntas valem o mesmo peso e são sempre respondidas. "Feedback" vira a explicação mostrada ao aluno.
           </p>
-          <textarea id="quiz-import-text" class="ca-input" rows="10" placeholder="Cole aqui as perguntas no formato acima..." style="font-family:var(--font-mono, monospace); font-size:0.85rem;"></textarea>
+
+          <details style="margin-bottom:1rem;">
+            <summary style="cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--accent-light);">📋 Prompt pra pedir a uma IA (ChatGPT, Claude...) pra formatar suas questões nesse padrão</summary>
+            <div style="margin-top:0.75rem;">
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-copy-suap-prompt" style="margin-bottom:0.5rem;">📋 Copiar Prompt</button>
+              <pre id="suap-prompt-text" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;font-size:0.72rem;line-height:1.55;overflow:auto;white-space:pre-wrap;max-height:260px;"># Prompt de Referência — Formatação de Questões para o AVA SUAP
+
+## Contexto
+
+O AVA (Ambiente Virtual de Aprendizagem) do SUAP possui um sistema de questionários que aceita a importação de questões em formato Markdown. O professor pode importar questões via upload de arquivo .md ou colando o conteúdo diretamente. Cada questão segue uma estrutura fixa com cabeçalho numerado, texto do enunciado, metadados (pontuação, obrigatoriedade, tipo) e lista numerada de opções de resposta. Você vai receber questões em formato livre e deve convertê-las para esse formato Markdown específico.
+
+## Tarefa
+
+Converta as [NÚMERO DE QUESTÕES] questões fornecidas abaixo para o formato Markdown aceito pelo AVA SUAP. Cada questão deve ser formatada conforme a estrutura descrita na seção "Formato Esperado".
+
+### Questões para converter:
+
+[COLE SUAS QUESTÕES AQUI]
+
+## Regras
+
+1. **NÃO altere, reformule, resuma ou reescreva** o texto dos enunciados e das alternativas fornecidas. Apenas converta para o formato Markdown esperado, mantendo o texto original íntegro.
+2. **Pontuação**: divida 10 pontos igualmente pelo número de questões. Por exemplo, se há 5 questões, cada uma vale 2.00 pontos. Se a divisão não for exata (ex: 3 questões → 3.33), ajuste manualmente para que o total seja exatamente 10 pontos (ex: 3.34 + 3.33 + 3.33 = 10.00). Use sempre duas casas decimais.
+3. **Posição da resposta correta**: aleatorize a ordem das opções em cada questão. NÃO coloque a resposta correta sempre na mesma posição (ex: sempre na primeira ou sempre na última). Distribua aleatoriamente.
+4. Marque a(s) resposta(s) correta(s) com `[x]` e as incorretas com `[ ]`.
+5. Se a questão possui mais de uma resposta correta, marque todas as corretas com `[x]` e use `- Tipo: Múltipla Escolha`. Se possui apenas uma correta, use `- Tipo: Escolha Única`.
+6. Todas as questões devem ter `- Obrigatória: Sim`, salvo indicação contrária no texto original.
+7. Numere as questões sequencialmente: Questão 1, Questão 2, Questão 3, etc.
+8. Numere as opções sequencialmente dentro de cada questão: 1., 2., 3., etc.
+9. Mantenha uma linha em branco entre o cabeçalho e o texto, entre o texto e os metadados, entre os metadados e "### Opções", e entre "### Opções" e a lista de opções.
+
+## Formato Esperado
+
+Cada questão deve seguir exatamente esta estrutura:
+
+```markdown
+## Questão N
+
+Texto da questão exatamente como fornecido pelo usuário...
+
+- Pontuação: X.XX
+- Obrigatória: Sim
+- Tipo: Escolha Única
+- Feedback: Explicação breve de por que a resposta correta é a certa (1-2 frases).
+
+### Opções
+
+1. [x] Opção correta
+2. [ ] Opção incorreta
+3. [ ] Outra opção incorreta
+4. [ ] Mais uma opção incorreta
+```
+
+Onde:
+- `N` é o número sequencial da questão (1, 2, 3...)
+- `X.XX` é a pontuação com duas casas decimais
+- `Obrigatória` deve ser "Sim" ou "Não"
+- `Tipo` deve ser "Escolha Única" (uma correta) ou "Múltipla Escolha" (mais de uma correta)
+- `Feedback` é uma explicação didática breve (1-2 frases) de por que a resposta correta é a certa, usada para orientar o aluno após responder
+- O texto da questão pode ter múltiplas linhas e conter formatação HTML básica
+- Cada opção usa o formato `N. [x] texto` (correta) ou `N. [ ] texto` (incorreta)
+
+## Exemplo
+
+### Questão de escolha única (uma resposta correta):
+
+```markdown
+## Questão 1
+
+Qual é a capital do Brasil?
+
+- Pontuação: 5.00
+- Obrigatória: Sim
+- Tipo: Escolha Única
+- Feedback: Brasília é a capital federal do Brasil desde 1960, quando foi inaugurada pelo presidente Juscelino Kubitschek.
+
+### Opções
+
+1. [ ] São Paulo
+2. [x] Brasília
+3. [ ] Rio de Janeiro
+4. [ ] Salvador
+```
+
+### Questão de múltipla escolha (mais de uma resposta correta):
+
+```markdown
+## Questão 2
+
+Quais dos seguintes são estados da região Nordeste do Brasil? (Marque todas as corretas)
+
+- Pontuação: 5.00
+- Obrigatória: Sim
+- Tipo: Múltipla Escolha
+- Feedback: Maranhão, Piauí e Bahia são estados da região Nordeste. Minas Gerais pertence ao Sudeste e Goiás ao Centro-Oeste.
+
+### Opções
+
+1. [x] Maranhão
+2. [ ] Minas Gerais
+3. [x] Piauí
+4. [ ] Goiás
+5. [x] Bahia
+```
+
+## Orientação de Pontuação
+
+- Divida 10 pontos igualmente pelo número de questões.
+- Se a divisão não for exata, distribua os centavos extras nas primeiras questões.
+- Exemplo com 3 questões: 3.34 + 3.33 + 3.33 = 10.00
+- Exemplo com 4 questões: 2.50 + 2.50 + 2.50 + 2.50 = 10.00
+- Exemplo com 7 questões: 1.43 + 1.43 + 1.43 + 1.43 + 1.43 + 1.43 + 1.42 = 10.00
+- Use sempre exatamente duas casas decimais (ex: 2.50, não 2.5).</pre>
+              <p style="font-size:0.72rem;color:var(--text-muted);margin-top:0.5rem;">
+                ⚠️ Esse prompt original permite "Múltipla Escolha" e qualquer número de opções — mas aqui só é aceito 1 resposta correta e exatamente 4 opções por pergunta. Se pedir pra IA gerar só perguntas de "Escolha Única" com 4 alternativas, o texto que ela devolver já entra certinho no campo abaixo.
+              </p>
+            </div>
+          </details>
+
+          <textarea id="quiz-import-text" class="ca-input" rows="10" placeholder="Cole aqui as perguntas no formato do AVA SUAP..." style="font-family:var(--font-mono, monospace); font-size:0.85rem;"></textarea>
         </div>
         <div class="ca-modal-footer">
           <button class="btn btn-ghost" id="btn-close-quiz-import-2">Cancelar</button>
@@ -1849,6 +1969,6 @@ Resposta: b</pre>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
-<script src="js/teacher.js?v=15"></script>
+<script src="js/teacher.js?v=16"></script>
 </body>
 </html>
