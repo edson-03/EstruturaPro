@@ -1214,14 +1214,32 @@ function renderModuleSteps(mod, viewIndex = null) {
   renderStepQuestion(mod, step, 0, document.getElementById('step-quiz-container'));
 }
 
+// Uma pergunta do questionário da etapa. Tipos (q.type; ausente = múltipla escolha):
+//   multiple → resposta = índice escolhido (trava após clicar, mostra correção)
+//   essay    → resposta = texto (qualquer texto preenchido conta como acerto)
+//   code     → resposta = { code, correct } (certa se passar em todos os casos de teste)
+// stepQuizState.answers[idx] === null significa "ainda não respondida".
 function renderStepQuestion(mod, step, idx, container) {
   const q = step.quiz[idx];
   const total = step.quiz.length;
+  const type = q.type || 'multiple';
 
-  container.innerHTML = `
-    <div class="question-card">
-      <div class="question-number">Questão ${idx + 1} de ${total}</div>
-      <div class="question-text">${escapeHtml(q.question)}</div>
+  let bodyHtml = '';
+  if (type === 'essay') {
+    bodyHtml = `
+      <textarea id="step-essay-input" class="form-input" rows="6" placeholder="Escreva sua resposta aqui..."
+        style="width:100%;resize:vertical;padding:0.85rem;font:inherit;background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:var(--radius-md);color:var(--text-primary);"></textarea>`;
+  } else if (type === 'code') {
+    bodyHtml = `
+      <div style="border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;">
+        <textarea id="step-code-input"></textarea>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:0.6rem;">
+        <button class="btn btn-sm btn-primary" id="step-code-run">▶ Executar testes</button>
+      </div>
+      <div id="step-code-results" style="margin-top:0.6rem;"></div>`;
+  } else {
+    bodyHtml = `
       <div class="quiz-options" id="step-quiz-options">
         ${q.options.map((opt, i) => `
           <button class="quiz-option" data-index="${i}">
@@ -1229,14 +1247,17 @@ function renderStepQuestion(mod, step, idx, container) {
             <span>${escapeHtml(opt)}</span>
           </button>
         `).join('')}
-      </div>
-      <div class="quiz-explanation" id="step-quiz-explanation">
-        💡 ${escapeHtml(q.explanation)}
-      </div>
+      </div>`;
+  }
+
+  container.innerHTML = `
+    <div class="question-card">
+      <div class="question-number">Questão ${idx + 1} de ${total}${type === 'essay' ? ' · discursiva' : type === 'code' ? ' · código' : ''}</div>
+      <div class="question-text">${escapeHtml(q.question)}</div>
+      ${bodyHtml}
+      ${q.explanation ? `<div class="quiz-explanation" id="step-quiz-explanation">💡 ${escapeHtml(q.explanation)}</div>` : ''}
       <div class="quiz-nav">
-        <span style="font-size:0.82rem;color:var(--text-muted);">
-          ${stepQuizState.answers.filter(a => a !== null).length} de ${total} respondidas
-        </span>
+        <span style="font-size:0.82rem;color:var(--text-muted);" id="step-answered-count"></span>
         <div style="display:flex;gap:0.5rem;">
           ${idx > 0 ? `<button class="btn btn-ghost btn-sm" id="step-quiz-prev">← Anterior</button>` : ''}
           <button class="btn btn-primary btn-sm" id="step-quiz-next" disabled>
@@ -1247,23 +1268,72 @@ function renderStepQuestion(mod, step, idx, container) {
     </div>
   `;
 
-  const prev = stepQuizState.answers[idx];
-  if (prev !== null) {
-    applyStepAnswerFeedback(q, prev);
-    document.getElementById('step-quiz-next').disabled = false;
+  const nextBtn = document.getElementById('step-quiz-next');
+  const showExplanation = () => document.getElementById('step-quiz-explanation')?.classList.add('visible');
+  const refreshNav = () => {
+    nextBtn.disabled = stepQuizState.answers[idx] === null;
+    document.getElementById('step-answered-count').textContent =
+      `${stepQuizState.answers.filter(a => a !== null).length} de ${total} respondidas`;
+  };
+
+  if (type === 'essay') {
+    const input = document.getElementById('step-essay-input');
+    input.value = stepQuizState.answers[idx] || '';
+    input.addEventListener('input', () => {
+      stepQuizState.answers[idx] = input.value.trim() ? input.value : null;
+      refreshNav();
+    });
+  } else if (type === 'code') {
+    const prev = stepQuizState.answers[idx];
+    const editor = CodeMirror.fromTextArea(document.getElementById('step-code-input'), {
+      mode: 'javascript', theme: 'dracula', lineNumbers: true, autoCloseBrackets: true,
+      matchBrackets: true, tabSize: 2, viewportMargin: Infinity
+    });
+    editor.setSize('100%', '260px');
+    editor.setValue(prev ? prev.code : (q.template || ''));
+    setTimeout(() => editor.refresh(), 50);
+
+    const resultsEl = document.getElementById('step-code-results');
+    if (prev) {
+      resultsEl.innerHTML = `<div style="font-size:0.82rem;font-weight:700;color:${prev.correct ? 'var(--green)' : 'var(--red)'};">${prev.correct ? '✅ Passou em todos os testes' : '❌ Não passou em todos os testes'}</div>`;
+      showExplanation();
+    }
+    // Mudou o código depois de testar → precisa executar de novo pra valer como resposta
+    editor.on('change', () => {
+      if (stepQuizState.answers[idx] === null) return;
+      stepQuizState.answers[idx] = null;
+      resultsEl.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted);">Código alterado — execute os testes de novo.</div>';
+      refreshNav();
+    });
+
+    const runBtn = document.getElementById('step-code-run');
+    runBtn.addEventListener('click', async () => {
+      const code = editor.getValue();
+      runBtn.disabled = true;
+      resultsEl.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted);">// Executando...</div>';
+      const result = await runStepCodeTests(code, q.testCases || []);
+      runBtn.disabled = false;
+      resultsEl.innerHTML = renderStepCodeResults(result, q.testCases || []);
+      stepQuizState.answers[idx] = { code, correct: result.passedAll };
+      showExplanation();
+      refreshNav();
+    });
+  } else {
+    const prev = stepQuizState.answers[idx];
+    if (prev !== null) applyStepAnswerFeedback(q, prev);
+    container.querySelectorAll('.quiz-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (stepQuizState.answers[idx] !== null) return;
+        const chosen = parseInt(btn.dataset.index);
+        stepQuizState.answers[idx] = chosen;
+        applyStepAnswerFeedback(q, chosen);
+        refreshNav();
+      });
+    });
   }
 
-  container.querySelectorAll('.quiz-option').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (stepQuizState.answers[idx] !== null) return;
-      const chosen = parseInt(btn.dataset.index);
-      stepQuizState.answers[idx] = chosen;
-      applyStepAnswerFeedback(q, chosen);
-      document.getElementById('step-quiz-next').disabled = false;
-    });
-  });
+  refreshNav();
 
-  const nextBtn = document.getElementById('step-quiz-next');
   nextBtn.addEventListener('click', () => {
     if (idx < total - 1) {
       renderStepQuestion(mod, step, idx + 1, container);
@@ -1278,6 +1348,83 @@ function renderStepQuestion(mod, step, idx, container) {
   }
 }
 
+// Roda o código do aluno contra os casos de teste no practice-worker (mesmo motor das
+// questões práticas das Atividades). Cada caso tem limite de tempo: um loop infinito
+// travaria o worker pra sempre, então ele é encerrado e o caso conta como falho.
+const STEP_CODE_CASE_TIMEOUT_MS = 3000;
+
+async function runStepCodeTests(code, testCases) {
+  let worker = new Worker('js/practice-worker.js?v=2');
+  const runWithTimeout = (payload) => Promise.race([
+    runInPracticeWorker(worker, payload),
+    new Promise(resolve => setTimeout(() => resolve({ timeout: true }), STEP_CODE_CASE_TIMEOUT_MS))
+  ]);
+
+  const syntax = await runWithTimeout({ kind: 'checkSyntax', code });
+  if (syntax.timeout || !syntax.ok) {
+    worker.terminate();
+    return { passedAll: false, syntaxError: syntax.timeout ? 'Tempo esgotado.' : syntax.error, cases: [] };
+  }
+
+  const cases = [];
+  for (const tc of testCases) {
+    const r = await runWithTimeout({ kind: 'runTestCase', code, expression: tc.expression, expected: tc.expected, promptQueue: [] });
+    if (r.timeout) {
+      worker.terminate();
+      worker = new Worker('js/practice-worker.js?v=2'); // o antigo ficou preso no loop
+      cases.push({ pass: false, error: 'Tempo esgotado (loop infinito?)' });
+    } else if (!r.ok) {
+      cases.push({ pass: false, error: r.error });
+    } else {
+      cases.push({ pass: r.pass, got: r.gotFormatted });
+    }
+  }
+  worker.terminate();
+  return { passedAll: testCases.length > 0 && cases.every(c => c.pass), cases };
+}
+
+function renderStepCodeResults(result, testCases) {
+  if (result.syntaxError) {
+    return `<div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:0.7rem 0.9rem;">
+      <div style="color:#f87171;font-weight:700;font-size:0.82rem;">🚫 Erro de sintaxe</div>
+      <div style="color:#fca5a5;font-family:var(--font-mono);font-size:0.8rem;white-space:pre-wrap;">${escapeHtml(result.syntaxError)}</div>
+    </div>`;
+  }
+  const rows = result.cases.map((c, i) => {
+    const tc = testCases[i];
+    const color = c.pass ? '#34d399' : '#f87171';
+    return `<div style="border:1px solid ${c.pass ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'};background:${c.pass ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'};border-radius:6px;padding:0.5rem 0.8rem;margin-bottom:0.35rem;font-family:var(--font-mono);font-size:0.78rem;">
+      <span style="color:${color};font-weight:700;">${c.pass ? '✓' : '✗'} Caso ${i + 1}</span>
+      <span style="color:#7d8590;"> ${escapeHtml(tc.expression)}</span>
+      ${c.error
+        ? `<div style="color:#fca5a5;">↪ Erro: ${escapeHtml(c.error)}</div>`
+        : `<div style="color:${color};">↪ Retornou: ${escapeHtml(c.got)}${c.pass ? '' : ` <span style="color:#86efac;">(esperado: ${escapeHtml(tc.expected)})</span>`}</div>`}
+    </div>`;
+  }).join('');
+  const summary = result.passedAll
+    ? '<div style="font-size:0.82rem;font-weight:700;color:var(--green);margin-bottom:0.4rem;">✅ Passou em todos os testes</div>'
+    : '<div style="font-size:0.82rem;font-weight:700;color:var(--red);margin-bottom:0.4rem;">❌ Não passou em todos os testes — você pode corrigir e executar de novo</div>';
+  return summary + rows;
+}
+
+function isStepAnswerCorrect(q, ans) {
+  if (ans === null || ans === undefined) return false;
+  const type = q.type || 'multiple';
+  if (type === 'essay') return typeof ans === 'string' && ans.trim().length > 0;
+  if (type === 'code') return !!ans.correct;
+  return ans === q.correct;
+}
+
+// Formato guardado em stepProgress[stepId].answers (lido pelo professor na ficha do aluno)
+function serializeStepAnswer(q, ans) {
+  if (ans === null || ans === undefined) return null;
+  const type = q.type || 'multiple';
+  const base = { questionId: q.id || null, type };
+  if (type === 'essay') return { ...base, text: ans };
+  if (type === 'code') return { ...base, code: ans.code, correct: !!ans.correct };
+  return { ...base, chosen: ans, correct: ans === q.correct };
+}
+
 function applyStepAnswerFeedback(q, chosen) {
   const optBtns = document.querySelectorAll('#step-quiz-options .quiz-option');
   const expEl   = document.getElementById('step-quiz-explanation');
@@ -1288,11 +1435,11 @@ function applyStepAnswerFeedback(q, chosen) {
     else if (i === chosen && chosen !== q.correct) btn.classList.add('wrong');
     else btn.style.opacity = '0.4';
   });
-  expEl.classList.add('visible');
+  if (expEl) expEl.classList.add('visible'); // sem explicação cadastrada o elemento não existe
 }
 
 function finishModuleStep(mod, step) {
-  const correct  = stepQuizState.answers.filter((a, i) => a === step.quiz[i].correct).length;
+  const correct  = step.quiz.filter((q, i) => isStepAnswerCorrect(q, stepQuizState.answers[i])).length;
   const total    = step.quiz.length;
   const score    = Math.round((correct / total) * 100);
   const minScore = getSettings().minScore;
@@ -1300,7 +1447,13 @@ function finishModuleStep(mod, step) {
 
   const progress = getStudentProgress(currentUser.id);
   const stepProgress = { ...(progress[mod.id]?.stepProgress || {}) };
-  stepProgress[step.id] = { completed: passed, score, completedAt: new Date().toISOString() };
+  stepProgress[step.id] = {
+    completed: passed,
+    score,
+    completedAt: new Date().toISOString(),
+    // respostas da última tentativa, pro professor ler na ficha do aluno
+    answers: step.quiz.map((q, i) => serializeStepAnswer(q, stepQuizState.answers[i]))
+  };
   setModuleProgress(currentUser.id, mod.id, { stepProgress });
 
   const rules = { ...DEFAULT_SETTINGS.scoring, ...(getSettings().scoring || {}) };

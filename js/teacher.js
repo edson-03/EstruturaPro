@@ -475,7 +475,13 @@ function renderStudentDetail(studentId) {
           <div class="progress-fill" style="width:${completed?100:prog.started?20:0}%;background:${mod.gradient};"></div>
         </div>
       `}
+      ${isModuleUsingSteps(mod) && Object.keys(prog.stepProgress || {}).length > 0
+        ? `<button class="btn btn-sm btn-ghost btn-step-answers" style="margin-top:0.6rem;width:100%;">📝 Respostas das etapas</button>`
+        : ''}
     `;
+
+    const stepAnswersBtn = card.querySelector('.btn-step-answers');
+    if (stepAnswersBtn) stepAnswersBtn.addEventListener('click', () => openStepAnswersModal(studentId, mod.id));
 
     card.querySelector('.det-access-cb').addEventListener('change', (e) => {
       const { studentId, moduleId } = e.target.dataset;
@@ -1849,6 +1855,64 @@ function openActivitySubmissionsModal(activityId) {
 
 function closeActivitySubmissionsModal() {
   document.getElementById('activity-submissions-modal').classList.remove('open');
+}
+
+// ── Modal: respostas de um aluno nos questionários das etapas de um módulo ──
+// Reaproveita a janela de respostas de atividade. As respostas ficam em
+// progress[moduleId].stepProgress[stepId].answers (última tentativa do aluno).
+function openStepAnswersModal(studentId, moduleId) {
+  const mod = getModuleById(moduleId);
+  if (!mod) return;
+  const student = getUserById(studentId);
+  const stepProgress = getStudentProgress(studentId)[moduleId]?.stepProgress || {};
+  const box = 'border:1px solid var(--border);border-radius:var(--radius-md);padding:1rem 1.25rem;margin-bottom:1rem;';
+
+  document.getElementById('activity-answers-title').textContent =
+    `Respostas das etapas — ${mod.title} (${student ? student.name : 'Aluno'})`;
+
+  document.getElementById('activity-answers-body').innerHTML = mod.steps.map((step, sIdx) => {
+    const sp = stepProgress[step.id];
+    const header = `
+      <h4 style="margin:0 0 0.75rem 0;">Etapa ${sIdx + 1}: ${escapeHtml(step.title)}
+        ${sp ? `<span style="font-size:0.8rem;font-weight:700;color:${sp.completed ? 'var(--green)' : 'var(--red)'};"> · ${sp.score}% ${sp.completed ? '(aprovada)' : '(não aprovada)'}</span>` : ''}
+      </h4>`;
+    if (!sp) return `<div style="margin-bottom:1.5rem;">${header}<div style="font-size:0.82rem;color:var(--text-muted);">Ainda não respondida.</div></div>`;
+    if (!Array.isArray(sp.answers)) return `<div style="margin-bottom:1.5rem;">${header}<div style="font-size:0.82rem;color:var(--text-muted);">Respostas não registradas (etapa feita antes de as respostas serem guardadas).</div></div>`;
+
+    const questionsHtml = (step.quiz || []).map((q, qIdx) => {
+      const ans = sp.answers.find(a => a && a.questionId && a.questionId === q.id) || sp.answers[qIdx];
+      const type = q.type || 'multiple';
+      const title = `<div style="font-weight:700;font-size:0.9rem;margin-bottom:0.6rem;">${qIdx + 1}. ${escapeHtml(q.question)}</div>`;
+      if (!ans) return `<div style="${box}">${title}<div style="font-size:0.82rem;color:var(--text-muted);">⚠️ Não respondida.</div></div>`;
+
+      if (type === 'essay') {
+        return `<div style="${box}">${title}
+          <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);margin-bottom:0.3rem;">📝 Resposta do aluno</div>
+          <div style="white-space:pre-wrap;word-break:break-word;font-size:0.88rem;background:rgba(0,0,0,0.15);border-radius:8px;padding:0.75rem;">${escapeHtml(ans.text || '')}</div>
+        </div>`;
+      }
+      if (type === 'code') {
+        return `<div style="${box}">${title}
+          <div style="font-size:0.8rem;font-weight:700;margin-bottom:0.5rem;color:${ans.correct ? 'var(--green)' : 'var(--red)'};">${ans.correct ? '✅ Passou nos testes' : '❌ Não passou nos testes'}</div>
+          <pre style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:0.85rem;font-family:var(--font-mono);font-size:0.82rem;color:#e6edf3;overflow-x:auto;white-space:pre-wrap;word-break:break-word;margin:0;">${escapeHtml(ans.code || '')}</pre>
+        </div>`;
+      }
+      const chosen = ans.chosen;
+      return `<div style="${box}">${title}
+        ${(q.options || []).map((opt, oIdx) => {
+          let style = 'padding:0.5rem 0.8rem;border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:0.35rem;font-size:0.85rem;';
+          let tag = '';
+          if (oIdx === q.correct) { style += 'border-color:var(--green);background:rgba(16,185,129,0.08);'; tag = oIdx === chosen ? ' <strong style="color:var(--green);">✓ Resposta do aluno (correta)</strong>' : ' <strong style="color:var(--green);">✓ Correta</strong>'; }
+          else if (oIdx === chosen) { style += 'border-color:var(--red);background:rgba(239,68,68,0.08);'; tag = ' <strong style="color:var(--red);">✗ Resposta do aluno</strong>'; }
+          return `<div style="${style}">${['A','B','C','D'][oIdx]}) ${escapeHtml(opt)}${tag}</div>`;
+        }).join('')}
+      </div>`;
+    }).join('');
+
+    return `<div style="margin-bottom:1.5rem;">${header}${questionsHtml}</div>`;
+  }).join('');
+
+  document.getElementById('activity-answers-modal').classList.add('open');
 }
 
 // ── Modal: respostas de um aluno numa atividade (teóricas + práticas) ──
@@ -3843,58 +3907,126 @@ function setupModulesCrudEvents() {
   });
 }
 
+// Editor de uma pergunta. Dentro do questionário de ETAPA (container com a classe
+// .stage-quiz-questions-container) a pergunta ganha um seletor de tipo:
+//   multiple → múltipla escolha (4 opções + correta)
+//   essay    → discursiva (texto livre; conta como certa se respondida)
+//   code     → código JavaScript corrigido por casos de teste
+// No Quiz do Módulo (sem etapas) continua só múltipla escolha, sem seletor.
+// Os valores são preenchidos via .value (não interpolados no HTML) pra não quebrar com aspas.
 function addQuizQuestionEditor(container = document.getElementById('mod-quiz-questions-container'), q = null) {
+  const withTypes = container.classList.contains('stage-quiz-questions-container');
   const card = document.createElement('div');
   card.className = 'ca-question-card quiz-question-block';
   card.style.cssText = 'padding:1.25rem; margin-top:1rem; border-left:3px solid var(--primary); background:var(--card-bg);';
-  const qId = q ? q.id : 'q_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-  card.dataset.questionId = qId;
+  card.dataset.questionId = (q && q.id) ? q.id : 'q_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 
   card.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-      <h4 style="margin:0; font-size:0.9rem; font-weight:600; color:var(--text-primary);">Pergunta</h4>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; margin-bottom:1rem; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+        <h4 style="margin:0; font-size:0.9rem; font-weight:600; color:var(--text-primary);">Pergunta</h4>
+        ${withTypes ? `
+          <select class="ca-input ca-select q-type" style="width:auto; padding:0.3rem 0.6rem; font-size:0.8rem;" title="Tipo da pergunta">
+            <option value="multiple">🔘 Múltipla escolha</option>
+            <option value="essay">📝 Discursiva</option>
+            <option value="code">💻 Código (JavaScript)</option>
+          </select>` : ''}
+      </div>
       <button type="button" class="btn btn-ghost btn-sm btn-mod-delete-q" style="color:var(--red-light); padding:2px 8px;">🗑️ Remover</button>
     </div>
     <div class="ca-fields-grid" style="grid-template-columns: 1fr;">
       <div class="ca-field ca-field-full">
         <label class="ca-label">Texto da Pergunta <span class="ca-required">*</span></label>
-        <textarea class="ca-input q-text" rows="2" required placeholder="Ex: Qual é a complexidade de tempo do acesso em um Array?">${q ? q.question : ''}</textarea>
+        <textarea class="ca-input q-text" rows="2" required placeholder="Ex: Qual é a complexidade de tempo do acesso em um Array?"></textarea>
       </div>
     </div>
-    <div class="ca-fields-grid" style="grid-template-columns: 1fr 1fr; gap:0.75rem; margin-top:0.75rem;">
-      <div class="ca-field">
-        <label class="ca-label">Opção 1 (Índice 0) <span class="ca-required">*</span></label>
-        <input type="text" class="ca-input q-opt-0" required placeholder="Opção 1" value="${q ? q.options[0] : ''}" />
+
+    <div class="q-mc-fields">
+      <div class="ca-fields-grid" style="grid-template-columns: 1fr 1fr; gap:0.75rem; margin-top:0.75rem;">
+        ${[0, 1, 2, 3].map(i => `
+          <div class="ca-field">
+            <label class="ca-label">Opção ${i + 1} (Índice ${i}) <span class="ca-required">*</span></label>
+            <input type="text" class="ca-input q-opt-${i}" required placeholder="Opção ${i + 1}" />
+          </div>`).join('')}
       </div>
-      <div class="ca-field">
-        <label class="ca-label">Opção 2 (Índice 1) <span class="ca-required">*</span></label>
-        <input type="text" class="ca-input q-opt-1" required placeholder="Opção 2" value="${q ? q.options[1] : ''}" />
-      </div>
-      <div class="ca-field">
-        <label class="ca-label">Opção 3 (Índice 2) <span class="ca-required">*</span></label>
-        <input type="text" class="ca-input q-opt-2" required placeholder="Opção 3" value="${q ? q.options[2] : ''}" />
-      </div>
-      <div class="ca-field">
-        <label class="ca-label">Opção 4 (Índice 3) <span class="ca-required">*</span></label>
-        <input type="text" class="ca-input q-opt-3" required placeholder="Opção 4" value="${q ? q.options[3] : ''}" />
+      <div class="ca-fields-grid" style="grid-template-columns: 1fr; margin-top:0.75rem;">
+        <div class="ca-field">
+          <label class="ca-label">Opção Correta <span class="ca-required">*</span></label>
+          <select class="ca-input ca-select q-correct">
+            ${[0, 1, 2, 3].map(i => `<option value="${i}">Opção ${i + 1} (Índice ${i})</option>`).join('')}
+          </select>
+        </div>
       </div>
     </div>
-    <div class="ca-fields-grid" style="grid-template-columns: 1fr 1fr; margin-top:0.75rem;">
+
+    <div class="q-essay-fields" style="display:none; margin-top:0.75rem; font-size:0.8rem; color:var(--text-muted);">
+      📝 O aluno responde com texto livre. Qualquer resposta preenchida conta como acerto; você pode ler as respostas na ficha do aluno.
+    </div>
+
+    <div class="q-code-fields" style="display:none; margin-top:0.75rem;">
+      <p style="font-size:0.8rem; color:var(--text-muted); margin:0 0 0.75rem;">💻 O aluno escreve o código; a resposta é certa se passar em todos os casos de teste.</p>
       <div class="ca-field">
-        <label class="ca-label">Opção Correta <span class="ca-required">*</span></label>
-        <select class="ca-input ca-select q-correct">
-          <option value="0" ${q && q.correct === 0 ? 'selected' : ''}>Opção 1 (Índice 0)</option>
-          <option value="1" ${q && q.correct === 1 ? 'selected' : ''}>Opção 2 (Índice 1)</option>
-          <option value="2" ${q && q.correct === 2 ? 'selected' : ''}>Opção 3 (Índice 2)</option>
-          <option value="3" ${q && q.correct === 3 ? 'selected' : ''}>Opção 4 (Índice 3)</option>
-        </select>
+        <label class="ca-label">Código inicial (opcional)</label>
+        <textarea class="ca-input q-code-template" rows="5" spellcheck="false" style="font-family:var(--font-mono); font-size:0.82rem;" placeholder="function soma(a, b) {&#10;  // escreva aqui&#10;}"></textarea>
       </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin:0.75rem 0 0.5rem;">
+        <label class="ca-label" style="margin:0;">Casos de teste <span class="ca-required">*</span></label>
+        <button type="button" class="btn btn-ghost btn-sm btn-q-add-tc">+ Caso de teste</button>
+      </div>
+      <div class="q-tc-list" style="display:flex; flex-direction:column; gap:0.4rem;"></div>
+    </div>
+
+    <div class="ca-fields-grid q-explanation-field" style="grid-template-columns: 1fr; margin-top:0.75rem;">
       <div class="ca-field">
         <label class="ca-label">Explicação da Resposta</label>
-        <input type="text" class="ca-input q-explanation" placeholder="Explicação para quando o aluno errar..." value="${q ? q.explanation : ''}" />
+        <input type="text" class="ca-input q-explanation" placeholder="Explicação mostrada ao aluno depois de responder..." />
       </div>
     </div>
   `;
+
+  const tcList = card.querySelector('.q-tc-list');
+  function addTestCaseRow(tc = { expression: '', expected: '' }) {
+    const row = document.createElement('div');
+    row.className = 'q-tc-row';
+    row.style.cssText = 'display:flex; gap:0.5rem; align-items:center;';
+    row.innerHTML = `
+      <input type="text" class="ca-input q-tc-expr" style="flex:1; font-family:var(--font-mono);" placeholder="Chamada. Ex: soma(2, 3)" />
+      <span style="color:var(--text-muted);">→</span>
+      <input type="text" class="ca-input q-tc-exp" style="flex:1; font-family:var(--font-mono);" placeholder="Esperado. Ex: 5" />
+      <button type="button" class="btn btn-ghost btn-sm" title="Remover caso" style="color:var(--red-light);">✕</button>
+    `;
+    row.querySelector('.q-tc-expr').value = tc.expression || '';
+    row.querySelector('.q-tc-exp').value = tc.expected || '';
+    row.querySelector('button').addEventListener('click', () => row.remove());
+    tcList.appendChild(row);
+  }
+
+  // Preenche os valores
+  card.querySelector('.q-text').value = q ? (q.question || '') : '';
+  card.querySelector('.q-explanation').value = q ? (q.explanation || '') : '';
+  [0, 1, 2, 3].forEach(i => { card.querySelector(`.q-opt-${i}`).value = q?.options?.[i] || ''; });
+  card.querySelector('.q-correct').value = String(q && Number.isInteger(q.correct) ? q.correct : 0);
+  card.querySelector('.q-code-template').value = q?.template || '';
+  (q?.testCases?.length ? q.testCases : [{}]).forEach(tc => addTestCaseRow(tc));
+
+  card.querySelector('.btn-q-add-tc').addEventListener('click', () => addTestCaseRow());
+
+  // Mostra só os campos do tipo escolhido. "required" fica só nas opções de múltipla
+  // escolha: campo obrigatório escondido bloquearia o submit do form em silêncio.
+  function applyType() {
+    const type = withTypes ? card.querySelector('.q-type').value : 'multiple';
+    if (withTypes) card.dataset.qtype = type;
+    card.querySelector('.q-mc-fields').style.display = type === 'multiple' ? '' : 'none';
+    card.querySelector('.q-essay-fields').style.display = type === 'essay' ? '' : 'none';
+    card.querySelector('.q-code-fields').style.display = type === 'code' ? '' : 'none';
+    card.querySelector('.q-explanation-field').style.display = type === 'essay' ? 'none' : '';
+    [0, 1, 2, 3].forEach(i => { card.querySelector(`.q-opt-${i}`).required = type === 'multiple'; });
+  }
+  if (withTypes) {
+    card.querySelector('.q-type').value = q?.type || 'multiple';
+    card.querySelector('.q-type').addEventListener('change', applyType);
+  }
+  applyType();
 
   card.querySelector('.btn-mod-delete-q').addEventListener('click', () => {
     card.remove();
@@ -3903,13 +4035,46 @@ function addQuizQuestionEditor(container = document.getElementById('mod-quiz-que
   container.appendChild(card);
 }
 
+// Lê uma pergunta do questionário de ETAPA (com tipo) no formato salvo no módulo.
+function readQuestionBlock(block) {
+  const type = block.dataset.qtype || 'multiple';
+  const q = {
+    id: block.dataset.questionId,
+    type,
+    question: block.querySelector('.q-text').value.trim(),
+    explanation: type === 'essay' ? '' : block.querySelector('.q-explanation').value.trim()
+  };
+  if (type === 'multiple') {
+    q.options = [0, 1, 2, 3].map(i => block.querySelector(`.q-opt-${i}`).value.trim());
+    q.correct = parseInt(block.querySelector('.q-correct').value);
+  } else if (type === 'code') {
+    q.template = block.querySelector('.q-code-template').value;
+    q.testCases = Array.from(block.querySelectorAll('.q-tc-row')).map(row => ({
+      expression: row.querySelector('.q-tc-expr').value.trim(),
+      expected: row.querySelector('.q-tc-exp').value.trim()
+    })).filter(tc => tc.expression || tc.expected);
+  }
+  return q;
+}
+
+// Mensagem do que falta numa pergunta de etapa, ou null se estiver completa.
+function questionBlockError(q) {
+  if (!q.question) return 'falta o texto da pergunta';
+  if (q.type === 'multiple' && q.options.some(o => !o)) return 'as 4 opções são obrigatórias';
+  if (q.type === 'code') {
+    if (q.testCases.length === 0) return 'cadastre pelo menos 1 caso de teste';
+    if (q.testCases.some(tc => !tc.expression || !tc.expected)) return 'todo caso de teste precisa da chamada e do valor esperado';
+  }
+  return null;
+}
+
 // Cada etapa aparece na tela só como um card compacto (título + nº de perguntas + ações).
 // Os dados ficam guardados escondidos dentro do próprio card (.stage-title, .stage-theory e
 // o container de perguntas) — é de lá que saveModuleCrudForm() lê, então o salvar do módulo
 // não muda. A edição acontece na janela "Editor de Etapa" (openStepEditor), com o mesmo
 // editor rico da teoria do módulo.
 // Os campos escondidos NÃO têm "required": campo obrigatório invisível bloqueia o submit do
-// form em silêncio. A validação é feita ao clicar em "Salvar Etapa".
+// form em silêncio. A validação é feita ao clicar em "Concluir Etapa".
 function addModuleStageEditor(stage = null) {
   const container = document.getElementById('mod-steps-container');
   const card = document.createElement('div');
@@ -3968,8 +4133,8 @@ function addModuleStageEditor(stage = null) {
     }
   });
 
-  updateStageCardSummary(card);
   container.appendChild(card);
+  updateStageCardSummary(card);
   renumberModuleStages();
   return card;
 }
@@ -3984,13 +4149,7 @@ function updateStageCardSummary(card) {
 // Lê as perguntas de um container (inclusive incompletas) — usado pra validar e pra
 // restaurar o estado anterior quando o professor cancela a edição.
 function readQuizBlocksRaw(container) {
-  return Array.from(container.querySelectorAll('.quiz-question-block')).map(block => ({
-    id: block.dataset.questionId,
-    question: block.querySelector('.q-text').value,
-    options: [0, 1, 2, 3].map(i => block.querySelector(`.q-opt-${i}`).value),
-    correct: parseInt(block.querySelector('.q-correct').value),
-    explanation: block.querySelector('.q-explanation').value
-  }));
+  return Array.from(container.querySelectorAll('.quiz-question-block')).map(readQuestionBlock);
 }
 
 // ── Editor de Etapa (janela) ──
@@ -4106,10 +4265,12 @@ function saveStepEditor() {
   if (!title) { showToast('⚠️ Dê um título para a etapa.', 'warning'); return; }
   if (!theory.trim()) { showToast('⚠️ Escreva a teoria da etapa.', 'warning'); return; }
   if (questions.length === 0) { showToast('⚠️ Adicione pelo menos 1 pergunta ao questionário da etapa.', 'warning'); return; }
-  const incomplete = questions.findIndex(q => !q.question.trim() || q.options.some(o => !o.trim()));
-  if (incomplete !== -1) {
-    showToast(`⚠️ A pergunta ${incomplete + 1} está incompleta (texto e as 4 opções são obrigatórios).`, 'warning');
-    return;
+  for (let i = 0; i < questions.length; i++) {
+    const err = questionBlockError(questions[i]);
+    if (err) {
+      showToast(`⚠️ Pergunta ${i + 1}: ${err}.`, 'warning');
+      return;
+    }
   }
 
   card.querySelector('.stage-title').value = title;
@@ -4118,7 +4279,7 @@ function saveStepEditor() {
   updateStageCardSummary(card);
 
   // Salvar a etapa só organiza o card nesta tela — ainda não grava no servidor.
-  showToast('✓ Etapa salva na lista! Clique em "💾 Salvar Módulo" no final da página para gravar de vez.', 'info');
+  showToast('✓ Etapa pronta na lista (ainda não gravada). Clique em "💾 Salvar Módulo" no final da página para gravar de vez.', 'info');
 }
 
 function cancelStepEditor() {
@@ -4481,6 +4642,14 @@ function saveModuleCrudForm() {
     const list = [];
     let valid = true;
     scopeEl.querySelectorAll('.quiz-question-block').forEach(block => {
+      // Pergunta de etapa (tem tipo: múltipla escolha, discursiva ou código)
+      if (block.dataset.qtype) {
+        const q = readQuestionBlock(block);
+        if (questionBlockError(q)) { valid = false; return; }
+        list.push(q);
+        return;
+      }
+
       const qText = block.querySelector('.q-text').value.trim();
       const opt0 = block.querySelector('.q-opt-0').value.trim();
       const opt1 = block.querySelector('.q-opt-1').value.trim();
@@ -4650,7 +4819,13 @@ function previewModuleCrud(m) {
               ${(step.quiz || []).map((q, idx) => `
                 <div style="padding:0.85rem 1rem; border:1px solid var(--border); border-radius:8px; border-left:3px solid ${m.color || '#6366f1'};">
                   <div style="font-weight:600; font-size:0.85rem; margin-bottom:0.5rem; color:var(--text-primary);">${idx + 1}. ${escapeHtml(q.question)}</div>
-                  ${q.options.map((opt, optIdx) => `
+                  ${q.type === 'essay' ? `
+                    <div style="font-size:0.78rem; color:var(--text-muted);">📝 Discursiva — conta como certa se respondida.</div>
+                  ` : q.type === 'code' ? `
+                    <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:0.4rem;">💻 Código — certa se passar em todos os casos:</div>
+                    ${q.template ? `<pre style="background:#1e1e2e; color:#a6adc8; padding:0.6rem 0.8rem; border-radius:6px; font-size:0.75rem; overflow-x:auto; margin:0 0 0.4rem;">${escapeHtml(q.template)}</pre>` : ''}
+                    ${(q.testCases || []).map(tc => `<div style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary);">${escapeHtml(tc.expression)} → <span style="color:var(--green-light);">${escapeHtml(tc.expected)}</span></div>`).join('')}
+                  ` : (q.options || []).map((opt, optIdx) => `
                     <div style="font-size:0.78rem; padding:0.4rem 0.75rem; border-radius:6px; border:1px solid ${optIdx === q.correct ? 'rgba(16,185,129,0.4)' : 'var(--border)'}; background:${optIdx === q.correct ? 'rgba(16,185,129,0.08)' : 'transparent'}; color:${optIdx === q.correct ? 'var(--green-light)' : 'var(--text-secondary)'}; margin-bottom:0.3rem;">
                       ${escapeHtml(opt)} ${optIdx === q.correct ? ' <span style="font-weight:700; margin-left:0.5rem;">✓ Correta</span>' : ''}
                     </div>
