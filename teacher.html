@@ -619,6 +619,86 @@
 
     </div>
 
+    <!-- ── Editor de Etapa do módulo (mesmo editor rico da teoria do módulo) ──
+         Fica ANTES dos modais de prévia/importar no DOM, pra que eles abram por cima. -->
+    <div class="ca-modal-overlay" id="step-editor-modal">
+      <div class="ca-modal" style="max-width:1200px; max-height:94vh;">
+        <div class="ca-modal-header">
+          <h3 id="step-editor-heading">Etapa</h3>
+          <button type="button" class="ca-modal-close" id="btn-close-step-editor">✕</button>
+        </div>
+        <div class="ca-modal-body">
+          <div class="ca-field">
+            <label class="ca-label" for="step-editor-name">Título da Etapa <span class="ca-required">*</span></label>
+            <input type="text" id="step-editor-name" class="ca-input" placeholder="Ex: Introdução aos Arrays" />
+          </div>
+
+          <div class="mod-editor-block" id="step-theory-editor-block" style="margin:1.25rem 0 2rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+              <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                <label class="ca-label" style="margin-bottom:0; font-weight:600;">Teoria da Etapa (Markdown) <span class="ca-required">*</span></label>
+                <select id="step-theory-template" class="ca-input ca-select" style="width:auto; padding:0.3rem 0.6rem; font-size:0.75rem;" title="Começar a partir de um modelo pronto">
+                  <option value="">📄 Usar modelo...</option>
+                  <option value="linear">Estrutura Linear</option>
+                  <option value="tree">Estrutura em Árvore/Grafo</option>
+                </select>
+              </div>
+              <div class="editor-layout-toggles">
+                <button type="button" class="btn-layout-toggle active" data-layout="split" title="Lado a lado">⚖️ Split</button>
+                <button type="button" class="btn-layout-toggle" data-layout="editor" title="Apenas Editor">✍️ Editor</button>
+                <button type="button" class="btn-layout-toggle" data-layout="preview" title="Apenas Prévia">👁️ Prévia</button>
+              </div>
+            </div>
+
+            <div class="md-toolbar" id="step-md-toolbar">
+              <button type="button" class="md-btn" data-tag="bold" title="Negrito (Ctrl+B)"><b>B</b></button>
+              <button type="button" class="md-btn" data-tag="italic" title="Itálico (Ctrl+I)"><i>I</i></button>
+              <button type="button" class="md-btn" data-tag="header" title="Título H3 (###)">H3</button>
+              <span class="md-divider"></span>
+              <button type="button" class="md-btn" data-tag="code" title="Código Inline (`code`)"><code>&lt;/&gt;</code></button>
+              <button type="button" class="md-btn" data-tag="codeblock" title="Bloco de Código (Ctrl+Shift+K)">pre</button>
+              <button type="button" class="md-btn" data-tag="link" title="Inserir Link (Ctrl+K)">🔗</button>
+              <button type="button" class="md-btn" data-tag="image" title="Inserir Imagem (![alt](url))">🖼️</button>
+              <span class="md-divider"></span>
+              <button type="button" class="md-btn" data-tag="list" title="Lista de Marcadores (- )">• List</button>
+              <button type="button" class="md-btn" data-tag="orderedlist" title="Lista Numerada (1. )">1. List</button>
+              <button type="button" class="md-btn" data-tag="quote" title="Citação (&gt; )">❝</button>
+              <button type="button" class="md-btn" data-tag="hr" title="Linha Horizontal (---)">―</button>
+              <button type="button" class="md-btn" data-tag="table" title="Tabela Markdown">📊 Tab</button>
+              <span class="md-divider"></span>
+              <button type="button" class="md-btn" data-tag="check" title="Sinal de Sucesso (✅)">✅</button>
+              <button type="button" class="md-btn" data-tag="cross" title="Sinal de Erro (❌)">❌</button>
+              <span class="md-divider"></span>
+              <button type="button" class="md-btn" data-tag="clear" title="Remover Formatação da Seleção">🧹</button>
+              <span id="step-theory-word-count" class="theory-word-count"></span>
+            </div>
+
+            <div class="editor-split-container split-layout" id="step-split-container">
+              <div class="split-pane editor-pane">
+                <textarea id="step-theory" placeholder="Escreva a teoria desta etapa usando Markdown..."></textarea>
+              </div>
+              <div class="split-pane preview-pane" id="step-preview-pane">
+                <div class="preview-placeholder">// A prévia renderizada aparecerá aqui em tempo real...</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+            <label class="ca-label" style="margin:0; font-weight:600;">Questionário da Etapa <span class="ca-required">*</span></label>
+            <div style="display:flex; gap:0.5rem;">
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-step-quiz-import">📥 Importar via Texto</button>
+              <button type="button" class="btn btn-sm" id="btn-step-add-q" style="background:var(--primary); color:#fff;">+ Pergunta</button>
+            </div>
+          </div>
+          <div id="step-editor-quiz-slot"></div>
+        </div>
+        <div class="ca-modal-footer" style="justify-content:space-between;">
+          <button type="button" class="btn btn-ghost" id="btn-step-editor-cancel">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-step-editor-save">✓ Salvar Etapa</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Preview Modal (compartilhado: prévia de atividade, de descrição em markdown
          e de teoria de etapa de módulo — fica FORA de qualquer view-* pra continuar
          acessível não importa qual aba estiver ativa) ── -->
@@ -2010,6 +2090,6 @@ Quais dos seguintes são estados da região Nordeste do Brasil? (Marque todas as
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
-<script src="js/teacher.js?v=22"></script>
+<script src="js/teacher.js?v=23"></script>
 </body>
 </html>

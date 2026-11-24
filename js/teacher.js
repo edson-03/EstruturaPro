@@ -3795,7 +3795,18 @@ function setupModulesCrudEvents() {
 
   // Add module stage button
   document.getElementById('btn-mod-add-step').addEventListener('click', () => {
-    addModuleStageEditor();
+    openStepEditor(addModuleStageEditor(), true);
+  });
+
+  // Janela do Editor de Etapa
+  document.getElementById('btn-step-editor-save').addEventListener('click', saveStepEditor);
+  document.getElementById('btn-step-editor-cancel').addEventListener('click', cancelStepEditor);
+  document.getElementById('btn-close-step-editor').addEventListener('click', cancelStepEditor);
+  document.getElementById('btn-step-add-q').addEventListener('click', () => {
+    if (stepEditorState) addQuizQuestionEditor(stepEditorState.quizNode);
+  });
+  document.getElementById('btn-step-quiz-import').addEventListener('click', () => {
+    if (stepEditorState) openQuizImportModal(stepEditorState.quizNode);
   });
 
   // Form submit
@@ -3892,95 +3903,51 @@ function addQuizQuestionEditor(container = document.getElementById('mod-quiz-que
   container.appendChild(card);
 }
 
-// Cada etapa é um mini-módulo: título + teoria própria (textarea simples, sem CodeMirror —
-// evita gerenciar N instâncias simultâneas de um editor pesado só pra texto markdown) +
-// seu próprio questionário, reaproveitando addQuizQuestionEditor com um container escopado
-// dentro do próprio card (evita misturar com as perguntas do Quiz do Módulo clássico).
+// Cada etapa aparece na tela só como um card compacto (título + nº de perguntas + ações).
+// Os dados ficam guardados escondidos dentro do próprio card (.stage-title, .stage-theory e
+// o container de perguntas) — é de lá que saveModuleCrudForm() lê, então o salvar do módulo
+// não muda. A edição acontece na janela "Editor de Etapa" (openStepEditor), com o mesmo
+// editor rico da teoria do módulo.
+// Os campos escondidos NÃO têm "required": campo obrigatório invisível bloqueia o submit do
+// form em silêncio. A validação é feita ao clicar em "Salvar Etapa".
 function addModuleStageEditor(stage = null) {
   const container = document.getElementById('mod-steps-container');
   const card = document.createElement('div');
   card.className = 'ca-question-card module-stage-block';
-  card.style.cssText = 'padding:1.25rem; margin-top:1rem; border-left:3px solid var(--accent-light, #8b5cf6); background:var(--card-bg);';
-  const stageId = stage ? stage.id : 'step_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-  card.dataset.stageId = stageId;
+  card.style.cssText = 'padding:0.9rem 1.1rem; margin-top:0.75rem; border-left:3px solid var(--accent-light, #8b5cf6); background:var(--card-bg);';
+  card.dataset.stageId = stage ? stage.id : 'step_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
 
   card.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-      <h4 class="stage-order-label" style="margin:0; font-size:0.9rem; font-weight:600; color:var(--text-primary);">Etapa</h4>
-      <div style="display:flex; gap:0.35rem;">
-        <button type="button" class="btn btn-ghost btn-sm btn-stage-move-up" title="Mover pra cima" style="padding:2px 8px;">⬆️</button>
-        <button type="button" class="btn btn-ghost btn-sm btn-stage-move-down" title="Mover pra baixo" style="padding:2px 8px;">⬇️</button>
-        <button type="button" class="btn btn-ghost btn-sm btn-mod-delete-step" style="color:var(--red-light); padding:2px 8px;">🗑️ Remover Etapa</button>
-      </div>
-    </div>
-
-    <div class="stage-summary" style="display:none; align-items:center; gap:0.75rem; padding:0.25rem 0;">
-      <span style="font-size:1.4rem;">✅</span>
-      <div style="flex:1; min-width:0;">
-        <div class="stage-summary-title" style="font-weight:600; font-size:0.9rem; color:var(--text-primary);"></div>
+    <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+      <div style="flex:1; min-width:200px;">
+        <div class="stage-order-label" style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Etapa</div>
+        <div class="stage-summary-title" style="font-weight:600; font-size:0.95rem; color:var(--text-primary);"></div>
         <div class="stage-summary-meta" style="font-size:0.78rem; color:var(--text-muted);"></div>
       </div>
-      <button type="button" class="btn btn-ghost btn-sm btn-stage-edit">✏️ Editar Etapa</button>
+      <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+        <button type="button" class="btn btn-ghost btn-sm btn-stage-move-up" title="Mover pra cima" style="padding:2px 8px;">⬆️</button>
+        <button type="button" class="btn btn-ghost btn-sm btn-stage-move-down" title="Mover pra baixo" style="padding:2px 8px;">⬇️</button>
+        <button type="button" class="btn btn-ghost btn-sm btn-stage-edit">✏️ Editar</button>
+        <button type="button" class="btn btn-ghost btn-sm btn-mod-delete-step" style="color:var(--red-light);">🗑️ Excluir</button>
+      </div>
     </div>
-
-    <div class="stage-edit-body">
-      <div class="ca-fields-grid" style="grid-template-columns: 1fr;">
-        <div class="ca-field ca-field-full">
-          <label class="ca-label">Título da Etapa <span class="ca-required">*</span></label>
-          <input type="text" class="ca-input stage-title" required placeholder="Ex: Introdução aos Arrays" value="${escapeHtml(stage ? stage.title : '')}" />
-        </div>
-        <div class="ca-field ca-field-full">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <label class="ca-label">Teoria da Etapa (Markdown) <span class="ca-required">*</span></label>
-            <button type="button" class="btn btn-ghost btn-sm btn-stage-preview-theory">👁️ Prévia</button>
-          </div>
-          <textarea class="ca-input stage-theory" rows="6" required placeholder="Explicação teórica desta etapa...">${stage ? stage.theory : ''}</textarea>
-        </div>
-      </div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin:1.25rem 0 0.75rem;">
-        <label class="ca-label" style="margin:0;">Questionário da Etapa</label>
-        <div style="display:flex;gap:0.5rem;">
-          <button type="button" class="btn btn-ghost btn-sm btn-stage-quiz-import">📥 Importar via Texto</button>
-          <button type="button" class="btn btn-sm btn-stage-add-q" style="background:var(--primary); color:#fff;">+ Pergunta</button>
-        </div>
-      </div>
+    <div class="stage-data" style="display:none;">
+      <input type="text" class="stage-title" />
+      <textarea class="stage-theory"></textarea>
       <div class="stage-quiz-questions-container ca-questions-list"></div>
-      <div style="display:flex; justify-content:flex-end; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border);">
-        <button type="button" class="btn btn-primary btn-sm btn-stage-save">✓ Concluir Etapa</button>
-      </div>
     </div>
   `;
 
-  const summaryEl = card.querySelector('.stage-summary');
-  const bodyEl = card.querySelector('.stage-edit-body');
+  card.querySelector('.stage-title').value = stage ? stage.title : '';
+  card.querySelector('.stage-theory').value = stage ? stage.theory : '';
+  const qContainer = card.querySelector('.stage-quiz-questions-container');
+  if (stage && stage.quiz) stage.quiz.forEach(q => addQuizQuestionEditor(qContainer, q));
 
-  function expandStage() {
-    summaryEl.style.display = 'none';
-    bodyEl.style.display = 'block';
-  }
-
-  function collapseStage() {
-    const title = card.querySelector('.stage-title').value.trim();
-    const theory = card.querySelector('.stage-theory').value.trim();
-    const qCount = stageQContainer.querySelectorAll('.quiz-question-block').length;
-
-    if (!title || !theory || qCount === 0) {
-      showToast('⚠️ Preencha título, teoria e pelo menos 1 pergunta antes de salvar a etapa.', 'warning');
-      return;
-    }
-
-    card.querySelector('.stage-summary-title').textContent = title;
-    card.querySelector('.stage-summary-meta').textContent = `${qCount} pergunta${qCount !== 1 ? 's' : ''} · teoria preenchida`;
-    summaryEl.style.display = 'flex';
-    bodyEl.style.display = 'none';
-
-    // "Concluir Etapa" só organiza o card nesta tela — ainda não salva nada no servidor.
-    // Sem este aviso, é fácil achar que a etapa já foi salva e sair da página sem clicar
-    // em "Salvar Módulo", perdendo tudo o que foi preenchido.
-    showToast('✓ Etapa pronta! Role até o final da página e clique em "💾 Salvar Módulo" para salvar de vez.', 'info');
-  }
+  card.querySelector('.btn-stage-edit').addEventListener('click', () => openStepEditor(card, false));
 
   card.querySelector('.btn-mod-delete-step').addEventListener('click', () => {
+    const title = card.querySelector('.stage-title').value.trim() || 'sem título';
+    if (!confirm(`Excluir a etapa "${title}"? (só vale de vez depois de clicar em "Salvar Módulo")`)) return;
     card.remove();
     renumberModuleStages();
   });
@@ -4001,35 +3968,171 @@ function addModuleStageEditor(stage = null) {
     }
   });
 
-  const stageQContainer = card.querySelector('.stage-quiz-questions-container');
-  card.querySelector('.btn-stage-add-q').addEventListener('click', () => {
-    addQuizQuestionEditor(stageQContainer);
-  });
-
-  card.querySelector('.btn-stage-quiz-import').addEventListener('click', () => {
-    openQuizImportModal(stageQContainer);
-  });
-
-  card.querySelector('.btn-stage-preview-theory').addEventListener('click', () => {
-    const text = card.querySelector('.stage-theory').value;
-    document.getElementById('ca-preview-title').textContent = 'Prévia da Etapa';
-    document.getElementById('ca-preview-body').innerHTML = renderMarkdown(text);
-    document.getElementById('ca-preview-modal').classList.add('open');
-  });
-
-  card.querySelector('.btn-stage-save').addEventListener('click', collapseStage);
-  card.querySelector('.btn-stage-edit').addEventListener('click', expandStage);
-
-  if (stage && stage.quiz && stage.quiz.length > 0) {
-    stage.quiz.forEach(q => addQuizQuestionEditor(stageQContainer, q));
-  }
-
+  updateStageCardSummary(card);
   container.appendChild(card);
   renumberModuleStages();
+  return card;
+}
 
-  // Etapa já existente (vinda de um módulo salvo) começa recolhida, pra não abarrotar a
-  // tela com várias etapas abertas de uma vez — etapa nova (recém-criada) começa aberta.
-  if (stage) collapseStage();
+function updateStageCardSummary(card) {
+  const title = card.querySelector('.stage-title').value.trim();
+  const qCount = card.querySelectorAll('.stage-quiz-questions-container .quiz-question-block').length;
+  card.querySelector('.stage-summary-title').textContent = title || '(sem título)';
+  card.querySelector('.stage-summary-meta').textContent = `${qCount} pergunta${qCount !== 1 ? 's' : ''}`;
+}
+
+// Lê as perguntas de um container (inclusive incompletas) — usado pra validar e pra
+// restaurar o estado anterior quando o professor cancela a edição.
+function readQuizBlocksRaw(container) {
+  return Array.from(container.querySelectorAll('.quiz-question-block')).map(block => ({
+    id: block.dataset.questionId,
+    question: block.querySelector('.q-text').value,
+    options: [0, 1, 2, 3].map(i => block.querySelector(`.q-opt-${i}`).value),
+    correct: parseInt(block.querySelector('.q-correct').value),
+    explanation: block.querySelector('.q-explanation').value
+  }));
+}
+
+// ── Editor de Etapa (janela) ──
+let stepTheoryEditor = null;
+let stepEditorState = null; // { card, isNew, quizNode, quizSnapshot }
+
+function initStepTheoryEditor() {
+  if (stepTheoryEditor) return;
+  stepTheoryEditor = CodeMirror.fromTextArea(document.getElementById('step-theory'), {
+    mode: 'markdown',
+    theme: 'dracula',
+    lineNumbers: true,
+    tabSize: 2,
+    lineWrapping: true,
+    autoCloseBrackets: true,
+    matchBrackets: true,
+    styleActiveLine: true,
+    spellcheck: true,
+    inputStyle: 'contenteditable',
+    extraKeys: {
+      Tab: (cm) => {
+        if (cm.somethingSelected()) cm.indentSelection('add');
+        else cm.replaceSelection('  ', 'end');
+      },
+      'Shift-Tab': (cm) => cm.indentSelection('subtract'),
+      'Ctrl-B': (cm) => insertMarkdownTag('bold', cm),
+      'Cmd-B': (cm) => insertMarkdownTag('bold', cm),
+      'Ctrl-I': (cm) => insertMarkdownTag('italic', cm),
+      'Cmd-I': (cm) => insertMarkdownTag('italic', cm),
+      'Ctrl-K': (cm) => insertMarkdownTag('link', cm),
+      'Cmd-K': (cm) => insertMarkdownTag('link', cm),
+      'Shift-Ctrl-K': (cm) => insertMarkdownTag('codeblock', cm),
+      'Shift-Cmd-K': (cm) => insertMarkdownTag('codeblock', cm)
+    }
+  });
+  stepTheoryEditor.on('change', updateStepTheoryPreview);
+
+  document.querySelectorAll('#step-md-toolbar .md-btn').forEach(btn => {
+    btn.onclick = () => insertMarkdownTag(btn.dataset.tag, stepTheoryEditor);
+  });
+
+  const toggles = document.querySelectorAll('#step-theory-editor-block .btn-layout-toggle');
+  const split = document.getElementById('step-split-container');
+  toggles.forEach(toggle => {
+    toggle.onclick = () => {
+      toggles.forEach(t => t.classList.remove('active'));
+      toggle.classList.add('active');
+      split.classList.remove('split-layout', 'editor-layout', 'preview-layout');
+      split.classList.add(`${toggle.dataset.layout}-layout`);
+      stepTheoryEditor.refresh();
+    };
+  });
+
+  const templateSelect = document.getElementById('step-theory-template');
+  templateSelect.onchange = () => {
+    const key = templateSelect.value;
+    templateSelect.value = '';
+    if (!key || !THEORY_TEMPLATES[key]) return;
+    if (stepTheoryEditor.getValue().trim() && !confirm('Isso substitui a teoria atual da etapa pelo modelo escolhido. Continuar?')) return;
+    stepTheoryEditor.setValue(THEORY_TEMPLATES[key]);
+    stepTheoryEditor.focus();
+  };
+}
+
+function updateStepTheoryPreview() {
+  const text = stepTheoryEditor ? stepTheoryEditor.getValue() : '';
+  const pane = document.getElementById('step-preview-pane');
+  pane.innerHTML = text.trim()
+    ? renderMarkdown(text)
+    : '<div class="preview-placeholder">// A prévia renderizada aparecerá aqui em tempo real...</div>';
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  document.getElementById('step-theory-word-count').textContent =
+    words > 0 ? `${words} palavras · ~${Math.max(1, Math.round(words / 200))} min de leitura` : '';
+}
+
+function openStepEditor(card, isNew) {
+  initStepTheoryEditor();
+
+  // O container de perguntas da etapa é MOVIDO pra dentro da janela (mantém os editores de
+  // pergunta com o estado atual) e devolvido ao card ao salvar/cancelar.
+  const quizNode = card.querySelector('.stage-quiz-questions-container');
+  stepEditorState = { card, isNew, quizNode, quizSnapshot: readQuizBlocksRaw(quizNode) };
+  document.getElementById('step-editor-quiz-slot').appendChild(quizNode);
+
+  const idx = Array.from(document.querySelectorAll('#mod-steps-container .module-stage-block')).indexOf(card) + 1;
+  document.getElementById('step-editor-heading').textContent = isNew ? `➕ Nova Etapa (Etapa ${idx})` : `✏️ Editar Etapa ${idx}`;
+  document.getElementById('step-editor-name').value = card.querySelector('.stage-title').value;
+  stepTheoryEditor.setValue(card.querySelector('.stage-theory').value);
+  stepTheoryEditor.clearHistory();
+  updateStepTheoryPreview();
+
+  document.getElementById('step-editor-modal').classList.add('open');
+  setTimeout(() => {
+    stepTheoryEditor.refresh();
+    document.getElementById('step-editor-name').focus();
+  }, 50);
+}
+
+function closeStepEditor() {
+  const { card, quizNode } = stepEditorState;
+  card.querySelector('.stage-data').appendChild(quizNode);
+  document.getElementById('step-editor-modal').classList.remove('open');
+  stepEditorState = null;
+}
+
+function saveStepEditor() {
+  if (!stepEditorState) return;
+  const { card, quizNode } = stepEditorState;
+  const title = document.getElementById('step-editor-name').value.trim();
+  const theory = stepTheoryEditor.getValue();
+  const questions = readQuizBlocksRaw(quizNode);
+
+  if (!title) { showToast('⚠️ Dê um título para a etapa.', 'warning'); return; }
+  if (!theory.trim()) { showToast('⚠️ Escreva a teoria da etapa.', 'warning'); return; }
+  if (questions.length === 0) { showToast('⚠️ Adicione pelo menos 1 pergunta ao questionário da etapa.', 'warning'); return; }
+  const incomplete = questions.findIndex(q => !q.question.trim() || q.options.some(o => !o.trim()));
+  if (incomplete !== -1) {
+    showToast(`⚠️ A pergunta ${incomplete + 1} está incompleta (texto e as 4 opções são obrigatórios).`, 'warning');
+    return;
+  }
+
+  card.querySelector('.stage-title').value = title;
+  card.querySelector('.stage-theory').value = theory;
+  closeStepEditor();
+  updateStageCardSummary(card);
+
+  // Salvar a etapa só organiza o card nesta tela — ainda não grava no servidor.
+  showToast('✓ Etapa salva na lista! Clique em "💾 Salvar Módulo" no final da página para gravar de vez.', 'info');
+}
+
+function cancelStepEditor() {
+  if (!stepEditorState) return;
+  const { card, isNew, quizNode, quizSnapshot } = stepEditorState;
+  if (!isNew) {
+    quizNode.innerHTML = '';
+    quizSnapshot.forEach(q => addQuizQuestionEditor(quizNode, q));
+  }
+  closeStepEditor();
+  if (isNew) {
+    card.remove();
+    renumberModuleStages();
+  }
 }
 
 // Atualiza o rótulo "Etapa N" de cada card (refletindo a ordem real no DOM) e
@@ -4906,7 +5009,8 @@ function checkForModuleDraftRecovery() {
 
 function setupModulesEditorControls() {
   // 1. Layout Toggles
-  const toggles = document.querySelectorAll('.btn-layout-toggle');
+  // Escopado ao bloco da teoria do módulo — o editor de etapa tem seus próprios toggles
+  const toggles = document.querySelectorAll('#theory-editor-block .btn-layout-toggle');
   const splitContainer = document.getElementById('theory-split-container');
   
   // Ensure we add events only once by removing old listener placeholders if any, but since it's vanilla, we just assign onclick
@@ -5018,10 +5122,10 @@ function toggleFocusMode() {
   }
 }
 
-function insertMarkdownTag(tag) {
-  if (!modTheoryEditor) return;
+// cm: qual editor recebe a formatação (teoria do módulo por padrão, ou o editor de etapa)
+function insertMarkdownTag(tag, cm = modTheoryEditor) {
+  if (!cm) return;
 
-  const cm = modTheoryEditor;
   const selection = cm.getSelection();
   const cursor = cm.getCursor();
 
