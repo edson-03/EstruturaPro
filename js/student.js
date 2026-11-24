@@ -12,6 +12,9 @@ let quizState = { current: 0, answers: [], score: 0 };
 let stepQuizState = { answers: [] }; // questionário da etapa atual (fluxo de módulo com etapas)
 
 document.addEventListener('DOMContentLoaded', () => {
+  const previewModuleId = new URLSearchParams(location.search).get('preview');
+  if (previewModuleId) { startTeacherPreview(previewModuleId); return; }
+
   initDB();
   const session = getSession();
   if (!session || session.role !== 'student') {
@@ -24,6 +27,64 @@ document.addEventListener('DOMContentLoaded', () => {
   initStudentUI();
   startModuleAccessPolling();
 });
+
+// ── Prévia do professor (student.html?preview=<moduleId>) ──
+// O professor vê o módulo exatamente como o aluno, mas NADA é gravado: as escritas no
+// localStorage ficam numa camada em memória (somem ao fechar a aba) e as Edge Functions
+// (único caminho de escrita no Supabase) viram no-op.
+const PREVIEW_USER_ID = '__teacher_preview__';
+
+function installPreviewSandbox() {
+  const overlay = new Map();
+  const proto = Storage.prototype;
+  const realGet = proto.getItem, realSet = proto.setItem, realRemove = proto.removeItem;
+  proto.getItem = function (k) {
+    if (this === localStorage && overlay.has(k)) return overlay.get(k);
+    return realGet.call(this, k);
+  };
+  proto.setItem = function (k, v) {
+    if (this === localStorage) { overlay.set(k, String(v)); return; }
+    realSet.call(this, k, v);
+  };
+  proto.removeItem = function (k) {
+    if (this === localStorage) { overlay.set(k, null); return; }
+    realRemove.call(this, k);
+  };
+  window.callEdgeFunction = async () => ({ ok: true, data: {} });
+}
+
+function startTeacherPreview(moduleId) {
+  const session = getSession();
+  if (!session || session.role !== 'teacher') {
+    window.location.href = 'index.html';
+    return;
+  }
+  installPreviewSandbox();
+  initDB();
+
+  if (!getModuleById(moduleId)) {
+    document.body.innerHTML = '<p style="padding:2rem;font-family:sans-serif;">Módulo não encontrado. Salve o módulo antes de abrir a prévia.</p>';
+    return;
+  }
+
+  currentUser = { id: PREVIEW_USER_ID, name: 'Prévia do Professor', avatar: '👁', avatarColor: '#6366f1', role: 'student' };
+  // Só o módulo da prévia aparece liberado (sobrescreve a leitura, então a sincronização
+  // em segundo plano com o Supabase não tira o acesso no meio da prévia).
+  const realGetAccess = getStudentModuleAccess;
+  window.getStudentModuleAccess = (sid) => sid === PREVIEW_USER_ID ? [moduleId] : realGetAccess(sid);
+
+  initStudentUI();
+
+  const ideLink = document.getElementById('nav-item-ide');
+  if (ideLink) ideLink.style.display = 'none';
+
+  const banner = document.createElement('div');
+  banner.textContent = '👁️ Modo prévia do professor — você está vendo o módulo como o aluno. Nada do que fizer aqui é salvo.';
+  banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999;padding:0.6rem 1rem;text-align:center;font-size:0.85rem;font-weight:600;background:#f59e0b;color:#111827;';
+  document.body.appendChild(banner);
+
+  openModule(moduleId);
+}
 
 // ── Init UI ──────────────────────────────────────────────
 function initStudentUI() {

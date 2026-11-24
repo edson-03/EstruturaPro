@@ -4106,6 +4106,7 @@ function renderModulesCrudList() {
           <span>📝 ${m.quiz ? m.quiz.length : 0} perguntas</span>
         </div>
         <div style="display:flex; gap:0.5rem; justify-content:flex-end; flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm btn-mod-student-view" title="Abre o módulo numa nova aba exatamente como o aluno vê (nada é salvo)">🎓 Ver como aluno</button>
           <button class="btn btn-ghost btn-sm btn-mod-preview" data-id="${m.id}" title="Visualizar prévia do aluno">👁️ Prévia</button>
           <button class="btn btn-ghost btn-sm btn-mod-duplicate" data-id="${m.id}" title="Duplicar este módulo como ponto de partida">📋 Duplicar</button>
           <button class="btn btn-ghost btn-sm btn-mod-history" data-id="${m.id}" title="Ver histórico de versões salvas">🕐 Histórico</button>
@@ -4118,6 +4119,10 @@ function renderModulesCrudList() {
     // Bind edit/delete/preview/duplicate actions
     card.querySelector('.btn-mod-preview').addEventListener('click', () => {
       previewModuleCrud(m);
+    });
+
+    card.querySelector('.btn-mod-student-view').addEventListener('click', () => {
+      window.open(`student.html?preview=${encodeURIComponent(m.id)}`, '_blank');
     });
 
     card.querySelector('.btn-mod-duplicate').addEventListener('click', () => {
