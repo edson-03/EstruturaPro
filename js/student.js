@@ -389,6 +389,8 @@ function populateTheory(mod) {
   // Complexity
   const cGrid = document.getElementById('complexity-grid');
   const c = mod.complexity;
+  // complexity.enabled === false → professor desligou o Big-O deste módulo
+  document.getElementById('complexity-block').style.display = c?.enabled === false ? 'none' : '';
   cGrid.innerHTML = `
     <div class="complexity-item"><div class="complexity-label">Acesso</div><div class="complexity-value">${c.access}</div></div>
     <div class="complexity-item"><div class="complexity-label">Busca</div><div class="complexity-value">${c.search}</div></div>

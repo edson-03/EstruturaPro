@@ -3724,6 +3724,8 @@ function setupModulesCrudEvents() {
     renderModulesCrudList();
   }));
 
+  document.getElementById('mod-complexity-enabled').addEventListener('change', updateComplexityVisibility);
+
   document.getElementById('btn-add-mod-video').addEventListener('click', () => {
     addModuleVideoRow().focus();
   });
@@ -3734,10 +3736,12 @@ function setupModulesCrudEvents() {
     document.getElementById('modules-form-title').textContent = '➕ Criar Novo Módulo';
     document.getElementById('modules-crud-form').reset();
     setModuleVideoRows([]);
+    updateComplexityVisibility(); // reset() desmarca o Big-O → começa desligado em módulo novo
     document.getElementById('mod-id').disabled = false;
     document.getElementById('mod-quiz-questions-container').innerHTML = '';
     document.getElementById('mod-steps-container').innerHTML = '';
-    
+    updateTheoryCodeVisibility();
+
     // Default values
     document.getElementById('mod-color').value = '#6366f1';
     document.getElementById('mod-difficulty').value = 'Intermediário';
@@ -4041,6 +4045,27 @@ function renumberModuleStages() {
     if (upBtn) upBtn.disabled = idx === 0;
     if (downBtn) downBtn.disabled = idx === cards.length - 1;
   });
+  updateTheoryCodeVisibility();
+}
+
+// Com pelo menos uma etapa, a Teoria/Código do módulo não é usada (cada etapa tem a sua),
+// então a seção some do formulário.
+function updateTheoryCodeVisibility() {
+  const hasSteps = document.querySelectorAll('#mod-steps-container .module-stage-block').length > 0;
+  const section = document.getElementById('mod-theory-code-section');
+  const wasHidden = section.style.display === 'none';
+  section.style.display = hasSteps ? 'none' : '';
+  // CodeMirror criado/alterado com o container escondido precisa de refresh ao reaparecer
+  if (wasHidden && !hasSteps) {
+    if (modTheoryEditor) modTheoryEditor.refresh();
+    if (modCodeEditor) modCodeEditor.refresh();
+  }
+  updateMissingFieldsIndicator();
+}
+
+function updateComplexityVisibility() {
+  const enabled = document.getElementById('mod-complexity-enabled').checked;
+  document.getElementById('mod-complexity-fields').style.display = enabled ? '' : 'none';
 }
 
 function renderModulesCrudList() {
@@ -4215,6 +4240,9 @@ function fillModuleFormFields(m, { lockId = false } = {}) {
   setModuleVideoRows(Array.isArray(m.video?.urls) ? m.video.urls : (m.video?.url ? [m.video.url] : []));
   document.getElementById('mod-video-autoplay').checked = !!m.video?.autoplay;
 
+  // Módulos antigos (sem o campo) continuam com Big-O ligado
+  document.getElementById('mod-complexity-enabled').checked = m.complexity?.enabled !== false;
+  updateComplexityVisibility();
   setComplexityField('mod-c-access', m.complexity?.access || 'O(n)');
   setComplexityField('mod-c-search', m.complexity?.search || 'O(n)');
   setComplexityField('mod-c-insert', m.complexity?.insert || 'O(1)');
@@ -4236,6 +4264,7 @@ function fillModuleFormFields(m, { lockId = false } = {}) {
   if (m.steps && m.steps.length > 0) {
     m.steps.forEach(stage => addModuleStageEditor(stage));
   }
+  updateTheoryCodeVisibility();
 
   // Switch views
   document.getElementById('modules-crud-list-sec').style.display = 'none';
@@ -4338,7 +4367,8 @@ function saveModuleCrudForm() {
     search: document.getElementById('mod-c-search').value.trim() || 'O(n)',
     insert: document.getElementById('mod-c-insert').value.trim() || 'O(1)',
     delete: document.getElementById('mod-c-delete').value.trim() || 'O(1)',
-    space: document.getElementById('mod-c-space').value.trim() || 'O(n)'
+    space: document.getElementById('mod-c-space').value.trim() || 'O(n)',
+    enabled: document.getElementById('mod-complexity-enabled').checked
   };
 
   // Gather Quiz (escopado ao container do quiz do módulo — não misturar com as perguntas
@@ -4414,10 +4444,6 @@ function saveModuleCrudForm() {
   // fluxo de etapas em vez dela) — por isso só é obrigatória nesse caso.
   if (steps.length === 0 && !theoryVal.trim()) {
     showToast('❌ O conteúdo teórico do módulo é obrigatório.', 'warning');
-    return;
-  }
-  if (!codeVal.trim()) {
-    showToast('❌ O código de exemplo do módulo é obrigatório.', 'warning');
     return;
   }
 
@@ -4562,6 +4588,7 @@ function previewModuleCrud(m) {
     </div>
 
     <!-- Complexity Grid -->
+    <div style="${m.complexity?.enabled === false ? 'display:none;' : ''}">
     <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary);">⏱️ Complexidade Temporal / Espacial</h3>
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:0.5rem; margin-bottom:2rem;">
       <div style="text-align:center; padding:0.75rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:rgba(0,0,0,0.15);"><div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">Acesso</div><div style="font-weight:700; font-size:0.95rem; color:${m.color || '#6366f1'};">${m.complexity?.access || 'O(n)'}</div></div>
@@ -4569,6 +4596,7 @@ function previewModuleCrud(m) {
       <div style="text-align:center; padding:0.75rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:rgba(0,0,0,0.15);"><div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">Inserção</div><div style="font-weight:700; font-size:0.95rem; color:${m.color || '#6366f1'};">${m.complexity?.insert || 'O(n)'}</div></div>
       <div style="text-align:center; padding:0.75rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:rgba(0,0,0,0.15);"><div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">Remoção</div><div style="font-weight:700; font-size:0.95rem; color:${m.color || '#6366f1'};">${m.complexity?.delete || 'O(n)'}</div></div>
       <div style="text-align:center; padding:0.75rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:rgba(0,0,0,0.15);"><div style="font-size:0.7rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.25rem;">Espaço</div><div style="font-weight:700; font-size:0.95rem; color:${m.color || '#6366f1'};">${m.complexity?.space || 'O(n)'}</div></div>
+    </div>
     </div>
 
     <!-- Video -->
@@ -4768,8 +4796,8 @@ function updateMissingFieldsIndicator() {
   const missing = [];
   if (!document.getElementById('mod-id').value.trim()) missing.push('ID Único');
   if (!document.getElementById('mod-title').value.trim()) missing.push('Título');
-  if (!modTheoryEditor || !modTheoryEditor.getValue().trim()) missing.push('Conteúdo Teórico');
-  if (!modCodeEditor || !modCodeEditor.getValue().trim()) missing.push('Código de Exemplo');
+  const hasSteps = document.querySelectorAll('#mod-steps-container .module-stage-block').length > 0;
+  if (!hasSteps && (!modTheoryEditor || !modTheoryEditor.getValue().trim())) missing.push('Conteúdo Teórico');
 
   if (missing.length === 0) {
     el.style.display = 'none';
@@ -4838,6 +4866,7 @@ function serializeModuleDraft() {
       insert: document.getElementById('mod-c-insert').value,
       delete: document.getElementById('mod-c-delete').value,
       space: document.getElementById('mod-c-space').value,
+      enabled: document.getElementById('mod-complexity-enabled').checked,
     },
     video: {
       urls: getModuleVideoInputValues(),

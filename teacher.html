@@ -275,8 +275,14 @@
 
           <!-- Seção 2: Complexidade Assintótica (Big O) -->
           <div class="ca-section mod-form-section-hideable">
-            <div class="ca-section-title">⏱️ Complexidade Temporal/Espacial (Big-O Notation)</div>
-            <div class="ca-fields-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+            <div class="ca-section-header">
+              <div class="ca-section-title">⏱️ Complexidade Temporal/Espacial (Big-O Notation)</div>
+              <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
+                <input type="checkbox" id="mod-complexity-enabled" style="width:auto;" />
+                Habilitar (mostrar ao aluno)
+              </label>
+            </div>
+            <div class="ca-fields-grid" id="mod-complexity-fields" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
               <div class="ca-field">
                 <label class="ca-label" for="mod-c-access-select">Acesso</label>
                 <select id="mod-c-access-select" class="ca-input ca-select" data-target="mod-c-access"></select>
@@ -325,7 +331,7 @@
           </div>
 
           <!-- Seção 3: Teoria e Código -->
-          <div class="ca-section">
+          <div class="ca-section" id="mod-theory-code-section">
             <div class="ca-section-title">📖 Teoria e Código de Exemplo</div>
             
             <!-- Editor Layout for Theory (Markdown) -->
@@ -387,7 +393,7 @@
 
             <!-- Editor Layout for Code Example -->
             <div class="mod-editor-block">
-              <label class="ca-label" style="margin-bottom:0.75rem; font-weight:600;">Código de Exemplo (JavaScript) <span class="ca-required">*</span></label>
+              <label class="ca-label" style="margin-bottom:0.75rem; font-weight:600;">Código de Exemplo (JavaScript) <span style="font-weight:400;color:var(--text-muted);">(opcional)</span></label>
               <div class="code-editor-wrap">
                 <textarea id="mod-code" placeholder="Cole o código de demonstração aqui..."></textarea>
               </div>
@@ -2004,6 +2010,6 @@ Quais dos seguintes são estados da região Nordeste do Brasil? (Marque todas as
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
-<script src="js/teacher.js?v=20"></script>
+<script src="js/teacher.js?v=21"></script>
 </body>
 </html>
