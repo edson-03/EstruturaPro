@@ -1235,7 +1235,7 @@ function renderStepQuestion(mod, step, idx, container) {
         <textarea id="step-code-input"></textarea>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:0.6rem;">
-        <button class="btn btn-sm btn-primary" id="step-code-run">▶ Executar testes</button>
+        <button class="btn btn-sm btn-primary" id="step-code-run">${(q.testCases || []).length ? '▶ Executar testes' : '▶ Enviar código'}</button>
       </div>
       <div id="step-code-results" style="margin-top:0.6rem;"></div>`;
   } else {
@@ -1295,7 +1295,7 @@ function renderStepQuestion(mod, step, idx, container) {
 
     const resultsEl = document.getElementById('step-code-results');
     if (prev) {
-      resultsEl.innerHTML = `<div style="font-size:0.82rem;font-weight:700;color:${prev.correct ? 'var(--green)' : 'var(--red)'};">${prev.correct ? '✅ Passou em todos os testes' : '❌ Não passou em todos os testes'}</div>`;
+      resultsEl.innerHTML = `<div style="font-size:0.82rem;font-weight:700;color:${prev.correct ? 'var(--green)' : 'var(--red)'};">${!(q.testCases || []).length ? (prev.correct ? '✅ Código enviado — o professor vai avaliar' : '❌ Erro de sintaxe') : prev.correct ? '✅ Passou em todos os testes' : '❌ Não passou em todos os testes'}</div>`;
       showExplanation();
     }
     // Mudou o código depois de testar → precisa executar de novo pra valer como resposta
@@ -1380,7 +1380,8 @@ async function runStepCodeTests(code, testCases) {
     }
   }
   worker.terminate();
-  return { passedAll: testCases.length > 0 && cases.every(c => c.pass), cases };
+  // Sem casos de teste: basta o código não ter erro de sintaxe (o professor avalia depois)
+  return { passedAll: cases.every(c => c.pass), cases };
 }
 
 function renderStepCodeResults(result, testCases) {
@@ -1401,6 +1402,9 @@ function renderStepCodeResults(result, testCases) {
         : `<div style="color:${color};">↪ Retornou: ${escapeHtml(c.got)}${c.pass ? '' : ` <span style="color:#86efac;">(esperado: ${escapeHtml(tc.expected)})</span>`}</div>`}
     </div>`;
   }).join('');
+  if (testCases.length === 0) {
+    return '<div style="font-size:0.82rem;font-weight:700;color:var(--green);">✅ Código enviado — o professor vai avaliar</div>';
+  }
   const summary = result.passedAll
     ? '<div style="font-size:0.82rem;font-weight:700;color:var(--green);margin-bottom:0.4rem;">✅ Passou em todos os testes</div>'
     : '<div style="font-size:0.82rem;font-weight:700;color:var(--red);margin-bottom:0.4rem;">❌ Não passou em todos os testes — você pode corrigir e executar de novo</div>';

@@ -1893,7 +1893,7 @@ function openStepAnswersModal(studentId, moduleId) {
       }
       if (type === 'code') {
         return `<div style="${box}">${title}
-          <div style="font-size:0.8rem;font-weight:700;margin-bottom:0.5rem;color:${ans.correct ? 'var(--green)' : 'var(--red)'};">${ans.correct ? '✅ Passou nos testes' : '❌ Não passou nos testes'}</div>
+          <div style="font-size:0.8rem;font-weight:700;margin-bottom:0.5rem;color:${ans.correct ? 'var(--green)' : 'var(--red)'};">${!(q.testCases || []).length ? (ans.correct ? '📝 Sem testes automáticos — avalie o código' : '❌ Código com erro de sintaxe') : ans.correct ? '✅ Passou nos testes' : '❌ Não passou nos testes'}</div>
           <pre style="background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:0.85rem;font-family:var(--font-mono);font-size:0.82rem;color:#e6edf3;overflow-x:auto;white-space:pre-wrap;word-break:break-word;margin:0;">${escapeHtml(ans.code || '')}</pre>
         </div>`;
       }
@@ -4062,7 +4062,6 @@ function questionBlockError(q) {
   if (!q.question) return 'falta o texto da pergunta';
   if (q.type === 'multiple' && q.options.some(o => !o)) return 'as 4 opções são obrigatórias';
   if (q.type === 'code') {
-    if (q.testCases.length === 0) return 'cadastre pelo menos 1 caso de teste';
     if (q.testCases.some(tc => !tc.expression || !tc.expected)) return 'todo caso de teste precisa da chamada e do valor esperado';
   }
   return null;
