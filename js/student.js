@@ -450,8 +450,7 @@ function populateCode(mod) {
   const textarea = document.getElementById('code-editor-textarea');
   if (!textarea) return;
 
-  const rawCode = mod.codeExample || '';
-  const cleanCode = stripHtmlTags(rawCode);
+  const cleanCode = cleanLegacyCodeHtml(mod.codeExample);
   originalModuleCode = cleanCode;
 
   // Clear previous console outputs
@@ -2065,12 +2064,6 @@ function runPlaygroundCode() {
     consoleOutputEl.style.color = 'var(--red-light)';
     if (playgroundWorker === worker) playgroundWorker = null;
   };
-}
-
-function stripHtmlTags(html) {
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html;
-  return tmp.textContent || tmp.innerText || '';
 }
 
 // ── Banco de Questões (Fluxo do Aluno) ──

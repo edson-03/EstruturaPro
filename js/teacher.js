@@ -4277,7 +4277,7 @@ function fillModuleFormFields(m, { lockId = false } = {}) {
     modTheoryEditor.refresh();
   }
   if (modCodeEditor) {
-    modCodeEditor.setValue(m.codeExample || '');
+    modCodeEditor.setValue(cleanLegacyCodeHtml(m.codeExample));
     modCodeEditor.refresh();
   }
   updateModulesTheoryPreview();
@@ -4612,7 +4612,7 @@ function previewModuleCrud(m) {
 
     <!-- Code Block -->
     <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary); border-left:3px solid ${m.color || '#6366f1'}; padding-left:0.5rem;">💻 Código de Exemplo</h3>
-    <pre style="background:#1e1e2e; color:#a6adc8; padding:1.25rem; border-radius:10px; overflow-x:auto; font-size:0.82rem; border:1px solid var(--border); margin-bottom:2rem;"><code style="font-family:'Courier New', Courier, monospace; line-height:1.4;">${escapeHtml(m.codeExample || '')}</code></pre>
+    <pre style="background:#1e1e2e; color:#a6adc8; padding:1.25rem; border-radius:10px; overflow-x:auto; font-size:0.82rem; border:1px solid var(--border); margin-bottom:2rem;"><code style="font-family:'Courier New', Courier, monospace; line-height:1.4;">${escapeHtml(cleanLegacyCodeHtml(m.codeExample))}</code></pre>
 
     <!-- Quiz (só pra módulos sem etapas) -->
     ${m.steps && m.steps.length > 0 ? '' : quizHtml}

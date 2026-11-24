@@ -97,6 +97,18 @@ function buildYouTubeEmbedUrl(video) {
   return `https://www.youtube.com/embed/${id}?${params.toString()}`;
 }
 
+// Os módulos padrão antigamente guardavam o código de exemplo já "colorido" com
+// <span class="kw|var|op|..."> e entidades (&lt;). Cópias salvas no banco nessa época ainda
+// podem vir assim. Só limpa quando detecta esse formato — código normal (que pode ter
+// "<" de verdade, ex.: i<n) passa intacto.
+function cleanLegacyCodeHtml(code) {
+  if (!code || !/<span class="(?:cmt|kw|var|op|num|fn|str)">/.test(code)) return code || '';
+  return code
+    .replace(/<span class="(?:cmt|kw|var|op|num|fn|str)">/g, '')
+    .replace(/<\/span>/g, '')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+}
+
 // Lista de URLs válidas do módulo. Formato novo: video.urls (array);
 // formato antigo (só video.url) continua aceito.
 function getModuleVideoUrls(video) {
@@ -403,32 +415,32 @@ Imagine uma sequência de caixas numeradas em uma prateleira. Cada caixa tem um 
 - Dados de uma planilha eletrônica
 - Buffer de áudio/vídeo
     `,
-    codeExample: `<span class="cmt">// Criando e manipulando arrays em JavaScript</span>
+    codeExample: `// Criando e manipulando arrays em JavaScript
 
-<span class="kw">const</span> <span class="var">numeros</span> <span class="op">=</span> <span class="op">[</span><span class="num">10</span><span class="op">,</span> <span class="num">25</span><span class="op">,</span> <span class="num">7</span><span class="op">,</span> <span class="num">42</span><span class="op">,</span> <span class="num">18</span><span class="op">]</span><span class="op">;</span>
+const numeros = [10, 25, 7, 42, 18];
 
-<span class="cmt">// Acesso por índice — O(1)</span>
-<span class="fn">console</span><span class="op">.</span><span class="fn">log</span><span class="op">(</span><span class="var">numeros</span><span class="op">[</span><span class="num">0</span><span class="op">]</span><span class="op">)</span><span class="op">;</span>  <span class="cmt">// 10</span>
-<span class="fn">console</span><span class="op">.</span><span class="fn">log</span><span class="op">(</span><span class="var">numeros</span><span class="op">[</span><span class="num">3</span><span class="op">]</span><span class="op">)</span><span class="op">;</span>  <span class="cmt">// 42</span>
+// Acesso por índice — O(1)
+console.log(numeros[0]);  // 10
+console.log(numeros[3]);  // 42
 
-<span class="cmt">// Inserção no final — O(1) amortizado</span>
-<span class="var">numeros</span><span class="op">.</span><span class="fn">push</span><span class="op">(</span><span class="num">99</span><span class="op">)</span><span class="op">;</span>        <span class="cmt">// [10, 25, 7, 42, 18, 99]</span>
+// Inserção no final — O(1) amortizado
+numeros.push(99);        // [10, 25, 7, 42, 18, 99]
 
-<span class="cmt">// Inserção no meio — O(n) (desloca elementos)</span>
-<span class="var">numeros</span><span class="op">.</span><span class="fn">splice</span><span class="op">(</span><span class="num">2</span><span class="op">,</span> <span class="num">0</span><span class="op">,</span> <span class="num">50</span><span class="op">)</span><span class="op">;</span>  <span class="cmt">// insere 50 no índice 2</span>
+// Inserção no meio — O(n) (desloca elementos)
+numeros.splice(2, 0, 50);  // insere 50 no índice 2
 
-<span class="cmt">// Busca linear — O(n)</span>
-<span class="kw">function</span> <span class="fn">buscar</span><span class="op">(</span><span class="var">arr</span><span class="op">,</span> <span class="var">alvo</span><span class="op">)</span> <span class="op">{</span>
-  <span class="kw">for</span> <span class="op">(</span><span class="kw">let</span> <span class="var">i</span> <span class="op">=</span> <span class="num">0</span><span class="op">;</span> <span class="var">i</span> <span class="op">&lt;</span> <span class="var">arr</span><span class="op">.</span><span class="var">length</span><span class="op">;</span> <span class="var">i</span><span class="op">++</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">if</span> <span class="op">(</span><span class="var">arr</span><span class="op">[</span><span class="var">i</span><span class="op">]</span> <span class="op">===</span> <span class="var">alvo</span><span class="op">)</span> <span class="kw">return</span> <span class="var">i</span><span class="op">;</span>
-  <span class="op">}</span>
-  <span class="kw">return</span> <span class="op">-</span><span class="num">1</span><span class="op">;</span>
-<span class="op">}</span>
+// Busca linear — O(n)
+function buscar(arr, alvo) {
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] === alvo) return i;
+  }
+  return -1;
+}
 
-<span class="cmt">// Percorrer — O(n)</span>
-<span class="var">numeros</span><span class="op">.</span><span class="fn">forEach</span><span class="op">(</span><span class="op">(</span><span class="var">val</span><span class="op">,</span> <span class="var">idx</span><span class="op">)</span> <span class="op">=&gt;</span> <span class="op">{</span>
-  <span class="fn">console</span><span class="op">.</span><span class="fn">log</span><span class="op">(</span><span class="str">\`[\${idx}] = \${val}\`</span><span class="op">)</span><span class="op">;</span>
-<span class="op">}</span><span class="op">)</span><span class="op">;</span>`,
+// Percorrer — O(n)
+numeros.forEach((val, idx) => {
+  console.log(\`[\${idx}] = \${val}\`);
+});`,
     quiz: [
       {
         question: 'Qual é a complexidade de tempo para ACESSAR um elemento por índice em um array?',
@@ -507,43 +519,43 @@ Uma **lista ligada** (linked list) é uma sequência de **nós**, onde cada nó 
 - Implementação de pilhas e filas
 - Gerenciamento de memória em sistemas operacionais
     `,
-    codeExample: `<span class="cmt">// Implementação de Lista Ligada Simples</span>
+    codeExample: `// Implementação de Lista Ligada Simples
 
-<span class="kw">class</span> <span class="fn">No</span> <span class="op">{</span>
-  <span class="fn">constructor</span><span class="op">(</span><span class="var">valor</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">valor</span>   <span class="op">=</span> <span class="var">valor</span><span class="op">;</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">proximo</span> <span class="op">=</span> <span class="kw">null</span><span class="op">;</span>
-  <span class="op">}</span>
-<span class="op">}</span>
+class No {
+  constructor(valor) {
+    this.valor   = valor;
+    this.proximo = null;
+  }
+}
 
-<span class="kw">class</span> <span class="fn">ListaLigada</span> <span class="op">{</span>
-  <span class="fn">constructor</span><span class="op">()</span> <span class="op">{</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">cabeca</span> <span class="op">=</span> <span class="kw">null</span><span class="op">;</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">tamanho</span> <span class="op">=</span> <span class="num">0</span><span class="op">;</span>
-  <span class="op">}</span>
+class ListaLigada {
+  constructor() {
+    this.cabeca = null;
+    this.tamanho = 0;
+  }
 
-  <span class="cmt">// Inserir no início — O(1)</span>
-  <span class="fn">inserirInicio</span><span class="op">(</span><span class="var">valor</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">const</span> <span class="var">novo</span> <span class="op">=</span> <span class="kw">new</span> <span class="fn">No</span><span class="op">(</span><span class="var">valor</span><span class="op">)</span><span class="op">;</span>
-    <span class="var">novo</span><span class="op">.</span><span class="var">proximo</span> <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="var">cabeca</span><span class="op">;</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">cabeca</span>  <span class="op">=</span> <span class="var">novo</span><span class="op">;</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">tamanho</span><span class="op">++</span><span class="op">;</span>
-  <span class="op">}</span>
+  // Inserir no início — O(1)
+  inserirInicio(valor) {
+    const novo = new No(valor);
+    novo.proximo = this.cabeca;
+    this.cabeca  = novo;
+    this.tamanho++;
+  }
 
-  <span class="cmt">// Percorrer — O(n)</span>
-  <span class="fn">percorrer</span><span class="op">()</span> <span class="op">{</span>
-    <span class="kw">let</span> <span class="var">atual</span> <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="var">cabeca</span><span class="op">;</span>
-    <span class="kw">while</span> <span class="op">(</span><span class="var">atual</span> <span class="op">!==</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span>
-      <span class="fn">console</span><span class="op">.</span><span class="fn">log</span><span class="op">(</span><span class="var">atual</span><span class="op">.</span><span class="var">valor</span><span class="op">)</span><span class="op">;</span>
-      <span class="var">atual</span> <span class="op">=</span> <span class="var">atual</span><span class="op">.</span><span class="var">proximo</span><span class="op">;</span>
-    <span class="op">}</span>
-  <span class="op">}</span>
-<span class="op">}</span>
+  // Percorrer — O(n)
+  percorrer() {
+    let atual = this.cabeca;
+    while (atual !== null) {
+      console.log(atual.valor);
+      atual = atual.proximo;
+    }
+  }
+}
 
-<span class="kw">const</span> <span class="var">lista</span> <span class="op">=</span> <span class="kw">new</span> <span class="fn">ListaLigada</span><span class="op">()</span><span class="op">;</span>
-<span class="var">lista</span><span class="op">.</span><span class="fn">inserirInicio</span><span class="op">(</span><span class="num">30</span><span class="op">)</span><span class="op">;</span>  <span class="cmt">// 30</span>
-<span class="var">lista</span><span class="op">.</span><span class="fn">inserirInicio</span><span class="op">(</span><span class="num">20</span><span class="op">)</span><span class="op">;</span>  <span class="cmt">// 20 → 30</span>
-<span class="var">lista</span><span class="op">.</span><span class="fn">inserirInicio</span><span class="op">(</span><span class="num">10</span><span class="op">)</span><span class="op">;</span>  <span class="cmt">// 10 → 20 → 30</span>`,
+const lista = new ListaLigada();
+lista.inserirInicio(30);  // 30
+lista.inserirInicio(20);  // 20 → 30
+lista.inserirInicio(10);  // 10 → 20 → 30`,
     quiz: [
       {
         question: 'Qual é a complexidade de inserção no INÍCIO de uma lista ligada?',
@@ -631,43 +643,43 @@ pop()    →   [20]  ← topo (60 foi removido)
 - **Avaliação de expressões** matemáticas (balanceamento de parênteses)
 - **DFS** (Busca em Profundidade) em grafos
     `,
-    codeExample: `<span class="kw">class</span> <span class="fn">Pilha</span> <span class="op">{</span>
-  <span class="fn">constructor</span><span class="op">()</span> <span class="op">{</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">itens</span> <span class="op">=</span> <span class="op">[]</span><span class="op">;</span>
-  <span class="op">}</span>
+    codeExample: `class Pilha {
+  constructor() {
+    this.itens = [];
+  }
 
-  <span class="cmt">// Empilhar — O(1)</span>
-  <span class="fn">push</span><span class="op">(</span><span class="var">elemento</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">itens</span><span class="op">.</span><span class="fn">push</span><span class="op">(</span><span class="var">elemento</span><span class="op">)</span><span class="op">;</span>
-  <span class="op">}</span>
+  // Empilhar — O(1)
+  push(elemento) {
+    this.itens.push(elemento);
+  }
 
-  <span class="cmt">// Desempilhar — O(1)</span>
-  <span class="fn">pop</span><span class="op">()</span> <span class="op">{</span>
-    <span class="kw">if</span> <span class="op">(</span><span class="kw">this</span><span class="op">.</span><span class="fn">isEmpty</span><span class="op">()</span><span class="op">)</span> <span class="kw">return</span> <span class="kw">null</span><span class="op">;</span>
-    <span class="kw">return</span> <span class="kw">this</span><span class="op">.</span><span class="var">itens</span><span class="op">.</span><span class="fn">pop</span><span class="op">()</span><span class="op">;</span>
-  <span class="op">}</span>
+  // Desempilhar — O(1)
+  pop() {
+    if (this.isEmpty()) return null;
+    return this.itens.pop();
+  }
 
-  <span class="cmt">// Ver topo sem remover — O(1)</span>
-  <span class="fn">peek</span><span class="op">()</span> <span class="op">{</span>
-    <span class="kw">return</span> <span class="kw">this</span><span class="op">.</span><span class="var">itens</span><span class="op">[</span><span class="kw">this</span><span class="op">.</span><span class="var">itens</span><span class="op">.</span><span class="var">length</span> <span class="op">-</span> <span class="num">1</span><span class="op">]</span><span class="op">;</span>
-  <span class="op">}</span>
+  // Ver topo sem remover — O(1)
+  peek() {
+    return this.itens[this.itens.length - 1];
+  }
 
-  <span class="fn">isEmpty</span><span class="op">()</span> <span class="op">{</span> <span class="kw">return</span> <span class="kw">this</span><span class="op">.</span><span class="var">itens</span><span class="op">.</span><span class="var">length</span> <span class="op">===</span> <span class="num">0</span><span class="op">;</span> <span class="op">}</span>
-  <span class="fn">size</span><span class="op">()</span>    <span class="op">{</span> <span class="kw">return</span> <span class="kw">this</span><span class="op">.</span><span class="var">itens</span><span class="op">.</span><span class="var">length</span><span class="op">;</span> <span class="op">}</span>
-<span class="op">}</span>
+  isEmpty() { return this.itens.length === 0; }
+  size()    { return this.itens.length; }
+}
 
-<span class="cmt">// Uso prático: verificar parênteses balanceados</span>
-<span class="kw">function</span> <span class="fn">balanceado</span><span class="op">(</span><span class="var">expressao</span><span class="op">)</span> <span class="op">{</span>
-  <span class="kw">const</span> <span class="var">pilha</span> <span class="op">=</span> <span class="kw">new</span> <span class="fn">Pilha</span><span class="op">()</span><span class="op">;</span>
-  <span class="kw">for</span> <span class="op">(</span><span class="kw">const</span> <span class="var">c</span> <span class="kw">of</span> <span class="var">expressao</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">if</span> <span class="op">(</span><span class="var">c</span> <span class="op">===</span> <span class="str">'('</span><span class="op">)</span> <span class="var">pilha</span><span class="op">.</span><span class="fn">push</span><span class="op">(</span><span class="var">c</span><span class="op">)</span><span class="op">;</span>
-    <span class="kw">else if</span> <span class="op">(</span><span class="var">c</span> <span class="op">===</span> <span class="str">')'</span><span class="op">)</span> <span class="op">{</span>
-      <span class="kw">if</span> <span class="op">(</span><span class="var">pilha</span><span class="op">.</span><span class="fn">isEmpty</span><span class="op">()</span><span class="op">)</span> <span class="kw">return</span> <span class="kw">false</span><span class="op">;</span>
-      <span class="var">pilha</span><span class="op">.</span><span class="fn">pop</span><span class="op">()</span><span class="op">;</span>
-    <span class="op">}</span>
-  <span class="op">}</span>
-  <span class="kw">return</span> <span class="var">pilha</span><span class="op">.</span><span class="fn">isEmpty</span><span class="op">()</span><span class="op">;</span>
-<span class="op">}</span>`,
+// Uso prático: verificar parênteses balanceados
+function balanceado(expressao) {
+  const pilha = new Pilha();
+  for (const c of expressao) {
+    if (c === '(') pilha.push(c);
+    else if (c === ')') {
+      if (pilha.isEmpty()) return false;
+      pilha.pop();
+    }
+  }
+  return pilha.isEmpty();
+}`,
     quiz: [
       {
         question: 'Qual é o princípio de funcionamento de uma Pilha?',
@@ -738,39 +750,39 @@ Pense em uma fila de banco: quem chega primeiro é atendido primeiro. Novos clie
 - **BFS** (Busca em Largura) em grafos
 - **Filas de mensagens** em sistemas distribuídos (Kafka, RabbitMQ)
     `,
-    codeExample: `<span class="kw">class</span> <span class="fn">Fila</span> <span class="op">{</span>
-  <span class="fn">constructor</span><span class="op">()</span> <span class="op">{</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">itens</span> <span class="op">=</span> <span class="op">[]</span><span class="op">;</span>
-  <span class="op">}</span>
+    codeExample: `class Fila {
+  constructor() {
+    this.itens = [];
+  }
 
-  <span class="cmt">// Enfileirar (inserir no final) — O(1)</span>
-  <span class="fn">enqueue</span><span class="op">(</span><span class="var">elemento</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">itens</span><span class="op">.</span><span class="fn">push</span><span class="op">(</span><span class="var">elemento</span><span class="op">)</span><span class="op">;</span>
-  <span class="op">}</span>
+  // Enfileirar (inserir no final) — O(1)
+  enqueue(elemento) {
+    this.itens.push(elemento);
+  }
 
-  <span class="cmt">// Desenfileirar (remover do início) — O(1) amortizado</span>
-  <span class="fn">dequeue</span><span class="op">()</span> <span class="op">{</span>
-    <span class="kw">if</span> <span class="op">(</span><span class="kw">this</span><span class="op">.</span><span class="fn">isEmpty</span><span class="op">()</span><span class="op">)</span> <span class="kw">return</span> <span class="kw">null</span><span class="op">;</span>
-    <span class="kw">return</span> <span class="kw">this</span><span class="op">.</span><span class="var">itens</span><span class="op">.</span><span class="fn">shift</span><span class="op">()</span><span class="op">;</span>
-  <span class="op">}</span>
+  // Desenfileirar (remover do início) — O(1) amortizado
+  dequeue() {
+    if (this.isEmpty()) return null;
+    return this.itens.shift();
+  }
 
-  <span class="cmt">// Ver o primeiro sem remover — O(1)</span>
-  <span class="fn">front</span><span class="op">()</span> <span class="op">{</span>
-    <span class="kw">return</span> <span class="kw">this</span><span class="op">.</span><span class="var">itens</span><span class="op">[</span><span class="num">0</span><span class="op">]</span><span class="op">;</span>
-  <span class="op">}</span>
+  // Ver o primeiro sem remover — O(1)
+  front() {
+    return this.itens[0];
+  }
 
-  <span class="fn">isEmpty</span><span class="op">()</span> <span class="op">{</span> <span class="kw">return</span> <span class="kw">this</span><span class="op">.</span><span class="var">itens</span><span class="op">.</span><span class="var">length</span> <span class="op">===</span> <span class="num">0</span><span class="op">;</span> <span class="op">}</span>
-  <span class="fn">size</span><span class="op">()</span>    <span class="op">{</span> <span class="kw">return</span> <span class="kw">this</span><span class="op">.</span><span class="var">itens</span><span class="op">.</span><span class="var">length</span><span class="op">;</span> <span class="op">}</span>
-<span class="op">}</span>
+  isEmpty() { return this.itens.length === 0; }
+  size()    { return this.itens.length; }
+}
 
-<span class="cmt">// Exemplo: simulação de fila de atendimento</span>
-<span class="kw">const</span> <span class="var">fila</span> <span class="op">=</span> <span class="kw">new</span> <span class="fn">Fila</span><span class="op">()</span><span class="op">;</span>
-<span class="var">fila</span><span class="op">.</span><span class="fn">enqueue</span><span class="op">(</span><span class="str">'Cliente A'</span><span class="op">)</span><span class="op">;</span>
-<span class="var">fila</span><span class="op">.</span><span class="fn">enqueue</span><span class="op">(</span><span class="str">'Cliente B'</span><span class="op">)</span><span class="op">;</span>
-<span class="var">fila</span><span class="op">.</span><span class="fn">enqueue</span><span class="op">(</span><span class="str">'Cliente C'</span><span class="op">)</span><span class="op">;</span>
+// Exemplo: simulação de fila de atendimento
+const fila = new Fila();
+fila.enqueue('Cliente A');
+fila.enqueue('Cliente B');
+fila.enqueue('Cliente C');
 
-<span class="fn">console</span><span class="op">.</span><span class="fn">log</span><span class="op">(</span><span class="var">fila</span><span class="op">.</span><span class="fn">dequeue</span><span class="op">()</span><span class="op">)</span><span class="op">;</span> <span class="cmt">// "Cliente A"</span>
-<span class="fn">console</span><span class="op">.</span><span class="fn">log</span><span class="op">(</span><span class="var">fila</span><span class="op">.</span><span class="fn">front</span><span class="op">()</span><span class="op">)</span><span class="op">;</span>   <span class="cmt">// "Cliente B"</span>`,
+console.log(fila.dequeue()); // "Cliente A"
+console.log(fila.front());   // "Cliente B"`,
     quiz: [
       {
         question: 'Qual é o princípio de funcionamento de uma Fila?',
@@ -843,42 +855,42 @@ Isso permite busca eficiente em O(log n) para árvores balanceadas.
 - **Compiladores** — Árvore Sintática Abstrata (AST)
 - **Compressão** — Huffman coding
     `,
-    codeExample: `<span class="kw">class</span> <span class="fn">No</span> <span class="op">{</span>
-  <span class="fn">constructor</span><span class="op">(</span><span class="var">valor</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">valor</span>    <span class="op">=</span> <span class="var">valor</span><span class="op">;</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">esquerda</span> <span class="op">=</span> <span class="kw">null</span><span class="op">;</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">direita</span>  <span class="op">=</span> <span class="kw">null</span><span class="op">;</span>
-  <span class="op">}</span>
-<span class="op">}</span>
+    codeExample: `class No {
+  constructor(valor) {
+    this.valor    = valor;
+    this.esquerda = null;
+    this.direita  = null;
+  }
+}
 
-<span class="kw">class</span> <span class="fn">BST</span> <span class="op">{</span>
-  <span class="fn">constructor</span><span class="op">()</span> <span class="op">{</span> <span class="kw">this</span><span class="op">.</span><span class="var">raiz</span> <span class="op">=</span> <span class="kw">null</span><span class="op">;</span> <span class="op">}</span>
+class BST {
+  constructor() { this.raiz = null; }
 
-  <span class="cmt">// Inserir — O(log n) média</span>
-  <span class="fn">inserir</span><span class="op">(</span><span class="var">valor</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">const</span> <span class="fn">_ins</span> <span class="op">=</span> <span class="op">(</span><span class="var">no</span><span class="op">,</span> <span class="var">v</span><span class="op">)</span> <span class="op">=&gt;</span> <span class="op">{</span>
-      <span class="kw">if</span> <span class="op">(!</span><span class="var">no</span><span class="op">)</span> <span class="kw">return</span> <span class="kw">new</span> <span class="fn">No</span><span class="op">(</span><span class="var">v</span><span class="op">)</span><span class="op">;</span>
-      <span class="kw">if</span> <span class="op">(</span><span class="var">v</span> <span class="op">&lt;</span> <span class="var">no</span><span class="op">.</span><span class="var">valor</span><span class="op">)</span>
-        <span class="var">no</span><span class="op">.</span><span class="var">esquerda</span> <span class="op">=</span> <span class="fn">_ins</span><span class="op">(</span><span class="var">no</span><span class="op">.</span><span class="var">esquerda</span><span class="op">,</span> <span class="var">v</span><span class="op">)</span><span class="op">;</span>
-      <span class="kw">else if</span> <span class="op">(</span><span class="var">v</span> <span class="op">&gt;</span> <span class="var">no</span><span class="op">.</span><span class="var">valor</span><span class="op">)</span>
-        <span class="var">no</span><span class="op">.</span><span class="var">direita</span>  <span class="op">=</span> <span class="fn">_ins</span><span class="op">(</span><span class="var">no</span><span class="op">.</span><span class="var">direita</span><span class="op">,</span>  <span class="var">v</span><span class="op">)</span><span class="op">;</span>
-      <span class="kw">return</span> <span class="var">no</span><span class="op">;</span>
-    <span class="op">}</span><span class="op">;</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">raiz</span> <span class="op">=</span> <span class="fn">_ins</span><span class="op">(</span><span class="kw">this</span><span class="op">.</span><span class="var">raiz</span><span class="op">,</span> <span class="var">valor</span><span class="op">)</span><span class="op">;</span>
-  <span class="op">}</span>
+  // Inserir — O(log n) média
+  inserir(valor) {
+    const _ins = (no, v) => {
+      if (!no) return new No(v);
+      if (v < no.valor)
+        no.esquerda = _ins(no.esquerda, v);
+      else if (v > no.valor)
+        no.direita  = _ins(no.direita,  v);
+      return no;
+    };
+    this.raiz = _ins(this.raiz, valor);
+  }
 
-  <span class="cmt">// In-order: visita em ordem crescente</span>
-  <span class="fn">inOrder</span><span class="op">(</span><span class="var">no</span> <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="var">raiz</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">if</span> <span class="op">(!</span><span class="var">no</span><span class="op">)</span> <span class="kw">return</span><span class="op">;</span>
-    <span class="kw">this</span><span class="op">.</span><span class="fn">inOrder</span><span class="op">(</span><span class="var">no</span><span class="op">.</span><span class="var">esquerda</span><span class="op">)</span><span class="op">;</span>
-    <span class="fn">console</span><span class="op">.</span><span class="fn">log</span><span class="op">(</span><span class="var">no</span><span class="op">.</span><span class="var">valor</span><span class="op">)</span><span class="op">;</span>
-    <span class="kw">this</span><span class="op">.</span><span class="fn">inOrder</span><span class="op">(</span><span class="var">no</span><span class="op">.</span><span class="var">direita</span><span class="op">)</span><span class="op">;</span>
-  <span class="op">}</span>
-<span class="op">}</span>
+  // In-order: visita em ordem crescente
+  inOrder(no = this.raiz) {
+    if (!no) return;
+    this.inOrder(no.esquerda);
+    console.log(no.valor);
+    this.inOrder(no.direita);
+  }
+}
 
-<span class="kw">const</span> <span class="var">arvore</span> <span class="op">=</span> <span class="kw">new</span> <span class="fn">BST</span><span class="op">()</span><span class="op">;</span>
-<span class="op">[</span><span class="num">50</span><span class="op">,</span><span class="num">30</span><span class="op">,</span><span class="num">70</span><span class="op">,</span><span class="num">20</span><span class="op">,</span><span class="num">40</span><span class="op">,</span><span class="num">60</span><span class="op">,</span><span class="num">80</span><span class="op">]</span><span class="op">.</span><span class="fn">forEach</span><span class="op">(</span><span class="var">v</span> <span class="op">=&gt;</span> <span class="var">arvore</span><span class="op">.</span><span class="fn">inserir</span><span class="op">(</span><span class="var">v</span><span class="op">)</span><span class="op">)</span><span class="op">;</span>
-<span class="var">arvore</span><span class="op">.</span><span class="fn">inOrder</span><span class="op">()</span><span class="op">;</span> <span class="cmt">// 20 30 40 50 60 70 80</span>`,
+const arvore = new BST();
+[50,30,70,20,40,60,80].forEach(v => arvore.inserir(v));
+arvore.inOrder(); // 20 30 40 50 60 70 80`,
     quiz: [
       {
         question: 'Em uma Árvore Binária de Busca (BST), onde ficam os valores MENORES que a raiz?',
@@ -956,38 +968,38 @@ Um **grafo** é uma estrutura composta por **vértices** (nós) e **arestas** (c
 - **Internet** — roteamento de pacotes
 - **Jogos** — IA de personagens, mapas
     `,
-    codeExample: `<span class="kw">class</span> <span class="fn">Grafo</span> <span class="op">{</span>
-  <span class="fn">constructor</span><span class="op">()</span> <span class="op">{</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">adjacencia</span> <span class="op">=</span> <span class="kw">new</span> <span class="fn">Map</span><span class="op">()</span><span class="op">;</span>
-  <span class="op">}</span>
+    codeExample: `class Grafo {
+  constructor() {
+    this.adjacencia = new Map();
+  }
 
-  <span class="fn">addVertice</span><span class="op">(</span><span class="var">v</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">if</span> <span class="op">(!</span><span class="kw">this</span><span class="op">.</span><span class="var">adjacencia</span><span class="op">.</span><span class="fn">has</span><span class="op">(</span><span class="var">v</span><span class="op">)</span><span class="op">)</span>
-      <span class="kw">this</span><span class="op">.</span><span class="var">adjacencia</span><span class="op">.</span><span class="fn">set</span><span class="op">(</span><span class="var">v</span><span class="op">,</span> <span class="op">[]</span><span class="op">)</span><span class="op">;</span>
-  <span class="op">}</span>
+  addVertice(v) {
+    if (!this.adjacencia.has(v))
+      this.adjacencia.set(v, []);
+  }
 
-  <span class="fn">addAresta</span><span class="op">(</span><span class="var">u</span><span class="op">,</span> <span class="var">v</span><span class="op">)</span> <span class="op">{</span> <span class="cmt">// Não-dirigido</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">adjacencia</span><span class="op">.</span><span class="fn">get</span><span class="op">(</span><span class="var">u</span><span class="op">)</span><span class="op">.</span><span class="fn">push</span><span class="op">(</span><span class="var">v</span><span class="op">)</span><span class="op">;</span>
-    <span class="kw">this</span><span class="op">.</span><span class="var">adjacencia</span><span class="op">.</span><span class="fn">get</span><span class="op">(</span><span class="var">v</span><span class="op">)</span><span class="op">.</span><span class="fn">push</span><span class="op">(</span><span class="var">u</span><span class="op">)</span><span class="op">;</span>
-  <span class="op">}</span>
+  addAresta(u, v) { // Não-dirigido
+    this.adjacencia.get(u).push(v);
+    this.adjacencia.get(v).push(u);
+  }
 
-  <span class="cmt">// BFS — O(V + E)</span>
-  <span class="fn">bfs</span><span class="op">(</span><span class="var">inicio</span><span class="op">)</span> <span class="op">{</span>
-    <span class="kw">const</span> <span class="var">visitados</span> <span class="op">=</span> <span class="kw">new</span> <span class="fn">Set</span><span class="op">()</span><span class="op">;</span>
-    <span class="kw">const</span> <span class="var">fila</span> <span class="op">=</span> <span class="op">[</span><span class="var">inicio</span><span class="op">]</span><span class="op">;</span>
-    <span class="var">visitados</span><span class="op">.</span><span class="fn">add</span><span class="op">(</span><span class="var">inicio</span><span class="op">)</span><span class="op">;</span>
-    <span class="kw">while</span> <span class="op">(</span><span class="var">fila</span><span class="op">.</span><span class="var">length</span><span class="op">)</span> <span class="op">{</span>
-      <span class="kw">const</span> <span class="var">v</span> <span class="op">=</span> <span class="var">fila</span><span class="op">.</span><span class="fn">shift</span><span class="op">()</span><span class="op">;</span>
-      <span class="fn">console</span><span class="op">.</span><span class="fn">log</span><span class="op">(</span><span class="var">v</span><span class="op">)</span><span class="op">;</span>
-      <span class="kw">for</span> <span class="op">(</span><span class="kw">const</span> <span class="var">viz</span> <span class="kw">of</span> <span class="kw">this</span><span class="op">.</span><span class="var">adjacencia</span><span class="op">.</span><span class="fn">get</span><span class="op">(</span><span class="var">v</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-        <span class="kw">if</span> <span class="op">(!</span><span class="var">visitados</span><span class="op">.</span><span class="fn">has</span><span class="op">(</span><span class="var">viz</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
-          <span class="var">visitados</span><span class="op">.</span><span class="fn">add</span><span class="op">(</span><span class="var">viz</span><span class="op">)</span><span class="op">;</span>
-          <span class="var">fila</span><span class="op">.</span><span class="fn">push</span><span class="op">(</span><span class="var">viz</span><span class="op">)</span><span class="op">;</span>
-        <span class="op">}</span>
-      <span class="op">}</span>
-    <span class="op">}</span>
-  <span class="op">}</span>
-<span class="op">}</span>`,
+  // BFS — O(V + E)
+  bfs(inicio) {
+    const visitados = new Set();
+    const fila = [inicio];
+    visitados.add(inicio);
+    while (fila.length) {
+      const v = fila.shift();
+      console.log(v);
+      for (const viz of this.adjacencia.get(v)) {
+        if (!visitados.has(viz)) {
+          visitados.add(viz);
+          fila.push(viz);
+        }
+      }
+    }
+  }
+}`,
     quiz: [
       {
         question: 'O que são VÉRTICES em um grafo?',
