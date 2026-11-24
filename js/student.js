@@ -344,14 +344,41 @@ function populateTheory(mod) {
 // ── Video ────────────────────────────────────────────────
 function populateVideoTab(mod) {
   const tabBtn = document.getElementById('tab-video');
-  const hasVideo = !!buildYouTubeEmbedUrl(mod.video);
+  const hasVideo = getModuleVideoUrls(mod.video).length > 0;
   tabBtn.style.display = hasVideo ? '' : 'none';
   stopModuleVideo();
 }
 
 function stopModuleVideo() {
-  const iframe = document.getElementById('video-embed-iframe');
-  if (iframe) iframe.src = '';
+  const list = document.getElementById('video-embed-list');
+  if (list) list.innerHTML = '';
+}
+
+function loadModuleVideos(mod) {
+  const list = document.getElementById('video-embed-list');
+  if (!list) return;
+  const urls = getModuleVideoUrls(mod.video);
+  list.innerHTML = '';
+  urls.forEach((url, i) => {
+    const item = document.createElement('div');
+    if (urls.length > 1) {
+      const label = document.createElement('div');
+      label.textContent = `Vídeo ${i + 1}`;
+      label.style.cssText = 'font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;';
+      item.appendChild(label);
+    }
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:relative;width:100%;padding-top:56.25%;border-radius:var(--radius-lg);overflow:hidden;background:#000;';
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:0;';
+    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+    iframe.allowFullscreen = true;
+    // autoplay só no primeiro, pra não tocar vários ao mesmo tempo
+    iframe.src = buildYouTubeEmbedUrl({ url, autoplay: i === 0 && mod.video?.autoplay });
+    wrapper.appendChild(iframe);
+    item.appendChild(wrapper);
+    list.appendChild(item);
+  });
 }
 
 
@@ -596,9 +623,7 @@ function switchViewerTab(tabId) {
   // Load the video only while its tab is open; stop it (clear src) otherwise
   // so it doesn't keep playing audio in the background after switching tabs.
   if (tabId === 'video' && currentModule) {
-    const src = buildYouTubeEmbedUrl(currentModule.video);
-    const iframe = document.getElementById('video-embed-iframe');
-    if (iframe && src) iframe.src = src;
+    loadModuleVideos(currentModule);
   } else {
     stopModuleVideo();
   }

@@ -97,6 +97,13 @@ function buildYouTubeEmbedUrl(video) {
   return `https://www.youtube.com/embed/${id}?${params.toString()}`;
 }
 
+// Lista de URLs válidas do módulo. Formato novo: video.urls (array);
+// formato antigo (só video.url) continua aceito.
+function getModuleVideoUrls(video) {
+  const list = Array.isArray(video?.urls) ? video.urls : (video?.url ? [video.url] : []);
+  return list.filter(u => extractYouTubeId(u));
+}
+
 // ── Markdown (teoria dos módulos) — compartilhado entre teacher.js e student.js ──
 // marked converte Markdown → HTML; DOMPurify sanitiza o HTML resultante (proteção contra
 // XSS); highlight.js colore a sintaxe dos blocos de código. Se as libs não estiverem

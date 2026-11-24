@@ -208,9 +208,7 @@
           <h3 style="margin-bottom:0.25rem;">🎥 Vídeo Aula</h3>
           <p style="font-size:0.85rem;color:var(--text-muted);">Assista à explicação em vídeo deste módulo.</p>
         </div>
-        <div id="video-embed-wrapper" style="position:relative;width:100%;padding-top:56.25%;border-radius:var(--radius-lg);overflow:hidden;background:#000;">
-          <iframe id="video-embed-iframe" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-        </div>
+        <div id="video-embed-list" style="display:flex;flex-direction:column;gap:1.25rem;"></div>
       </div>
 
       <!-- ── CODE Panel ── -->
@@ -473,7 +471,7 @@
 <!-- js/data.js é immutable/cacheado por 30 dias (vercel.json), e um cache de borda da
      CDN não invalida automaticamente em deploy novo. Incrementar este número sempre que
      js/data.js mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/data.js?v=8"></script>
+<script src="js/data.js?v=9"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
@@ -487,6 +485,6 @@
 
 <script src="js/visualizer.js"></script>
 <!-- js/student.js é immutable/cacheado por 30 dias (vercel.json). Incrementar este número sempre que js/student.js mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/student.js?v=10"></script>
+<script src="js/student.js?v=11"></script>
 </body>
 </html>

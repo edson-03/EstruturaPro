@@ -311,8 +311,9 @@
             <p style="font-size:0.8rem;color:var(--text-muted);margin:-0.5rem 0 1rem 0;">Opcional. Se preenchido, uma aba "Vídeo" aparece para o aluno neste módulo.</p>
             <div class="ca-fields-grid">
               <div class="ca-field" style="grid-column:1/-1;">
-                <label class="ca-label" for="mod-video-url">Link do vídeo no YouTube</label>
-                <input type="text" id="mod-video-url" class="ca-input" placeholder="Ex: https://www.youtube.com/watch?v=..." />
+                <label class="ca-label">Links dos vídeos no YouTube</label>
+                <div id="mod-video-list" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
+                <button type="button" id="btn-add-mod-video" class="btn btn-ghost btn-sm" style="margin-top:0.5rem;">+ Adicionar outro vídeo</button>
               </div>
               <div class="ca-field">
                 <label class="ca-label" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
@@ -532,6 +533,13 @@
           <h2>✏️ Criar Nova Atividade</h2>
           <p class="ca-header-sub">Monte um questionário com perguntas teóricas e práticas em JavaScript</p>
         </div>
+      </div>
+
+      <!-- ── Atividades já criadas (clicar abre as entregas dos alunos) ── -->
+      <div class="ca-section">
+        <div class="ca-section-title">📂 Atividades Criadas</div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin:-0.5rem 0 1rem 0;">Clique numa atividade para ver quem fez, quem não fez e as respostas de cada aluno.</p>
+        <div id="created-activities-list" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
       </div>
 
       <form id="activity-form" autocomplete="off">
@@ -1091,6 +1099,21 @@ Quais dos seguintes são estados da região Nordeste do Brasil? (Marque todas as
         <div class="activity-list" id="activity-list"></div>
       </div>
 
+    </div>
+
+    <!-- ── Activity Submissions Modal (quem fez / não fez uma atividade) ──
+         Fica ANTES do modal de respostas no DOM, pra que o de respostas abra por cima. -->
+    <div class="ca-modal-overlay" id="activity-submissions-modal">
+      <div class="ca-modal" style="max-width:750px;">
+        <div class="ca-modal-header">
+          <h3 id="activity-submissions-title">Entregas da Atividade</h3>
+          <button class="ca-modal-close" id="btn-close-activity-submissions">✕</button>
+        </div>
+        <div class="ca-modal-body" id="activity-submissions-body"></div>
+        <div class="ca-modal-footer">
+          <button class="btn btn-ghost" id="btn-close-activity-submissions-2">Fechar</button>
+        </div>
+      </div>
     </div>
 
     <!-- ── Activity Answers Modal (respostas do aluno numa atividade) ── -->
@@ -1965,7 +1988,7 @@ Quais dos seguintes são estados da região Nordeste do Brasil? (Marque todas as
 <!-- js/data.js e js/teacher.js são immutable/cacheados por 30 dias (vercel.json), e um
      cache de borda da CDN não invalida automaticamente em deploy novo. Incrementar este
      número sempre que um dos dois mudar (mesmo padrão de js/ide-worker.js). -->
-<script src="js/data.js?v=8"></script>
+<script src="js/data.js?v=9"></script>
 
 <!-- CodeMirror core -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
@@ -1981,6 +2004,6 @@ Quais dos seguintes são estados da região Nordeste do Brasil? (Marque todas as
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
 
-<script src="js/teacher.js?v=17"></script>
+<script src="js/teacher.js?v=19"></script>
 </body>
 </html>

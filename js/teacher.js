@@ -137,6 +137,7 @@ function switchView(view, studentId = null) {
       document.getElementById('header-title').textContent = 'Criar Atividade';
       document.getElementById('header-subtitle').textContent = 'Monte uma nova lista de exercícios';
       initCreateActivityView();
+      renderCreatedActivitiesList();
       break;
 
     case 'student-detail':
@@ -599,9 +600,6 @@ function renderStudentDetail(studentId) {
   };
 
   document.getElementById('btn-back-overview').onclick = () => switchView('overview');
-
-  document.getElementById('btn-close-activity-answers').onclick = closeActivityAnswersModal;
-  document.getElementById('btn-close-activity-answers-2').onclick = closeActivityAnswersModal;
 }
 
 // ── Event Listeners ───────────────────────────────────────
@@ -619,6 +617,12 @@ function setupEventListeners() {
   // os botões "✕"/"Fechar" nunca tinham sido vinculados.
   document.getElementById('btn-close-preview').addEventListener('click', closePreviewModal);
   document.getElementById('btn-close-preview-2').addEventListener('click', closePreviewModal);
+
+  // Mesmo motivo: modais de entregas/respostas de atividade, abertos de várias views.
+  document.getElementById('btn-close-activity-answers').onclick = closeActivityAnswersModal;
+  document.getElementById('btn-close-activity-answers-2').onclick = closeActivityAnswersModal;
+  document.getElementById('btn-close-activity-submissions').onclick = closeActivitySubmissionsModal;
+  document.getElementById('btn-close-activity-submissions-2').onclick = closeActivitySubmissionsModal;
 
   // Mesmo motivo/padrão acima, agora para o modal de importar perguntas via texto.
   document.getElementById('btn-close-quiz-import').addEventListener('click', closeQuizImportModal);
@@ -1756,6 +1760,97 @@ function confirmQuizImport() {
   closeQuizImportModal();
 }
 
+// ── Lista de atividades criadas (tela "Criar Atividade") ──
+function renderCreatedActivitiesList() {
+  const list = document.getElementById('created-activities-list');
+  if (!list) return;
+  const activities = getActivities().slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const students = getStudents();
+  list.innerHTML = '';
+
+  if (activities.length === 0) {
+    list.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;">Nenhuma atividade criada ainda.</div>`;
+    return;
+  }
+
+  activities.forEach(act => {
+    const doneCount = students.filter(s => getActivityStatus(act, s.id) === 'completed').length;
+    const moduleTitle = act.moduleId ? (getModuleById(act.moduleId)?.title || act.moduleId) : 'Nenhum módulo';
+    const deadlineText = act.deadline ? new Date(act.deadline).toLocaleString('pt-BR') : 'Sem prazo';
+
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:1rem;width:100%;text-align:left;padding:0.85rem 1rem;border:1px solid var(--border);border-radius:var(--radius-md);background:transparent;color:inherit;cursor:pointer;font:inherit;';
+    row.innerHTML = `
+      <div>
+        <div style="font-weight:700;font-size:0.9rem;">${escapeHtml(act.title)}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">📚 ${escapeHtml(moduleTitle)} · 📅 ${escapeHtml(deadlineText)} · ${act.questions.length} pergunta${act.questions.length !== 1 ? 's' : ''}</div>
+      </div>
+      <div style="font-size:0.85rem;font-weight:700;white-space:nowrap;color:${doneCount === students.length && students.length > 0 ? 'var(--green)' : 'var(--text-secondary)'};">✅ ${doneCount}/${students.length}</div>
+    `;
+    row.onclick = () => openActivitySubmissionsModal(act.id);
+    list.appendChild(row);
+  });
+}
+
+// ── Modal: quem fez / não fez uma atividade ──
+function openActivitySubmissionsModal(activityId) {
+  const act = getActivities().find(a => a.id === activityId);
+  if (!act) return;
+  const students = getStudents().slice().sort((a, b) => a.name.localeCompare(b.name));
+  const total = act.questions.length;
+
+  const rows = students.map(s => {
+    const answered = Object.keys(getStudentAnswers(s.id)[act.id] || {}).length;
+    const status = getActivityStatus(act, s.id);
+    return { s, answered, status };
+  });
+  const done = rows.filter(r => r.status === 'completed');
+  const notDone = rows.filter(r => r.status !== 'completed');
+
+  const studentRow = ({ s, answered, status }) => {
+    let info;
+    if (status === 'completed') {
+      const late = getActivityCompletion(s.id, act.id)?.late;
+      info = `<span style="color:var(--green);font-weight:600;">${getStudentActivityScore(s.id, act.id)}% de acerto</span>${late ? ' <span style="color:var(--red);font-weight:600;">· entregue com atraso</span>' : ''}`;
+    } else {
+      info = answered > 0
+        ? `<span style="color:var(--yellow);font-weight:600;">Em andamento (${answered}/${total})</span>`
+        : `<span style="color:var(--text-muted);">Não iniciou</span>`;
+      if (status === 'overdue') info += ' <span style="color:var(--red);font-weight:600;">· prazo vencido</span>';
+    }
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;padding:0.6rem 0.75rem;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:0.4rem;">
+        <div style="display:flex;align-items:center;gap:0.6rem;min-width:0;">
+          <div class="perf-student-dot" style="background:${s.avatarColor};border-color:transparent;flex-shrink:0;width:32px;height:32px;font-size:0.7rem;">${escapeHtml(s.avatar)}</div>
+          <div style="min-width:0;">
+            <div style="font-weight:600;font-size:0.88rem;">${escapeHtml(s.name)}</div>
+            <div style="font-size:0.75rem;">${info}</div>
+          </div>
+        </div>
+        ${answered > 0 ? `<button type="button" class="btn btn-ghost btn-sm btn-sub-view-answers" data-student-id="${escapeHtml(s.id)}">👁️ Ver respostas</button>` : ''}
+      </div>`;
+  };
+
+  document.getElementById('activity-submissions-title').textContent = `Entregas — ${act.title}`;
+  const body = document.getElementById('activity-submissions-body');
+  body.innerHTML = `
+    <h4 style="margin:0 0 0.6rem 0;color:var(--green);">✅ Fizeram (${done.length})</h4>
+    ${done.length ? done.map(studentRow).join('') : '<div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem;">Nenhum aluno concluiu ainda.</div>'}
+    <h4 style="margin:1.25rem 0 0.6rem 0;color:var(--red);">⏳ Não fizeram (${notDone.length})</h4>
+    ${notDone.length ? notDone.map(studentRow).join('') : '<div style="font-size:0.82rem;color:var(--text-muted);">Todos os alunos concluíram.</div>'}
+  `;
+  body.querySelectorAll('.btn-sub-view-answers').forEach(btn => {
+    btn.onclick = () => openActivityAnswersModal(btn.dataset.studentId, act.id);
+  });
+
+  document.getElementById('activity-submissions-modal').classList.add('open');
+}
+
+function closeActivitySubmissionsModal() {
+  document.getElementById('activity-submissions-modal').classList.remove('open');
+}
+
 // ── Modal: respostas de um aluno numa atividade (teóricas + práticas) ──
 function openActivityAnswersModal(studentId, activityId) {
   const activity = getActivities().find(a => a.id === activityId);
@@ -2598,6 +2693,9 @@ function renderActivityPerformance(activities, students) {
         }).join('')}
       </div>
     `;
+    item.style.cursor = 'pointer';
+    item.title = 'Clique para ver quem fez e as respostas';
+    item.onclick = () => openActivitySubmissionsModal(act.id);
     list.appendChild(item);
   });
 }
@@ -3626,11 +3724,16 @@ function setupModulesCrudEvents() {
     renderModulesCrudList();
   }));
 
+  document.getElementById('btn-add-mod-video').addEventListener('click', () => {
+    addModuleVideoRow().focus();
+  });
+
   // New Module button
   document.getElementById('btn-new-module').addEventListener('click', () => {
     currentEditModuleId = null;
     document.getElementById('modules-form-title').textContent = '➕ Criar Novo Módulo';
     document.getElementById('modules-crud-form').reset();
+    setModuleVideoRows([]);
     document.getElementById('mod-id').disabled = false;
     document.getElementById('mod-quiz-questions-container').innerHTML = '';
     document.getElementById('mod-steps-container').innerHTML = '';
@@ -4055,6 +4158,42 @@ function renderModulesCrudForm(moduleId) {
   fillModuleFormFields(m, { lockId: isDefault });
 }
 
+// ── Vídeos do módulo (lista dinâmica de links) ──
+function addModuleVideoRow(url = '') {
+  const list = document.getElementById('mod-video-list');
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:0.5rem;align-items:center;';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'ca-input mod-video-url-input';
+  input.placeholder = 'Ex: https://www.youtube.com/watch?v=...';
+  input.value = url;
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'btn btn-ghost btn-sm';
+  removeBtn.title = 'Remover vídeo';
+  removeBtn.textContent = '✕';
+  removeBtn.onclick = () => {
+    row.remove();
+    if (!list.children.length) addModuleVideoRow();
+    saveModuleDraft();
+  };
+  row.append(input, removeBtn);
+  list.appendChild(row);
+  return input;
+}
+
+function setModuleVideoRows(urls) {
+  document.getElementById('mod-video-list').innerHTML = '';
+  (urls.length ? urls : ['']).forEach(u => addModuleVideoRow(u));
+}
+
+function getModuleVideoInputValues() {
+  return Array.from(document.querySelectorAll('#mod-video-list .mod-video-url-input'))
+    .map(i => i.value.trim())
+    .filter(Boolean);
+}
+
 // Preenche o formulário de criar/editar módulo a partir de um objeto no formato de módulo —
 // usado ao editar (módulo real), duplicar (cópia com ID vazio) e recuperar rascunho.
 function fillModuleFormFields(m, { lockId = false } = {}) {
@@ -4068,7 +4207,7 @@ function fillModuleFormFields(m, { lockId = false } = {}) {
   document.getElementById('mod-difficulty').value = m.difficulty || 'Intermediário';
   document.getElementById('mod-duration').value = m.duration || '45 min';
 
-  document.getElementById('mod-video-url').value = m.video?.url || '';
+  setModuleVideoRows(Array.isArray(m.video?.urls) ? m.video.urls : (m.video?.url ? [m.video.url] : []));
   document.getElementById('mod-video-autoplay').checked = !!m.video?.autoplay;
 
   setComplexityField('mod-c-access', m.complexity?.access || 'O(n)');
@@ -4278,14 +4417,16 @@ function saveModuleCrudForm() {
   }
 
   // Video (opcional)
-  const videoUrl = document.getElementById('mod-video-url').value.trim();
-  if (videoUrl && !extractYouTubeId(videoUrl)) {
-    showToast('❌ Link de vídeo do YouTube inválido. Cole a URL completa do vídeo.', 'warning');
+  const videoUrls = getModuleVideoInputValues();
+  const invalidIdx = videoUrls.findIndex(u => !extractYouTubeId(u));
+  if (invalidIdx !== -1) {
+    showToast(`❌ Link de vídeo do YouTube inválido (vídeo ${invalidIdx + 1}). Cole a URL completa do vídeo.`, 'warning');
     return;
   }
-  const video = videoUrl
-    ? { url: videoUrl, autoplay: document.getElementById('mod-video-autoplay').checked }
-    : { url: '', autoplay: false };
+  // `url` = primeiro vídeo, mantido por compatibilidade com o formato antigo
+  const video = videoUrls.length
+    ? { url: videoUrls[0], urls: videoUrls, autoplay: document.getElementById('mod-video-autoplay').checked }
+    : { url: '', urls: [], autoplay: false };
 
   // Colors and Gradients
   const color = document.getElementById('mod-color').value;
@@ -4389,12 +4530,15 @@ function previewModuleCrud(m) {
     `;
   }
 
-  const videoEmbedUrl = buildYouTubeEmbedUrl(m.video);
-  const videoHtml = videoEmbedUrl ? `
-    <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary); border-left:3px solid ${m.color || '#6366f1'}; padding-left:0.5rem;">🎥 Vídeo Aula</h3>
-    <div style="position:relative; width:100%; padding-top:56.25%; border-radius:10px; overflow:hidden; background:#000; margin-bottom:2rem;">
-      <iframe src="${videoEmbedUrl}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-    </div>
+  const videoEmbedUrls = getModuleVideoUrls(m.video)
+    .map((url, i) => buildYouTubeEmbedUrl({ url, autoplay: i === 0 && m.video?.autoplay }));
+  const videoHtml = videoEmbedUrls.length ? `
+    <h3 style="font-size:1rem; font-weight:600; margin-bottom:0.75rem; color:var(--text-primary); border-left:3px solid ${m.color || '#6366f1'}; padding-left:0.5rem;">🎥 Vídeo Aula${videoEmbedUrls.length > 1 ? 's' : ''}</h3>
+    ${videoEmbedUrls.map(src => `
+    <div style="position:relative; width:100%; padding-top:56.25%; border-radius:10px; overflow:hidden; background:#000; margin-bottom:1rem;">
+      <iframe src="${src}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>`).join('')}
+    <div style="margin-bottom:1rem;"></div>
   ` : '';
 
   body.innerHTML = `
@@ -4691,7 +4835,7 @@ function serializeModuleDraft() {
       space: document.getElementById('mod-c-space').value,
     },
     video: {
-      url: document.getElementById('mod-video-url').value,
+      urls: getModuleVideoInputValues(),
       autoplay: document.getElementById('mod-video-autoplay').checked,
     },
     theory: modTheoryEditor ? modTheoryEditor.getValue() : '',
